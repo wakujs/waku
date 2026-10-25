@@ -1,12 +1,12 @@
 import type { buildElements } from '../lib/utils-server/build-elements.js';
 
 export type {
-  Unstable_Handlers,
-  Unstable_HandleRequest,
-  Unstable_HandleBuild,
-  Unstable_RenderRsc,
-  Unstable_RenderHtml,
-  Unstable_RenderHtmlFallback,
+  Handlers as Unstable_Handlers,
+  HandleRequest as Unstable_HandleRequest,
+  HandleBuild as Unstable_HandleBuild,
+  RenderRsc as Unstable_RenderRsc,
+  RenderHtml as Unstable_RenderHtml,
+  RenderHtmlFallback as Unstable_RenderHtmlFallback,
 } from '../lib/types.js';
 export type { Etags as Unstable_Etags } from '../lib/utils-isomorphic/etags.js';
 export { buildElements as unstable_buildElements } from '../lib/utils-server/build-elements.js';

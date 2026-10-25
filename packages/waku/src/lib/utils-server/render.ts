@@ -1,8 +1,4 @@
-import type {
-  Unstable_RenderHtml,
-  Unstable_RenderHtmlFallback,
-  Unstable_RenderRsc,
-} from '../types.js';
+import type { RenderHtml, RenderHtmlFallback, RenderRsc } from '../types.js';
 import { ETAGS_ID } from '../utils-isomorphic/etags.js';
 
 const validateRscElementIds = (elements: Record<string, unknown>) => {
@@ -43,9 +39,9 @@ export function createRenderUtils({
   debugId?: string | undefined;
   onError: (e: unknown) => string | undefined;
 }): {
-  renderRsc: Unstable_RenderRsc;
-  renderHtml: Unstable_RenderHtml;
-  renderHtmlFallback: Unstable_RenderHtmlFallback;
+  renderRsc: RenderRsc;
+  renderHtml: RenderHtml;
+  renderHtmlFallback: RenderHtmlFallback;
 } {
   return {
     async renderRsc(elements, options) {

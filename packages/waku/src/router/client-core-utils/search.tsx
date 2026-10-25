@@ -4,7 +4,7 @@ import type {
   RoutePath,
 } from '../isomorphic-utils/build-route-href.js';
 import { matchRouteParams } from '../isomorphic-utils/match-route-params.js';
-import type { Unstable_SearchCodec } from '../isomorphic-utils/search-codec.js';
+import type { SearchCodec } from '../isomorphic-utils/search-codec.js';
 import { useRouterHost } from './host.js';
 import { getRouteUrl } from './route-url.js';
 
@@ -18,7 +18,7 @@ type SearchRoute<
   Search extends Record<string, unknown>,
 > = {
   path: NormalizePath<Path> extends NormalizePath<RoutePath> ? Path : never;
-  searchCodec: Unstable_SearchCodec<Search>;
+  searchCodec: SearchCodec<Search>;
 };
 
 /**
@@ -27,7 +27,7 @@ type SearchRoute<
  * result is memoized by path, codec and query. Generated route types reject
  * unknown patterns; route groups are ignored.
  */
-export function useSearch_UNSTABLE<
+export function useSearch<
   const Path extends string,
   Search extends Record<string, unknown>,
 >({ path, searchCodec }: SearchRoute<Path, Search>): Search | null {
@@ -48,7 +48,7 @@ export function useSearch_UNSTABLE<
  * A mismatched path is a no-op. Codec and navigation errors reject the promise.
  * Outbound validation belongs in `serialize`; only the current query is parsed.
  */
-export function useSetSearch_UNSTABLE<
+export function useSetSearch<
   const Path extends string,
   Search extends Record<string, unknown>,
 >({ path, searchCodec }: SearchRoute<Path, Search>): SetSearch<Search> {

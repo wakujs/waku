@@ -9,14 +9,14 @@ import {
   useSearch_UNSTABLE,
   useSetSearch_UNSTABLE,
 } from 'waku/router/client';
-import { productSearchCodec as codec } from './search.js';
+import { productSearchCodec } from './search.js';
 import type { Search } from './search.js';
 
 type LinkTarget = ComponentProps<typeof Link>['to'];
 
 const product = unstable_createRouteHref({
   path: '/products/[id]',
-  search: codec,
+  search: productSearchCodec,
 });
 const paramsOnly = unstable_createRouteHref({ path: '/products/[id]' });
 const docs = unstable_createRouteHref({ path: '/docs/[...parts]' });
@@ -25,7 +25,10 @@ const grouped = unstable_createRouteHref({
   path: '/(shop)/(catalog)/products/[id]',
 });
 const home = unstable_createRouteHref({ path: '/' });
-const about = unstable_createRouteHref({ path: '/about', search: codec });
+const about = unstable_createRouteHref({
+  path: '/about',
+  search: productSearchCodec,
+});
 const unknown = unstable_createRouteHref({ path: '/unregistered/[id]' });
 const localSearch = unstable_createRouteHref({
   path: '/products/[id]',
@@ -37,7 +40,9 @@ const localSearch = unstable_createRouteHref({
 
 expectType<TypeEqual<keyof SearchCodecsConfig, '/products/[id]'>>(true);
 expectType<TypeEqual<typeof product.path, '/products/[id]'>>(true);
-expectType<TypeEqual<typeof product.searchCodec, typeof codec>>(true);
+expectType<TypeEqual<typeof product.searchCodec, typeof productSearchCodec>>(
+  true,
+);
 expectType<
   ReturnType<typeof unstable_createRouteHref<'/products/[id]', Search>>
 >(product);
@@ -162,22 +167,31 @@ export function FactorySearchProbe() {
   useSetSearch_UNSTABLE(paramsOnly);
   const groupedSearch = unstable_createRouteHref({
     path: '/(shop)/(catalog)/products/[id]',
-    search: codec,
+    search: productSearchCodec,
   });
   expectType<Search | null>(useSearch_UNSTABLE(groupedSearch));
   useSetSearch_UNSTABLE(groupedSearch);
   expectType<Search | null>(
-    useSearch_UNSTABLE({ path: '/products/[id]', searchCodec: codec }),
+    useSearch_UNSTABLE({
+      path: '/products/[id]',
+      searchCodec: productSearchCodec,
+    }),
   );
-  useSetSearch_UNSTABLE({ path: '/products/[id]', searchCodec: codec });
-  const typo = unstable_createRouteHref({ path: '/serach', search: codec });
+  useSetSearch_UNSTABLE({
+    path: '/products/[id]',
+    searchCodec: productSearchCodec,
+  });
+  const typo = unstable_createRouteHref({
+    path: '/serach',
+    search: productSearchCodec,
+  });
   // @ts-expect-error search readers reject unknown factory patterns
   useSearch_UNSTABLE(typo);
   // @ts-expect-error search setters reject unknown factory patterns
   useSetSearch_UNSTABLE(typo);
   // @ts-expect-error search readers reject unknown descriptor patterns
-  useSearch_UNSTABLE({ path: '/serach', searchCodec: codec });
+  useSearch_UNSTABLE({ path: '/serach', searchCodec: productSearchCodec });
   // @ts-expect-error search setters reject unknown descriptor patterns
-  useSetSearch_UNSTABLE({ path: '/serach', searchCodec: codec });
+  useSetSearch_UNSTABLE({ path: '/serach', searchCodec: productSearchCodec });
   return null;
 }

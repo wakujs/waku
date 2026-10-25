@@ -1,6 +1,6 @@
 import type { ReactFormState } from 'react-dom/client';
 import type { Config } from '../../config.js';
-import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
+import type { HandleRequest } from '../types.js';
 import { createCustomError } from '../utils-isomorphic/custom-errors.js';
 import { ETAGS_HEADER, parseClientEtags } from '../utils-isomorphic/etags.js';
 import { parseRequestUrl } from './request-url.js';

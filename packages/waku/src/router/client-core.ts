@@ -58,10 +58,10 @@ export type {
 
 export { buildMergePatch as unstable_buildMergePatch } from './client-core-utils/merge-patch.js';
 
-export { useParams_UNSTABLE } from './client-core-utils/route-hooks.js';
+export { useParams as useParams_UNSTABLE } from './client-core-utils/route-hooks.js';
 export {
-  useSearch_UNSTABLE,
-  useSetSearch_UNSTABLE,
+  useSearch as useSearch_UNSTABLE,
+  useSetSearch as useSetSearch_UNSTABLE,
 } from './client-core-utils/search.js';
 
 export { useHmrRefetch as useHmrRefetch_UNSTABLE } from './client-core-utils/hmr.js';
@@ -96,4 +96,4 @@ export {
 } from './isomorphic-utils/route-path.js';
 export type { RouteProps as Unstable_RouteProps } from './isomorphic-utils/route-path.js';
 
-export type { Unstable_SearchCodec } from './isomorphic-utils/search-codec.js';
+export type { SearchCodec as Unstable_SearchCodec } from './isomorphic-utils/search-codec.js';

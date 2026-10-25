@@ -11,7 +11,7 @@ import { useRouterHost } from './host.js';
  * different path; read its fields rather than using the object itself as an
  * effect dependency.
  */
-export function useParams_UNSTABLE<Path extends RoutePath>({
+export function useParams<Path extends RoutePath>({
   from,
 }: {
   from: Path;

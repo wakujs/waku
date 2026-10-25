@@ -6,12 +6,12 @@ import {
 } from '../src/minimal/server.js';
 import { unstable_createRouteHref } from '../src/router/base-types.js';
 import {
+  defineRouter,
   getRequest,
-  unstable_defineRouter,
-  unstable_notFound,
-  unstable_redirect,
-  unstable_rerenderRoute,
-  unstable_setNonce,
+  notFound,
+  redirect,
+  rerenderRoute,
+  setNonce,
 } from '../src/router/define-router.js';
 import {
   ACTION_LOCATION_HEADER,
@@ -33,7 +33,7 @@ vi.mock('../src/server.js', () => ({
   ),
 }));
 
-type RouterOptions = Parameters<typeof unstable_defineRouter>[0];
+type RouterOptions = Parameters<typeof defineRouter>[0];
 const createRouterDefinition = (content: string, immutable = false) => ({
   elements: {
     root: { immutable, render: () => 'root' },
@@ -70,7 +70,7 @@ const rscInput = (pathname: string, query = '') => ({
 describe('defineRouter route resolver', () => {
   it('shares explicitly keyed immutable sources across route IDs', async () => {
     const render = vi.fn(() => 'shell');
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async () => ({
         elements: {
           root: { render: () => 'root' },
@@ -94,7 +94,7 @@ describe('defineRouter route resolver', () => {
       createRouterDefinition('content'),
     );
     const getHas404 = vi.fn(async () => false);
-    const router = unstable_defineRouter({ resolve, getHas404 });
+    const router = defineRouter({ resolve, getHas404 });
     const utils = makeUtils();
     await Promise.all(
       ['/one', '/two'].map((path) =>
@@ -121,10 +121,10 @@ describe('defineRouter route resolver', () => {
     });
     const href = post({ params: { id: 'one/two' }, search: { tag: 'a b' } });
     expect(href).toBe('/define-router-search/one%2Ftwo?tag=a+b');
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async (path) =>
         path === '/redirect'
-          ? async () => unstable_redirect(href)
+          ? async () => redirect(href)
           : createRouterDefinition('content'),
       getHas404: async () => false,
     });
@@ -152,7 +152,7 @@ describe('defineRouter route resolver', () => {
   it('does not retain immutable route content for arbitrary runtime paths', async () => {
     vi.mocked(serializeRsc).mockClear();
     const render = vi.fn((path: string) => path);
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async (path) =>
         path.startsWith('/posts/')
           ? {
@@ -190,7 +190,7 @@ describe('defineRouter route resolver', () => {
             : null
           : createRouterDefinition(query),
       );
-      const router = unstable_defineRouter({ resolve });
+      const router = defineRouter({ resolve });
       const utils = makeUtils();
       await Promise.all([
         router.handleRequest(rscInput('/one'), utils),
@@ -222,7 +222,7 @@ describe('defineRouter route resolver', () => {
       }
       return createRouterDefinition(query);
     });
-    const router = unstable_defineRouter({ resolve });
+    const router = defineRouter({ resolve });
     const utils = makeUtils();
     await expect(router.handleRequest(rscInput('/'), utils)).rejects.toThrow(
       'CMS unavailable',
@@ -249,7 +249,7 @@ describe('defineRouter route resolver', () => {
             },
           }
         : null;
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve,
       getBuildPaths: async () => ['/posts/built'],
     });
@@ -266,7 +266,7 @@ describe('defineRouter route resolver', () => {
     });
     expect(render).toHaveBeenCalledTimes(1);
     render.mockClear();
-    const runtime = unstable_defineRouter({ resolve });
+    const runtime = defineRouter({ resolve });
     const utils = makeUtils();
     utils.loadBuildMetadata.mockImplementation(async (key) =>
       metadata.get(key),
@@ -284,7 +284,7 @@ describe('defineRouter route resolver', () => {
   });
 
   it('rejects a source that collides with router metadata', async () => {
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async () => ({
         elements: {
           ...createRouterDefinition('route').elements,
@@ -303,7 +303,7 @@ describe('defineRouter route resolver', () => {
     const resolve = vi.fn<RouterOptions['resolve']>(async (pathname) =>
       pathname === path ? createRouterDefinition('static', true) : null,
     );
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve,
       getBuildPaths: async () => ['/caf\u00e9+[x].txt/'],
     });
@@ -333,7 +333,7 @@ describe('defineRouter route resolver', () => {
   });
 
   it('rejects build paths with a query instead of silently building another URL', async () => {
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async () => createRouterDefinition('static', true),
       getBuildPaths: async () => ['/items?q=one'],
     });
@@ -351,9 +351,9 @@ describe('defineRouter route resolver', () => {
     expect(generateFile).not.toHaveBeenCalled();
   });
   it('treats a not-found thrown by the 404 probe as no custom 404', async () => {
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async (path) =>
-        path === '/' ? createRouterDefinition('home') : unstable_notFound(),
+        path === '/' ? createRouterDefinition('home') : notFound(),
     });
     const utils = makeUtils();
     await router.handleRequest(rscInput('/'), utils);
@@ -368,7 +368,7 @@ describe('defineRouter route resolver', () => {
     const resolve = vi.fn<RouterOptions['resolve']>(async (path, query) =>
       path === '/items' ? createRouterDefinition(query) : null,
     );
-    const router = unstable_defineRouter({ resolve });
+    const router = defineRouter({ resolve });
     const utils = makeUtils();
     await router.handleRequest(
       {
@@ -403,7 +403,7 @@ describe('defineRouter route resolver', () => {
           req.method + ':' + new URL(req.url).search + ':' + (await req.text()),
         ),
     );
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async (path) => (path === '/api' ? handler : null),
     });
     expect(
@@ -427,7 +427,7 @@ describe('defineRouter route resolver', () => {
   });
 
   it('preserves the handler body when resolution reads a request clone', async () => {
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async () => {
         expect(await getRequest().clone().text()).toBe('body');
         return async (req) => new Response(await req.text());
@@ -449,7 +449,7 @@ describe('defineRouter route resolver', () => {
 
   it('omits sources with matching validators and sends client route metadata', async () => {
     const render = vi.fn(() => 'content');
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async (path) =>
         path === '/'
           ? {
@@ -478,7 +478,7 @@ describe('defineRouter route resolver', () => {
         ? { render: () => 'fragment', getEtag: async () => 'v1' }
         : null,
     );
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async () => null,
       resolveElement,
     });
@@ -496,7 +496,7 @@ describe('defineRouter route resolver', () => {
 
   it('preserves CSR-only routes while still serving their RSC payload', async () => {
     const render = vi.fn(() => 'client route');
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async (path) =>
         path === '/'
           ? {
@@ -522,11 +522,11 @@ describe('defineRouter route resolver', () => {
   });
 
   it('uses a custom 404 for a not-found thrown during resolution', async () => {
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async (path, query) =>
         path === '/404'
           ? createRouterDefinition('not found:' + query)
-          : unstable_notFound(),
+          : notFound(),
     });
     const utils = makeUtils();
     const response = await router.handleRequest(
@@ -554,13 +554,13 @@ describe('defineRouter route resolver', () => {
   });
 
   it('returns a redirected route in the same RSC response', async () => {
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async (path, query) =>
         path === '/old'
           ? {
               elements: {
                 ...createRouterDefinition('').elements,
-                route: { render: () => unstable_redirect('/next?q=one') },
+                route: { render: () => redirect('/next?q=one') },
               },
             }
           : path === '/next'
@@ -579,7 +579,7 @@ describe('defineRouter route resolver', () => {
   });
 
   it('keeps origin rerenders and action values in the client protocol', async () => {
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async (path, query) =>
         path === '/origin' ? createRouterDefinition(query) : null,
     });
@@ -594,7 +594,7 @@ describe('defineRouter route resolver', () => {
         }),
         args: [],
         fn: async () => {
-          unstable_rerenderRoute();
+          rerenderRoute();
           return 'result';
         },
       },
@@ -611,7 +611,7 @@ describe('defineRouter route resolver', () => {
 
   it('runs resolution in the interceptor request scope', async () => {
     const order: string[] = [];
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async (path) => {
         order.push(getRequest().headers.get('marker')!);
         return path === '/' ? createRouterDefinition('route') : null;
@@ -655,7 +655,7 @@ describe('defineRouter route resolver', () => {
                 },
               }
             : null;
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve,
       getBuildPaths: async () => ['/static', '/dynamic', '/api'],
     });
@@ -679,7 +679,7 @@ describe('defineRouter route resolver', () => {
     expect(files.has('/api')).toBe(true);
     expect(files.has('/dynamic/index.html')).toBe(false);
     expect(mutableRender).not.toHaveBeenCalled();
-    const runtime = unstable_defineRouter({ resolve });
+    const runtime = defineRouter({ resolve });
     const runtimeUtils = makeUtils();
     runtimeUtils.loadBuildMetadata.mockImplementation(async (key) =>
       metadata.get(key),
@@ -701,7 +701,7 @@ describe('defineRouter route resolver', () => {
     const render = vi.fn(() => 'fragment');
     const resolveElement: RouterOptions['resolveElement'] = async (slotId) =>
       slotId === id ? { immutable: true, render } : null;
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async () => null,
       resolveElement,
       getBuildElementIds: async () => [id],
@@ -729,7 +729,7 @@ describe('defineRouter route resolver', () => {
     expect(
       JSON.parse(files.get('payload/' + encodeSliceId('folder/fragment'))!),
     ).toEqual({ elements: { [id]: 'fragment' }, etags: { [id]: 1 } });
-    const runtime = unstable_defineRouter({
+    const runtime = defineRouter({
       resolve: async () => null,
       resolveElement,
     });
@@ -755,7 +755,7 @@ describe('defineRouter route resolver', () => {
   ])(
     'rejects an invalid independently built element: %s',
     async (id, message) => {
-      const router = unstable_defineRouter({
+      const router = defineRouter({
         resolve: async () => null,
         resolveElement: async (slotId) =>
           slotId === 'slice:mutable' ? { render: () => 'mutable' } : null,
@@ -779,7 +779,7 @@ describe('defineRouter route resolver', () => {
   it('warms explicit template sources without prerendering or runtime rendering', async () => {
     const render = vi.fn(() => 'shell');
     const source = { immutable: true, cacheKey: 'post-shell', render };
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async () => null,
       getHas404: async () => false,
       getBuildPaths: async () => [
@@ -809,7 +809,7 @@ describe('defineRouter route resolver', () => {
     });
     expect(generateFile).not.toHaveBeenCalled();
     expect(render).toHaveBeenCalledOnce();
-    const runtime = unstable_defineRouter({
+    const runtime = defineRouter({
       resolve: async () => ({
         elements: {
           root: {
@@ -848,7 +848,7 @@ describe('defineRouter route resolver', () => {
     'rejects reserved build element $id (immutable: $immutable, prerender: $prerender)',
     async ({ id, immutable, prerender }) => {
       const render = vi.fn(() => 'content');
-      const router = unstable_defineRouter({
+      const router = defineRouter({
         resolve: async () => ({
           elements: {
             root: { immutable, render },
@@ -878,7 +878,7 @@ describe('defineRouter route resolver', () => {
     const deserialize = vi.mocked(deserializeRsc);
     const implementation = deserialize.getMockImplementation()!;
     deserialize.mockRejectedValueOnce(new Error('cached component failed'));
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async () => ({
         elements: {
           root: { immutable: true, render: () => 'root' },
@@ -907,7 +907,7 @@ describe('defineRouter route resolver', () => {
   });
 
   it('resolves async sources before warming the build cache', async () => {
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async () => ({
         elements: {
           root: { immutable: true, render: async () => 'async root' },
@@ -942,7 +942,7 @@ describe('defineRouter route resolver', () => {
   it('fails the build when an immutable source rejects while warming', async () => {
     const failed = Promise.reject(new Error('async source failed'));
     await failed.catch(() => {});
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async () => ({
         elements: {
           root: { immutable: true, render: () => failed },
@@ -967,7 +967,7 @@ describe('defineRouter route resolver', () => {
 
   it('serves runtime and built noSsr shells without rendering route HTML', async () => {
     const render = vi.fn(() => 'content');
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async (path) =>
         path === '/search'
           ? {
@@ -982,7 +982,7 @@ describe('defineRouter route resolver', () => {
       getBuildPaths: async () => ['/search'],
       unstable_interceptors: [
         async (next) => {
-          unstable_setNonce('request-nonce');
+          setNonce('request-nonce');
           return next();
         },
       ],
@@ -1030,7 +1030,7 @@ describe('defineRouter route resolver', () => {
 
   it('builds an explicit immutable element even when runtime resolution is mutable', async () => {
     const mutableRender = vi.fn(() => 'runtime');
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async () => null,
       resolveElement: async () => ({ render: mutableRender }),
       getBuildElementIds: async () => [
@@ -1062,7 +1062,7 @@ describe('defineRouter route resolver', () => {
   });
 
   it("prefetches a build target's modules for other matching paths", async () => {
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve: async () => null,
       getHas404: async () => false,
       getBuildPaths: async () => [

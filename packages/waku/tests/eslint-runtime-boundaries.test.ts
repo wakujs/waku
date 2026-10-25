@@ -313,13 +313,13 @@ test('router implementations use the public API of the layer below', async () =>
     expect(
       await lint(
         file,
-        `import { unstable_defineRouter } from '${specifier}';\nvoid unstable_defineRouter;\n`,
+        `import { defineRouter } from '${specifier}';\nvoid defineRouter;\n`,
       ),
     ).toEqual([]);
     expect(
       await lint(
         file,
-        `import type { unstable_defineRouter } from '${specifier}';\nexport type Interceptor = NonNullable<Parameters<typeof unstable_defineRouter>[0]['unstable_interceptors']>[number];\n`,
+        `import type { defineRouter } from '${specifier}';\nexport type Interceptor = NonNullable<Parameters<typeof defineRouter>[0]['unstable_interceptors']>[number];\n`,
       ),
     ).toEqual([]);
     expect(

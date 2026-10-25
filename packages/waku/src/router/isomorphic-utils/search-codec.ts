@@ -8,7 +8,7 @@
  * URL-encoded query string (e.g. via `URLSearchParams.toString()`), which is
  * placed after `?` in the href as-is without invoking `parse`.
  */
-export type Unstable_SearchCodec<Search extends Record<string, unknown>> = {
+export type SearchCodec<Search extends Record<string, unknown>> = {
   parse: (query: string) => Search;
   serialize: (search: Search) => string;
 };

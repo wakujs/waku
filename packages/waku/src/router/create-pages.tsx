@@ -31,7 +31,7 @@ import {
   getGrouplessPath,
   pathnameToRoutePath,
 } from './isomorphic-utils/route-path.js';
-import type { Unstable_SearchCodec } from './isomorphic-utils/search-codec.js';
+import type { SearchCodec } from './isomorphic-utils/search-codec.js';
 
 type Method =
   | 'GET'
@@ -79,7 +79,7 @@ const getPageSlotId = (routePath: string) => `page:${routePath}`;
 const getLayoutSlotId = (layoutIdPath: string) => `layout:${layoutIdPath}`;
 
 const parseSearchOrThrow = (
-  codec: Unstable_SearchCodec<any>,
+  codec: SearchCodec<any>,
   query: string,
 ): Record<string, unknown> => {
   try {
@@ -265,7 +265,7 @@ export type CreatePage = <
      * The page's `search` type is declared via `SearchCodecsConfig` or generated
      * by fs-router typegen.
      */
-    unstable_searchCodec?: Unstable_SearchCodec<any>;
+    unstable_searchCodec?: SearchCodec<any>;
   },
 ) => Omit<
   Extract<
@@ -517,7 +517,7 @@ export const createPages = <
     noSsr: boolean;
     sourceFile?: string | undefined;
     getEtag?: GetEtag<Props> | undefined;
-    searchCodec?: Unstable_SearchCodec<any> | undefined;
+    searchCodec?: SearchCodec<any> | undefined;
   };
   type LayoutEntry<Props = any> = {
     pathSpec: PathSpec;
@@ -1060,7 +1060,7 @@ export const createPages = <
         isStatic: boolean,
         sourceFile?: string,
         getEtag?: GetEtag<Props>,
-        searchCodec?: Unstable_SearchCodec<any>,
+        searchCodec?: SearchCodec<any>,
       ): ElementSpec =>
         buildElementSpec(
           component,

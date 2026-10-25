@@ -54,7 +54,7 @@ import type { RegisterRscReloadListener } from './client-utils/rsc-reload.js';
 const { createFromFetch, encodeReply, createTemporaryReferenceSet } =
   RSDWClient;
 
-export { formatRscUrl as unstable_formatRscUrl } from '../lib/utils-isomorphic/rsc-path.js';
+export { formatRscUrl } from '../lib/utils-isomorphic/rsc-path.js';
 
 const META_GENERATOR = <meta name="generator" content="Waku" />;
 
@@ -86,10 +86,7 @@ const checkStatus = async (
 // only the client adds symbol keys; a decoded server payload has string keys
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
-export {
-  combineElements as unstable_combineElements,
-  isImmutableElement as unstable_isImmutableElement,
-};
+export { combineElements, isImmutableElement };
 
 const mergeElementsPromise = (
   a: Promise<Elements>,
@@ -142,7 +139,7 @@ const decodeRsc = (
   Promise.resolve(
     createFromFetch<Elements>(checkStatus(responsePromise), {
       callServer: (serverFunctionId: string, args: unknown[]) =>
-        unstable_callServerRsc(serverFunctionId, args),
+        callServerRsc(serverFunctionId, args),
       debugChannel,
       temporaryReferences,
     }),
@@ -229,7 +226,7 @@ const fetchRscElements = (
   }
 };
 
-export const unstable_callServerRsc = async (
+export const callServerRsc = async (
   serverFunctionId: string,
   args: unknown[],
 ) => {
@@ -324,7 +321,7 @@ const fetchWithoutRoot: FetchRsc = (rscPath, rscParams, options) =>
  * `unstable_base`. Omitted slots must be retained by the caller. Outside a Root
  * it runs no enhancers.
  */
-export const useFetchRsc_UNSTABLE = (): FetchRsc =>
+export const useFetchRsc = (): FetchRsc =>
   use(RootStoreContext)?.fetchRsc ?? fetchWithoutRoot;
 
 const ElementsContext = createContext<Promise<Elements> | null>(null);
@@ -341,7 +338,7 @@ const ElementsContext = createContext<Promise<Elements> | null>(null);
  * Use `startTransition` to retain visible content while this or an earlier
  * queued update is pending; urgent merges can show a Suspense fallback.
  */
-export const useMergeElements_UNSTABLE = () => {
+export const useMergeElements = () => {
   const store = useRootStore();
   return useCallback<MergeElements>(
     (data, merge = mergeElementsPromise) => {
@@ -363,7 +360,7 @@ export const useMergeElements_UNSTABLE = () => {
  * `replace`, the listener owns the Root's active refetch target until it is
  * replaced or unregistered.
  */
-export const useRegisterRscReloadListener_UNSTABLE = () => {
+export const useRegisterRscReloadListener = () => {
   const store = useRootStore();
   return useCallback<RegisterRscReloadListener>(
     (listener, options) =>
@@ -378,7 +375,7 @@ export const useRegisterRscReloadListener_UNSTABLE = () => {
  * Client root. Seeds the initial elements, bridges the store to React state,
  * and provides the elements to `Slot` descendants.
  */
-export const Root_UNSTABLE = ({
+export const Root = ({
   initialRscPath,
   initialRscParams,
   rscEnhancers = EMPTY_RSC_ENHANCERS,
@@ -464,13 +461,13 @@ const ChildrenContext = createContext<ReactNode>(undefined);
 const ChildrenContextProvider = memo(ChildrenContext);
 
 /** Render the client children passed to the enclosing Slot. */
-export const Children_UNSTABLE = () => use(ChildrenContext);
+export const Children = () => use(ChildrenContext);
 
 /**
  * Returns the enclosing Root's read-only element-map promise. Reading it with
  * React's `use` suspends while the record is pending.
  */
-export const useElementsPromise_UNSTABLE = () => {
+export const useElementsPromise = () => {
   const elementsPromise = use(ElementsContext);
   if (!elementsPromise) {
     throw new Error('Missing Root component');
@@ -492,14 +489,14 @@ export const useElementsPromise_UNSTABLE = () => {
  *   <Root><Slot id="foo" /><Slot id="bar" /></Root>
  * ```
  */
-export const Slot_UNSTABLE = ({
+export const Slot = ({
   id,
   children,
 }: {
   id: string;
   children?: ReactNode;
 }) => {
-  const elementsPromise = useElementsPromise_UNSTABLE();
+  const elementsPromise = useElementsPromise();
   const elements = use(elementsPromise);
   if (id in elements && elements[id] === undefined) {
     throw new Error('Element cannot be undefined, use null instead: ' + id);
@@ -531,4 +528,4 @@ export const INTERNAL_ServerRoot = ({
   </RootStoreContext>
 );
 
-export { getErrorInfo as unstable_getErrorInfo } from '../lib/utils-isomorphic/custom-errors.js';
+export { getErrorInfo } from '../lib/utils-isomorphic/custom-errors.js';
