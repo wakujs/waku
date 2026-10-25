@@ -7,7 +7,7 @@ const NoSsr = () => (
 export const getConfig = () => {
   return {
     render: 'static',
-    unstable_disableSSR: true,
+    unstable_noSsr: true,
   } as const;
 };
 

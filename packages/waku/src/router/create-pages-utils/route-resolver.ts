@@ -6,7 +6,7 @@ import {
   isSliceSlotId,
 } from '../isomorphic-utils/router-protocol.js';
 import type { ConfigRegistry } from './config-registry.js';
-import type { RendererOption, RouteConfig } from './config.js';
+import type { RendererOptions, RouteConfig } from './config.js';
 import { getPathSpecCacheId } from './element-ids.js';
 
 type Resolve = Parameters<typeof defineRouter>[0]['resolve'];
@@ -43,15 +43,15 @@ export const createRouteResolver = (registry: ConfigRegistry) => {
     pathname: string,
     query: string,
   ): Promise<RouterDefinition> => {
-    const option: RendererOption = {
+    const options: RendererOptions = {
       routePath: pathname,
       query: config.isStatic ? undefined : query,
     };
     const bind = (spec: typeof config.rootElement): ElementSource => ({
       immutable: spec.isStatic,
-      render: () => spec.renderer(option),
-      ...(spec.getEtagFromOption && {
-        getEtag: () => spec.getEtagFromOption!(option),
+      render: () => spec.renderer(options),
+      ...(spec.getEtagFromOptions && {
+        getEtag: () => spec.getEtagFromOptions!(options),
       }),
     });
     const elements: RouterDefinition['elements'] = {

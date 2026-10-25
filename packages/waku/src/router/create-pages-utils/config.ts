@@ -17,10 +17,10 @@ export type HandlerInterceptor = NonNullable<
 
 export type SlotId = string;
 
-export type RendererOption = { routePath: string; query: string | undefined };
+export type RendererOptions = { routePath: string; query: string | undefined };
 
-export type GetEtagFromOption = (
-  option: RendererOption,
+export type GetEtagFromOptions = (
+  options: RendererOptions,
 ) => Promise<string | undefined>;
 export type GetEtagFromParams = (
   params?: Record<string, string | string[]>,
@@ -33,21 +33,21 @@ export type RouteConfig = {
   pathPatternSpec?: PathSpec;
   rootElement: {
     isStatic: boolean;
-    renderer: (option: RendererOption) => ReactNode;
-    getEtagFromOption?: GetEtagFromOption;
+    renderer: (options: RendererOptions) => ReactNode;
+    getEtagFromOptions?: GetEtagFromOptions;
     sourceFile?: string;
   };
   routeElement: {
     isStatic: boolean;
-    renderer: (option: RendererOption) => ReactNode;
-    getEtagFromOption?: GetEtagFromOption;
+    renderer: (options: RendererOptions) => ReactNode;
+    getEtagFromOptions?: GetEtagFromOptions;
   };
   elements: Record<
     SlotId,
     {
       isStatic: boolean;
-      renderer: (option: RendererOption) => ReactNode;
-      getEtagFromOption?: GetEtagFromOption;
+      renderer: (options: RendererOptions) => ReactNode;
+      getEtagFromOptions?: GetEtagFromOptions;
       sourceFile?: string;
     }
   >;
@@ -83,15 +83,15 @@ type SerializableRouteConfig = Omit<
 > & {
   rootElement: Omit<
     RouteConfig['rootElement'],
-    'renderer' | 'getEtagFromOption'
+    'renderer' | 'getEtagFromOptions'
   >;
   routeElement: Omit<
     RouteConfig['routeElement'],
-    'renderer' | 'getEtagFromOption'
+    'renderer' | 'getEtagFromOptions'
   >;
   elements: Record<
     SlotId,
-    Omit<RouteConfig['elements'][string], 'renderer' | 'getEtagFromOption'>
+    Omit<RouteConfig['elements'][string], 'renderer' | 'getEtagFromOptions'>
   >;
 };
 export type SerializableRouteConfigForTest = SerializableRouteConfig;
@@ -121,12 +121,12 @@ export const toSerializable = (c: RuntimeConfig): SerializableConfig => {
     } = c;
     const {
       renderer: _rootRenderer,
-      getEtagFromOption: _rootGetEtag,
+      getEtagFromOptions: _rootGetEtag,
       ...rootElementRest
     } = rootElement;
     const {
       renderer: _routeRenderer,
-      getEtagFromOption: _routeGetEtag,
+      getEtagFromOptions: _routeGetEtag,
       ...routeElementRest
     } = routeElement;
     return {
@@ -135,7 +135,7 @@ export const toSerializable = (c: RuntimeConfig): SerializableConfig => {
       routeElement: routeElementRest,
       elements: Object.fromEntries(
         Object.entries(elements).map(
-          ([id, { renderer: _r, getEtagFromOption: _g, ...elRest }]) => [
+          ([id, { renderer: _r, getEtagFromOptions: _g, ...elRest }]) => [
             id,
             elRest,
           ],
@@ -205,8 +205,8 @@ export const mergeWithRuntimeConfigs = (
             elementSpec?.renderer ??
             sharedElementRenderers.get(id) ??
             (() => throwMissingRuntimeFunction(`element "${id}" of ${label}`)),
-          ...(elementSpec?.getEtagFromOption
-            ? { getEtagFromOption: elementSpec.getEtagFromOption }
+          ...(elementSpec?.getEtagFromOptions
+            ? { getEtagFromOptions: elementSpec.getEtagFromOptions }
             : {}),
           ...(val.sourceFile ? { sourceFile: val.sourceFile } : {}),
         };
@@ -224,8 +224,8 @@ export const mergeWithRuntimeConfigs = (
             runtimeItem?.rootElement.renderer ??
             sharedRootRenderer ??
             (() => throwMissingRuntimeFunction(`rootElement of ${label}`)),
-          ...(runtimeItem?.rootElement.getEtagFromOption
-            ? { getEtagFromOption: runtimeItem.rootElement.getEtagFromOption }
+          ...(runtimeItem?.rootElement.getEtagFromOptions
+            ? { getEtagFromOptions: runtimeItem.rootElement.getEtagFromOptions }
             : {}),
           ...(c.rootElement.sourceFile
             ? { sourceFile: c.rootElement.sourceFile }
@@ -236,8 +236,10 @@ export const mergeWithRuntimeConfigs = (
           renderer:
             runtimeItem?.routeElement.renderer ??
             (() => throwMissingRuntimeFunction(`routeElement of ${label}`)),
-          ...(runtimeItem?.routeElement.getEtagFromOption
-            ? { getEtagFromOption: runtimeItem.routeElement.getEtagFromOption }
+          ...(runtimeItem?.routeElement.getEtagFromOptions
+            ? {
+                getEtagFromOptions: runtimeItem.routeElement.getEtagFromOptions,
+              }
             : {}),
         },
         elements,

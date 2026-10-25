@@ -39,7 +39,7 @@ const route = (
       {
         isStatic?: boolean;
         renderer?: Renderer;
-        getEtagFromOption?: () => Promise<string | undefined>;
+        getEtagFromOptions?: () => Promise<string | undefined>;
       }
     >;
     slices?: string[];
@@ -60,8 +60,8 @@ const route = (
         {
           isStatic: e.isStatic ?? false,
           renderer: e.renderer ?? (() => id),
-          ...(e.getEtagFromOption
-            ? { getEtagFromOption: e.getEtagFromOption }
+          ...(e.getEtagFromOptions
+            ? { getEtagFromOptions: e.getEtagFromOptions }
             : {}),
         },
       ]),
@@ -174,7 +174,7 @@ describe('getEntriesForRoute', () => {
   it('skips an element whose etag matches the client etag', async () => {
     const { routeEntries, cache } = await setup([
       route('p', {
-        elements: { main: { getEtagFromOption: async () => 'e1' } },
+        elements: { main: { getEtagFromOptions: async () => 'e1' } },
       }),
     ]);
     const fresh = (await routeEntries.getEntriesForRoute(
