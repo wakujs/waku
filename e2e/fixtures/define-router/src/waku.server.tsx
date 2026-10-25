@@ -151,6 +151,10 @@ const routerOptions: Parameters<typeof defineRouter>[0] = {
       };
     }
     if (path === '/404') {
+      if (getRequest().headers.has('x-waku-test-cancel-404')) {
+        requestNotFound();
+        cancelRender();
+      }
       return {
         elements: { root, route: { render: () => <ContextNotFound /> } },
       };

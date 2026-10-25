@@ -281,6 +281,19 @@ test.describe(`define-router`, () => {
     );
   });
 
+  for (const pathname of ['/missing', '/interceptor-missing']) {
+    test(`a cancelled custom 404 for ${pathname} returns the generic 404 document`, async ({
+      request,
+    }) => {
+      const response = await request.get(
+        `http://localhost:${port}${pathname}`,
+        { headers: { 'x-waku-test-cancel-404': '1' } },
+      );
+      expect(response.status()).toBe(404);
+      expect(await response.text()).toContain('<h1>Not Found</h1>');
+    });
+  }
+
   test('foo', async ({ page }) => {
     await page.goto(`http://localhost:${port}/foo`);
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');

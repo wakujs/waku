@@ -487,15 +487,29 @@ export const createRequestHandler = ({
               async () =>
                 redirect ??
                 ((await routeEntries.has404())
-                  ? renderPage('/404', query, 404)
+                  ? renderNotFoundPage()
                   : createNotFoundResponse()),
             );
           }
           return response;
         };
+        const renderNotFoundPage = async () => {
+          try {
+            return await renderPage('/404', query, 404);
+          } catch (error) {
+            if (
+              intent.value?.status !== 404 ||
+              (!isRenderCancellation(error) &&
+                !hasRenderCancellationDigest(error))
+            ) {
+              throw error;
+            }
+            return createNotFoundResponse();
+          }
+        };
         if (intent.value?.status === 404) {
           return (await routeEntries.has404())
-            ? renderPage('/404', query, 404)
+            ? renderNotFoundPage()
             : createNotFoundResponse();
         }
         if (resolved?.noSsr) {
@@ -515,8 +529,7 @@ export const createRequestHandler = ({
           return renderCancelledRequest();
         }
         if (await routeEntries.has404()) {
-          // the 404 page renders for the url that was asked for, query and all
-          return renderPage('/404', query, 404);
+          return renderNotFoundPage();
         } else {
           return null;
         }

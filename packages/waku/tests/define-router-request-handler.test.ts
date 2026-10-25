@@ -88,6 +88,39 @@ const staticRoute = (name: string) => ({
 });
 
 describe('request dispatch', () => {
+  it('falls back to HTTP 404 when its HTML render reports a decoded cancellation', async () => {
+    const utils = makeUtils();
+    utils.renderHtml.mockRejectedValue(
+      Object.assign(new Error('cancelled'), { digest: 'WAKU_CANCEL_RENDER' }),
+    );
+    const router = unstable_defineRouter({
+      resolve: async (pathname) => {
+        if (pathname !== '/404') {
+          unstable_notFound();
+        }
+        return {
+          elements: {
+            root: { render: () => 'root' },
+            route: { render: () => 'not found' },
+          },
+        };
+      },
+      getHas404: async () => true,
+    });
+    const response = (await router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/account',
+        req: new Request('http://localhost/account'),
+      },
+      utils,
+    )) as Response;
+
+    expect(response.status).toBe(404);
+    expect(await response.text()).toContain('<h1>Not Found</h1>');
+    expect(utils.renderHtml).toHaveBeenCalledOnce();
+  });
+
   it.each([
     { status: 303, record: () => unstable_redirect('/login'), has404: false },
     { status: 404, record: unstable_notFound, has404: false },

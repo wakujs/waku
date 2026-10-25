@@ -2,6 +2,11 @@ import { afterEach, expect, test, vi } from 'vitest';
 import type { Handlers } from '../src/lib/types.js';
 import { cancelRender } from '../src/lib/utils-isomorphic/render-cancellation.js';
 import { createServerEntryAdapter } from '../src/lib/vite-rsc/handler.js';
+import {
+  requestNotFound,
+  unstable_defineRouter,
+  unstable_notFound,
+} from '../src/router/server.js';
 
 const mocks = vi.hoisted(() => ({
   render: vi.fn(
@@ -25,6 +30,10 @@ vi.mock('virtual:vite-rsc-waku/config', async () => {
   return { config: resolveConfig({}), isBuild: false };
 });
 vi.mock('virtual:vite-rsc-waku/not-found', () => ({ default: 'Not Found' }));
+vi.mock('../src/server.js', () => ({
+  deserializeRsc: vi.fn().mockResolvedValue(null),
+  serializeRsc: vi.fn().mockResolvedValue(new Uint8Array([1])),
+}));
 
 type Runtime = Parameters<Parameters<typeof createServerEntryAdapter>[0]>[0];
 const runtime = (
@@ -69,6 +78,73 @@ test('returns an HTTP rejection without encoding it in Flight', async () => {
     rejected,
   );
 });
+
+test.each(['resolver', 'interceptor'] as const)(
+  'falls back to HTTP 404 when the custom 404 cancels after an intent from the %s',
+  async (origin) => {
+    const resolve = vi.fn(async (pathname: string) => {
+      if (pathname === '/404' || origin === 'resolver') {
+        unstable_notFound();
+      }
+      return null;
+    });
+    const router = unstable_defineRouter({
+      resolve,
+      getHas404: async () => true,
+      unstable_interceptors:
+        origin === 'interceptor'
+          ? [
+              async (next) => {
+                requestNotFound();
+                return next();
+              },
+            ]
+          : [],
+    });
+    const response = await runtime(router.handleRequest).processRequest(
+      new Request('https://app.example/account'),
+    );
+
+    expect(response?.status).toBe(404);
+    expect(await response?.text()).toContain('<h1>Not Found</h1>');
+    expect(resolve.mock.calls.map(([pathname]) => pathname)).toEqual([
+      '/account',
+      '/404',
+    ]);
+  },
+);
+
+test.each(['cancellation', 'error'])(
+  'does not replace an unhandled custom 404 %s with the generic fallback',
+  async (failure) => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const router = unstable_defineRouter({
+      resolve: async (pathname) => {
+        if (pathname === '/404') {
+          if (failure === 'cancellation') {
+            cancelRender();
+          }
+          throw new Error('custom 404 failed');
+        }
+        return null;
+      },
+      getHas404: async () => true,
+      unstable_interceptors: [
+        async (next) => {
+          if (failure === 'error') {
+            requestNotFound();
+          }
+          return next();
+        },
+      ],
+    });
+    const response = await runtime(router.handleRequest).processRequest(
+      new Request('https://app.example/account'),
+    );
+
+    expect(response?.status).toBe(failure === 'cancellation' ? 204 : 500);
+  },
+);
 
 test('marks runtime streams private before their bodies finish', async () => {
   let controller!: ReadableStreamDefaultController<Uint8Array>;
