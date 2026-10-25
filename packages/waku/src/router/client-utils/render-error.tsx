@@ -28,13 +28,13 @@ class MissingRouteBoundary extends Component<
   }
   render() {
     const { error } = this.state;
-    return error === null ? (
-      this.props.children
-    ) : isNotFoundError(error) ? (
-      <h1>Not Found</h1>
-    ) : (
-      <RenderError error={error} />
-    );
+    if (error === null) {
+      return this.props.children;
+    }
+    if (!isNotFoundError(error)) {
+      throw error;
+    }
+    return <h1>Not Found</h1>;
   }
 }
 

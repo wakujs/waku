@@ -32,6 +32,7 @@ import {
   registerRootStore,
 } from '../src/minimal/client-utils/root-store.js';
 import {
+  Children_UNSTABLE as Children,
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
   useFetchRsc_UNSTABLE,
@@ -209,6 +210,59 @@ describe('minimal/client fetch', () => {
         await merge(Promise.resolve({ main: 'recovered' }));
       });
       expect(container.textContent).toBe('recoveredupdated sibling');
+    } finally {
+      act(() => root.unmount());
+    }
+  });
+
+  test('a cancelled Slot renders its retained element with current client children', async () => {
+    const Cancelled = vi.fn(() => {
+      throw Object.assign(new Error('Flight error'), {
+        digest: 'WAKU_CANCEL_RENDER',
+      });
+    });
+    mocks.createFromFetch.mockReturnValue(
+      resolvedThenable({
+        main: (
+          <main>
+            <Children />
+          </main>
+        ),
+      }),
+    );
+    stubFetch();
+    let merge!: ReturnType<typeof useMergeElements_UNSTABLE>;
+    let setLabel!: (label: string) => void;
+    const App = () => {
+      const mergeElements = useMergeElements_UNSTABLE();
+      const [label, updateLabel] = useState('original');
+      useEffect(() => {
+        merge = mergeElements;
+        setLabel = updateLabel;
+      }, [mergeElements]);
+      return <Slot id="main">{label}</Slot>;
+    };
+    const container = document.createElement('div');
+    const root = createRoot(container, { onCaughtError: () => {} });
+    try {
+      await act(async () => {
+        root.render(
+          <Root initialRscPath="cancel-children">
+            <App />
+          </Root>,
+        );
+      });
+      expect(container.querySelector('main')?.textContent).toBe('original');
+      await act(async () => {
+        await merge(Promise.resolve({ main: <Cancelled /> }));
+      });
+      const attempts = Cancelled.mock.calls.length;
+      expect(attempts).toBeGreaterThan(0);
+      await act(async () => {
+        setLabel('updated');
+      });
+      expect(container.querySelector('main')?.textContent).toBe('updated');
+      expect(Cancelled).toHaveBeenCalledTimes(attempts);
     } finally {
       act(() => root.unmount());
     }

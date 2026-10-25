@@ -383,6 +383,26 @@ test('a partial intent is observed while the page intent remains pending', async
   page.resolve(null);
 });
 
+test('a pending partial intent is ignored after its Router unmounts', async () => {
+  mocks.queue.push(payload('/one'));
+  const view = await mount();
+  const pending = deferIntent();
+  mocks.queue.push({ [INTENT_ID]: pending.promise, sidebar: 'loaded' });
+  await act(async () => {
+    await controls.fetch(encodeSliceId('sidebar'));
+    await flush();
+    root!.render(null);
+  });
+  const requests = vi.mocked(fetch).mock.calls.length;
+  await act(async () => {
+    pending.resolve({ status: 307, location: '/stale' });
+    await flush();
+  });
+  expect(view.textContent).toBe('');
+  expect(window.location.pathname).toBe('/one');
+  expect(vi.mocked(fetch).mock.calls).toHaveLength(requests);
+});
+
 test('page, slice and action responses share observation of the same intent promise', async () => {
   const pending = deferIntent();
   const then = vi.spyOn(pending.promise, 'then');

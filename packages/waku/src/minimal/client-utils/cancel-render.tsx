@@ -3,10 +3,10 @@ import type { ReactNode } from 'react';
 import { hasRenderCancellationDigest } from '../../lib/utils-isomorphic/render-cancellation.js';
 
 export class CancelRenderBoundary extends Component<
-  { element: unknown; children: (element: unknown) => ReactNode },
-  { element: unknown; failure: { error: unknown } | undefined }
+  { children: ReactNode },
+  { element: ReactNode; failure: { error: unknown } | undefined }
 > {
-  private previousElement: unknown;
+  private previousElement: ReactNode;
 
   componentDidMount() {
     this.componentDidUpdate();
@@ -14,20 +14,22 @@ export class CancelRenderBoundary extends Component<
 
   componentDidUpdate() {
     if (!this.state.failure) {
-      this.previousElement = this.props.element;
+      this.previousElement = this.props.children;
     }
   }
 
   state = {
-    element: this.props.element,
+    element: this.props.children,
     failure: undefined as { error: unknown } | undefined,
   };
 
   static getDerivedStateFromProps(
-    { element }: { element: unknown },
-    state: { element: unknown },
+    { children }: { children: ReactNode },
+    state: { element: ReactNode },
   ) {
-    return element === state.element ? null : { element, failure: undefined };
+    return children === state.element
+      ? null
+      : { element: children, failure: undefined };
   }
 
   static getDerivedStateFromError(error: unknown) {
@@ -39,8 +41,6 @@ export class CancelRenderBoundary extends Component<
     if (failure && !hasRenderCancellationDigest(failure.error)) {
       throw failure.error;
     }
-    return this.props.children(
-      failure ? (this.previousElement ?? null) : this.props.element,
-    );
+    return failure ? (this.previousElement ?? null) : this.props.children;
   }
 }

@@ -126,7 +126,7 @@ export const RouteIntent = ({
     return observeRouteIntent(pending, (outcome) => {
       settle(outcome, elements, pending);
     });
-  }, [elements, onError]);
+  }, [elements]);
 
   useLayoutEffect(() => {
     if (!getElements) {
@@ -160,7 +160,7 @@ export const RouteIntent = ({
     return () => {
       unregister();
     };
-  }, [cache, getElements, onError]);
+  }, [cache, getElements]);
 
   return null;
 };

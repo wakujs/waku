@@ -489,13 +489,9 @@ export const Slot = ({
     throw new Error('Invalid element: ' + id);
   }
   return (
-    <CancelRenderBoundary element={element}>
-      {(selected) => (
-        <ChildrenContextProvider value={children}>
-          {selected as ReactNode}
-        </ChildrenContextProvider>
-      )}
-    </CancelRenderBoundary>
+    <ChildrenContextProvider value={children}>
+      <CancelRenderBoundary>{element as ReactNode}</CancelRenderBoundary>
+    </ChildrenContextProvider>
   );
 };
 
