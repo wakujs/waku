@@ -10,7 +10,7 @@ import {
 import {
   formatRouterRequest,
   parseRouterRequest,
-} from '../src/router/server-utils/parse-router-request.js';
+} from '../src/router/server-utils/router-request.js';
 
 const req = (url: string) => new Request(url);
 

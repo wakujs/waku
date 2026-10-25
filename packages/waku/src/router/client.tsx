@@ -19,19 +19,18 @@ import type { PrefetchOptions } from './client-core-utils/caches.js';
 import { RouterHostContext } from './client-core-utils/host.js';
 import type { RouterHost } from './client-core-utils/host.js';
 import { useInitialRscParams } from './client-core-utils/initial-route.js';
-import { parseRoute } from './client-core-utils/route-url.js';
+import { parseRoute, resolveRouteHref } from './client-core-utils/route-url.js';
 import type { ServerFunctionRouting } from './client-core-utils/server-function-routing.js';
 import { createServerFunctionRouting } from './client-core-utils/server-function-routing.js';
-import {
-  prefetchRouteUnlessReusable,
-  preloadRouteModules,
-  resolveRouteHref,
-} from './client-utils/link.js';
 import { useNavigation } from './client-utils/navigation.js';
 import {
   MissingRouteHandler,
   RenderErrorHandler,
 } from './client-utils/render-error.js';
+import {
+  prefetchRouteUnlessReusable,
+  preloadRouteModules,
+} from './client-utils/route-prefetch.js';
 import {
   RouterContext,
   dispatchChangeRoute,
