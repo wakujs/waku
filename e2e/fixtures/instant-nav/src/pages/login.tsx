@@ -1,5 +1,5 @@
 import { unstable_rerenderRoute as rerenderRoute } from 'waku/router/server';
-import { StaticRedirect } from '../components/StaticRedirect';
+import { StaticRedirect } from '../components/static-redirect';
 
 async function rerender() {
   'use server';

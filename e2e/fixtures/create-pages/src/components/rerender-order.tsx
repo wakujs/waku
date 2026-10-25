@@ -1,11 +1,11 @@
 import { Suspense } from 'react';
 import type { ReactNode } from 'react';
-import { getRerenderOrderCount } from './rerender-order-store.js';
 import {
   RerenderOrderBoundary,
   RerenderOrderForm,
   RerenderOrderTrigger,
-} from './RerenderOrderClient.js';
+} from './rerender-order-client.js';
+import { getRerenderOrderCount } from './rerender-order-store.js';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { Children_UNSTABLE as Children } from 'waku/minimal/client';
-import { CookieInfo } from './CookieInfo';
-import { Island } from './Island';
-import { JotaiApp } from './JotaiApp';
+import { CookieInfo } from './cookie-info';
+import { Island } from './island';
+import { JotaiApp } from './jotai-app';
 // eslint-disable-next-line import/no-unresolved
-import { Counter } from '@/components/Counter';
+import { Counter } from '@/components/counter';
 
 export function App({
   name,

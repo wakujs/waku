@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { atom } from 'jotai/vanilla';
 import { Provider, getStore } from 'waku-jotai/minimal';
-import { JotaiCounter, countAtom } from './JotaiCounter';
+import { JotaiCounter, countAtom } from './jotai-counter';
 
 const doubleCountAtom = atom(async (get) => {
   await new Promise((resolve) => setTimeout(resolve, 10));

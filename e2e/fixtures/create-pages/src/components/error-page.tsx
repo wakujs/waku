@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
-import ErrorBoundary from './ErrorBoundary.js';
-import ErrorRender from './ErrorRender.js';
-import { ServerThrows } from './ServerThrows/index.js';
+import ErrorBoundary from './error-boundary.js';
+import ErrorRender from './error-render.js';
+import { ServerThrows } from './server-throws/index.js';
 
 const ErrorPage = async () => {
   await new Promise((resolve) => setTimeout(resolve, 1));

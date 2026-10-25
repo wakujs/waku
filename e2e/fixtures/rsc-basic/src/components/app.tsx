@@ -1,11 +1,11 @@
 // no "use server" detective
 
-import { ServerBox } from './Box.js';
-import { ClientCounter, someConfigs } from './ClientCounter.js';
-import { ClientActionsConsumer } from './ServerAction/Client.js';
-import { ServerProvider } from './ServerAction/Server.js';
-import { ServerPing } from './ServerPing/index.js';
-import { ServerThrows } from './ServerThrows/index.js';
+import { ServerBox } from './box.js';
+import { ClientCounter, someConfigs } from './client-counter.js';
+import { ClientActionsConsumer } from './server-action/client.js';
+import { ServerProvider } from './server-action/server.js';
+import { ServerPing } from './server-ping/index.js';
+import { ServerThrows } from './server-throws/index.js';
 
 const App = ({
   name,

@@ -496,7 +496,7 @@ test.describe('minimal hot reload', () => {
     await page.getByRole('button', { name: 'Refetch' }).click();
     await expect(page.getByTestId('title')).toHaveText('Hello refetched');
 
-    const appFile = join(minimalHmrFixtureDir, 'src/components/App.tsx');
+    const appFile = join(minimalHmrFixtureDir, 'src/components/app.tsx');
     const original = readFileSync(appFile, 'utf-8');
     writeFileSync(
       appFile,

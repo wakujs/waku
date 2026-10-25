@@ -1,7 +1,7 @@
 import '../stylex.css';
 import * as stylex from '@stylexjs/stylex';
-import { ClientCounter } from '../components/ClientCounter';
-import { DevStyleXInject } from '../components/DevStyleXInject';
+import { ClientCounter } from '../components/client-counter';
+import { DevStyleXInject } from '../components/dev-stylex-inject';
 import { vanillaServerStyle } from '../styles.css';
 
 const styles = stylex.create({

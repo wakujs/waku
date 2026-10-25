@@ -9,7 +9,7 @@ import {
   useFetchRsc_UNSTABLE as useFetchRsc,
   useMergeElements_UNSTABLE,
 } from 'waku/minimal/client';
-import { Counter } from './Counter';
+import { Counter } from './counter';
 
 const useRefetch = () => {
   const fetchRsc = useFetchRsc();
