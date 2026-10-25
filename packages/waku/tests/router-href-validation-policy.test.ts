@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { Unstable_SearchCodec } from '../src/router/base-types.js';
 import { parseRoute } from '../src/router/client-core-utils/route-url.js';
 import { createPages } from '../src/router/create-pages.js';
-import { unstable_defineRouter } from '../src/router/define-router.js';
-import { unstable_createRouteHref } from '../src/router/href-factory.js';
+import { defineRouter } from '../src/router/define-router.js';
+import { createRouteHref } from '../src/router/href-factory.js';
 
 type Search = { q: string; page: number };
 
@@ -52,7 +52,7 @@ describe('outbound serialization and inbound parsing', () => {
         parse: vi.fn(codec.parse),
         serialize: vi.fn(codec.serialize),
       };
-      const href = unstable_createRouteHref({
+      const href = createRouteHref({
         path: '/products',
         search: searchCodec,
       });
@@ -73,7 +73,7 @@ describe('outbound serialization and inbound parsing', () => {
       parse: vi.fn(codec.parse),
       serialize: (_search: Search) => 'q=a%20b&tag=one&tag=two&token=%7e&empty',
     };
-    const href = unstable_createRouteHref({
+    const href = createRouteHref({
       path: '/products',
       search: encodedCodec,
     });
@@ -90,7 +90,7 @@ describe('outbound serialization and inbound parsing', () => {
     });
 
     const resolve = vi.fn(async () => null);
-    const router = unstable_defineRouter({
+    const router = defineRouter({
       resolve,
       getHas404: async () => false,
     });
@@ -124,7 +124,7 @@ describe('outbound serialization and inbound parsing', () => {
             : codec.serialize(search),
         ),
       };
-      const href = unstable_createRouteHref({
+      const href = createRouteHref({
         path: '/products',
         search: searchCodec,
       });
@@ -179,7 +179,7 @@ describe('outbound serialization and inbound parsing', () => {
       parse: vi.fn(codec.parse),
       serialize: vi.fn(codec.serialize),
     };
-    const href = unstable_createRouteHref({
+    const href = createRouteHref({
       path: '/products',
       search: searchCodec,
     });

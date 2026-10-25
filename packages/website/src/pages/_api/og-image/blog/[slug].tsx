@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { ImageResponse, type ImageResponseOptions } from '@vercel/og';
 import { compilePost } from '../../../../components/post-page';
-import { getPostPaths } from '../../../../lib/get-file-name';
+import { readPostPaths } from '../../../../lib/find-file-name';
 
 // partially based on
 // https://tangled.org/@danabra.mov/overreacted/blob/main/og/generateImage.js
@@ -202,7 +202,7 @@ function OgImageBlogPost({
 }
 
 export const getConfig = async () => {
-  const blogPaths = await getPostPaths('./private/contents');
+  const blogPaths = await readPostPaths('./private/contents');
 
   return {
     render: 'static',

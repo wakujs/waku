@@ -86,7 +86,7 @@ describe('Minimal entry points', () => {
   test('public primitives share the framework implementation', () => {
     for (const name of clientExports) {
       expect(Reflect.get(client, name), name).toBe(
-        Reflect.get(clientRuntime, name),
+        Reflect.get(clientRuntime, name.replace(/^unstable_|_UNSTABLE$/, '')),
       );
     }
     expect(server.unstable_buildElements).toBe(buildElements);

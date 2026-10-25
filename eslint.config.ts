@@ -295,7 +295,7 @@ export default defineConfig(
             ...routerImportRestrictions.patterns,
             {
               regex: '(^|/)define-router\\.(?:js|tsx)$',
-              allowImportNames: ['unstable_defineRouter'],
+              allowImportNames: ['defineRouter'],
               message: 'Use the public defineRouter API.',
             },
           ],

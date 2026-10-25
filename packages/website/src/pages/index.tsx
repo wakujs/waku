@@ -6,33 +6,33 @@ import { RoutingTabs } from '../components/routing-tabs';
 import { StarWaku } from '../components/star-waku';
 import { compileMDX } from '../lib/compile-mdx';
 import {
-  loadAfterRouting,
-  loadBeforeRouting,
-  loadRoutingConfigBased,
-  loadRoutingFileBased,
-} from '../lib/load-routing';
+  readAfterRouting,
+  readBeforeRouting,
+  readRoutingConfigBased,
+  readRoutingFileBased,
+} from '../lib/read-routing';
 
 export default async function HomePage() {
   // Compile each section in parallel for better build performance
   const [beforeRoutingMdx, fileBasedMdx, configBasedMdx, afterRoutingMdx] =
     await Promise.all([
       compileMDX({
-        source: loadBeforeRouting(),
+        source: readBeforeRouting(),
         components,
         options: { parseFrontmatter: true },
       }),
       compileMDX({
-        source: loadRoutingFileBased(),
+        source: readRoutingFileBased(),
         components,
         options: { parseFrontmatter: true },
       }),
       compileMDX({
-        source: loadRoutingConfigBased(),
+        source: readRoutingConfigBased(),
         components,
         options: { parseFrontmatter: true },
       }),
       compileMDX({
-        source: loadAfterRouting(),
+        source: readAfterRouting(),
         components,
         options: { parseFrontmatter: true },
       }),

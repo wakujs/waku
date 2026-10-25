@@ -162,7 +162,7 @@ const NavigationStatusContext = createContext<NavigationStatus>({});
  * flight, until the destination route's async components resolve. Returns an
  * empty object when called outside a `Link`.
  */
-export const useNavigationStatus_UNSTABLE = (): NavigationStatus =>
+export const useNavigationStatus = (): NavigationStatus =>
   useContext(NavigationStatusContext);
 
 export type LinkProps = {

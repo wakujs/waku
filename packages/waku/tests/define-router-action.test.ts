@@ -5,11 +5,8 @@ import {
   getRouteIntent,
   runWithRouterStore,
 } from '../src/router/define-router-utils/request-store.js';
-import {
-  unstable_redirect,
-  unstable_rerenderRoute,
-} from '../src/router/define-router.js';
-import { unstable_createRouteHref } from '../src/router/href-factory.js';
+import { redirect, rerenderRoute } from '../src/router/define-router.js';
+import { createRouteHref } from '../src/router/href-factory.js';
 import {
   INTENT_ID,
   ROUTE_ID,
@@ -196,7 +193,7 @@ describe('define-router action requests', () => {
         type: 'http',
         tryAction: async () => {
           message = 'after';
-          unstable_rerenderRoute('/');
+          rerenderRoute('/');
           return { action: true as const, formState: 'form-state' };
         },
         pathname: '/',
@@ -252,7 +249,7 @@ describe('define-router action requests', () => {
         type: 'http',
         tryAction: async () => {
           message = 'after';
-          unstable_rerenderRoute();
+          rerenderRoute();
           return { action: true as const, formState: 'form-state' };
         },
         pathname: '/form',
@@ -306,7 +303,7 @@ describe('define-router action requests', () => {
         type: 'http',
         tryAction: async () => {
           message = 'after';
-          unstable_rerenderRoute('/');
+          rerenderRoute('/');
           return { action: true as const, formState: 'form-state' };
         },
         pathname: '/',
@@ -367,7 +364,7 @@ describe('define-router action requests', () => {
       {
         type: 'call',
         pathname: '/RSC/F/actions/submit.txt',
-        fn: async () => unstable_rerenderRoute(pathname),
+        fn: async () => rerenderRoute(pathname),
         args: [],
         req: new Request('http://localhost/RSC/F/actions/submit.txt', {
           method: 'POST',
@@ -391,9 +388,7 @@ describe('define-router action requests', () => {
   });
 
   it('rejects a relative pathname to rerender', () => {
-    expect(() => unstable_rerenderRoute('a')).toThrow(
-      'Pathname must start with `/`',
-    );
+    expect(() => rerenderRoute('a')).toThrow('Pathname must start with `/`');
   });
 
   it.each([
@@ -419,7 +414,7 @@ describe('define-router action requests', () => {
       {
         type: 'call',
         pathname: '/RSC/F/actions/submit.txt',
-        fn: async () => unstable_rerenderRoute('/search', query),
+        fn: async () => rerenderRoute('/search', query),
         args: [],
         req: new Request('http://localhost/RSC/F/actions/submit.txt', {
           method: 'POST',
@@ -480,13 +475,11 @@ describe('define-router action requests', () => {
   });
 });
 
-describe('unstable_redirect', () => {
-  const getRedirectInfo = (
-    location: Parameters<typeof unstable_redirect>[0],
-  ) => {
+describe('redirect', () => {
+  const getRedirectInfo = (location: Parameters<typeof redirect>[0]) => {
     return runWithRouterStore({ req: new Request('http://localhost/') }, () => {
       try {
-        unstable_redirect(location, 303);
+        redirect(location, 303);
       } catch (error) {
         expect(isRenderCancellation(error)).toBe(true);
         return getRouteIntent().value;
@@ -538,14 +531,12 @@ describe('unstable_redirect', () => {
     'https://[',
   ])('rejects invalid redirect location %s', (location) => {
     runWithRouterStore({ req: new Request('http://localhost/') }, () => {
-      expect(() => unstable_redirect(location)).toThrow(
-        'Invalid redirect location',
-      );
+      expect(() => redirect(location)).toThrow('Invalid redirect location');
     });
   });
 
   it('redirects to an eagerly built href with encoded params', () => {
-    const post = unstable_createRouteHref({ path: '/posts/[id]' });
+    const post = createRouteHref({ path: '/posts/[id]' });
     expect(getRedirectInfo(post({ params: { id: 'hello world' } }))).toEqual({
       status: 303,
       location: '/posts/hello%20world',

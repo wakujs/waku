@@ -25,7 +25,7 @@ async function isUrlOk(url: string): Promise<boolean> {
 interface GetRepoInfo {
   default_branch: string;
 }
-async function getRepoInfo(url: URL): Promise<RepoInfo | undefined> {
+async function fetchRepoInfo(url: URL): Promise<RepoInfo | undefined> {
   const [, username, name, t, _branch, ...file] = url.pathname.split('/');
   const filePath = file.join('/');
 
@@ -149,7 +149,7 @@ export async function parseExampleOption(
     process.exit(1);
   }
 
-  const repoInfo = await getRepoInfo(repoUrl);
+  const repoInfo = await fetchRepoInfo(repoUrl);
   // NOTE validate reproInfo
   if (!repoInfo) {
     console.error(

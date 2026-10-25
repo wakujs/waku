@@ -1,6 +1,6 @@
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
-import { unstable_setAllEnv } from '../env.js';
-import type { Unstable_EmitFile } from '../types.js';
+import { setAllEnv } from '../env.js';
+import type { EmitFile } from '../types.js';
 import { joinPath } from '../utils-isomorphic/path.js';
 
 const DO_NOT_BUNDLE = '';
@@ -29,9 +29,9 @@ export async function INTERNAL_runBuild({
   emitFile,
 }: {
   rootDir: string;
-  emitFile: Unstable_EmitFile;
+  emitFile: EmitFile;
 }) {
-  unstable_setAllEnv(process.env);
+  setAllEnv(process.env);
   const prunableFiles = new Set<string>();
   let build = serverEntry.build;
   for (const enhancer of serverEntry.buildEnhancers || []) {

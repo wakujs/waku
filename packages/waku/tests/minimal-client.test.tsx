@@ -21,7 +21,7 @@ import {
   vi,
 } from 'vitest';
 import { ETAGS_ID } from '../src/lib/utils-isomorphic/etags.js';
-import { unstable_callServerRsc } from '../src/minimal/client-runtime.js';
+import { callServerRsc } from '../src/minimal/client-runtime.js';
 import {
   clearInitialRscEntries,
   getInitialRscEntry,
@@ -546,7 +546,7 @@ describe('minimal/client server actions', () => {
     });
     let value: unknown;
     await act(async () => {
-      value = await unstable_callServerRsc('actions#do', []);
+      value = await callServerRsc('actions#do', []);
     });
 
     expect(value).toBe('result');
@@ -562,7 +562,7 @@ describe('minimal/client server actions', () => {
     mocks.createFromFetch.mockResolvedValueOnce({ _value: 'v', foo: 'FOO' });
     stubFetch();
 
-    await expect(unstable_callServerRsc('actions#do', [])).rejects.toThrow(
+    await expect(callServerRsc('actions#do', [])).rejects.toThrow(
       'Server function returned elements without a mounted Root component',
     );
   });
@@ -574,7 +574,7 @@ describe('minimal/client server actions', () => {
     });
     stubFetch();
 
-    await expect(unstable_callServerRsc('actions#do', [])).resolves.toBe('v');
+    await expect(callServerRsc('actions#do', [])).resolves.toBe('v');
   });
 
   test('an action response targets its request-time Root', async () => {
@@ -594,7 +594,7 @@ describe('minimal/client server actions', () => {
       fetchRsc: vi.fn(),
     });
 
-    const action = unstable_callServerRsc('actions#do', []);
+    const action = callServerRsc('actions#do', []);
     const unregisterSecond = registerRootStore({
       setElements: secondSetElements,
       etags: { App: 'second' },
@@ -630,7 +630,7 @@ describe('minimal/client server actions', () => {
       fetchRsc: vi.fn(),
     });
 
-    const action = unstable_callServerRsc('actions#do', []);
+    const action = callServerRsc('actions#do', []);
     unregisterFirst();
     const unregisterSecond = registerRootStore({
       setElements: secondSetElements,
@@ -683,7 +683,7 @@ describe('minimal/client server actions', () => {
     let action: Promise<unknown> | undefined;
     const ActionOnMount = () => {
       useEffect(() => {
-        action = unstable_callServerRsc('actions#do', []);
+        action = callServerRsc('actions#do', []);
         void action.catch(() => {});
       }, []);
       return null;

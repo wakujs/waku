@@ -50,7 +50,7 @@ function readRootWranglerConfig(): Record<string, unknown> | null {
   return null;
 }
 
-function getProjectName(rootConfig: Record<string, unknown> | null): string {
+function readProjectName(rootConfig: Record<string, unknown> | null): string {
   if (typeof rootConfig?.name === 'string') {
     return rootConfig.name;
   }
@@ -74,7 +74,7 @@ function getWranglerConfig(
   const rootConfig = readRootWranglerConfig();
   const config: Record<string, unknown> = {
     $schema: 'node_modules/wrangler/config-schema.json',
-    name: getProjectName(rootConfig),
+    name: readProjectName(rootConfig),
     ...(main && { main }),
     ...(serverless && {
       compatibility_flags:

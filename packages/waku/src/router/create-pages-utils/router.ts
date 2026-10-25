@@ -1,5 +1,5 @@
 // Import the public API directly; the server barrel would cycle through createPages.
-import { unstable_defineRouter } from '../define-router.js';
+import { defineRouter } from '../define-router.js';
 import {
   pathSpecAsString,
   pathSpecToRegExpSource,
@@ -17,7 +17,7 @@ export const createConfiguredRouter = (fns: {
 }) => {
   const registry = createConfigRegistry(fns.getConfigs);
   const resolver = createRouteResolver(registry);
-  const router = unstable_defineRouter({
+  const router = defineRouter({
     resolve: resolver.resolve,
     resolveElement: resolver.resolveElement,
     getHas404: async () => registry.has404(),

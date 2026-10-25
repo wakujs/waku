@@ -12,7 +12,7 @@ import type { ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { ETAGS_HEADER } from '../src/lib/utils-isomorphic/etags.js';
-import { unstable_callServerRsc } from '../src/minimal/client-runtime.js';
+import { callServerRsc } from '../src/minimal/client-runtime.js';
 import { clearInitialRscEntries } from '../src/minimal/client-utils/initial-rsc-store.js';
 import {
   Children_UNSTABLE as Children,
@@ -320,9 +320,7 @@ test('partial actions survive the pending normal-navigation queue', async () => 
     });
     mocks.queue.push({ sidebar: 'action', _value: 'updated' });
     await act(async () => {
-      expect(await unstable_callServerRsc('actions#update', [])).toBe(
-        'updated',
-      );
+      expect(await callServerRsc('actions#update', [])).toBe('updated');
       await flush();
     });
     await act(async () => {
@@ -399,9 +397,7 @@ test('an origin action cannot restore route metadata over a reload rewrite', asy
       _value: 'updated',
     });
     await act(async () => {
-      expect(await unstable_callServerRsc('actions#update', [])).toBe(
-        'updated',
-      );
+      expect(await callServerRsc('actions#update', [])).toBe('updated');
       await flush();
     });
     await act(async () => {
@@ -510,9 +506,7 @@ test('a cached replacement keeps its route over queued origin-action metadata', 
       _value: 'updated',
     });
     await act(async () => {
-      expect(await unstable_callServerRsc('actions#update', [])).toBe(
-        'updated',
-      );
+      expect(await callServerRsc('actions#update', [])).toBe('updated');
       await flush();
     });
     await act(async () => {
@@ -769,9 +763,7 @@ test.each(['none', 'client', 'action'] as const)(
           _value: 'updated',
         });
         await act(async () => {
-          expect(await unstable_callServerRsc('actions#update', [])).toBe(
-            'updated',
-          );
+          expect(await callServerRsc('actions#update', [])).toBe('updated');
           await flush();
         });
       }
@@ -883,9 +875,7 @@ test.each([
           _value: 'updated',
         });
         await act(async () => {
-          expect(await unstable_callServerRsc('actions#update', [])).toBe(
-            'updated',
-          );
+          expect(await callServerRsc('actions#update', [])).toBe('updated');
           await flush();
         });
       }
@@ -1101,9 +1091,7 @@ test('a query navigation preserves action data without taking its old compositio
       _value: 'updated',
     });
     await act(async () => {
-      expect(await unstable_callServerRsc('actions#update', [])).toBe(
-        'updated',
-      );
+      expect(await callServerRsc('actions#update', [])).toBe('updated');
       await flush();
     });
     await act(async () => {
@@ -1919,9 +1907,7 @@ test('an action destination does not inherit the preceding accepted layout valid
       response.promise,
     );
     await act(async () => {
-      expect(await unstable_callServerRsc('actions#update', [])).toBe(
-        'updated',
-      );
+      expect(await callServerRsc('actions#update', [])).toBe('updated');
       pushed = controls.get('a')!.router.push('/three');
       await flush();
     });
@@ -1985,7 +1971,7 @@ test('an origin action response cannot replace a pending destination', async () 
   mocks.queue.push(action.promise);
   let result!: Promise<unknown>;
   await act(async () => {
-    result = unstable_callServerRsc('actions#action', []);
+    result = callServerRsc('actions#action', []);
     await flush();
   });
   mocks.queue.push(navigation.promise);
@@ -2117,9 +2103,7 @@ test.each([false, true])(
       const fetch = vi.spyOn(globalThis, 'fetch');
       mocks.queue.push({ _value: 'updated' });
       await act(async () => {
-        expect(await unstable_callServerRsc('actions#update', [])).toBe(
-          'updated',
-        );
+        expect(await callServerRsc('actions#update', [])).toBe('updated');
         await flush();
       });
       expect(
@@ -2212,9 +2196,7 @@ test.each(['q=2', ''])(
       const fetch = vi.spyOn(globalThis, 'fetch');
       mocks.queue.push({ _value: 'updated' });
       await act(async () => {
-        expect(await unstable_callServerRsc('actions#update', [])).toBe(
-          'updated',
-        );
+        expect(await callServerRsc('actions#update', [])).toBe('updated');
         await flush();
       });
       expect(
@@ -2285,7 +2267,7 @@ test('a failed navigation keeps the last accepted layout even before it paints',
   const fetch = vi.spyOn(globalThis, 'fetch');
   mocks.queue.push({ _value: 'updated' });
   await act(async () => {
-    expect(await unstable_callServerRsc('actions#update', [])).toBe('updated');
+    expect(await callServerRsc('actions#update', [])).toBe('updated');
     await flush();
   });
   expect(
@@ -3060,9 +3042,7 @@ test.each([
           _value: 'updated',
         });
         await act(async () => {
-          expect(await unstable_callServerRsc('actions#update', [])).toBe(
-            'updated',
-          );
+          expect(await callServerRsc('actions#update', [])).toBe('updated');
           await flush();
         });
       } else if (update === 'slice') {

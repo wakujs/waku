@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import type { Unstable_Handlers as Handlers } from '../src/lib/types.js';
+import type { Handlers } from '../src/lib/types.js';
 import { cancelRender } from '../src/lib/utils-isomorphic/render-cancellation.js';
 import { createServerEntryAdapter } from '../src/lib/vite-rsc/handler.js';
 

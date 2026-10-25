@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { ETAGS_ID } from '../src/lib/utils-isomorphic/etags.js';
-import { unstable_callServerRsc } from '../src/minimal/client-runtime.js';
+import { callServerRsc } from '../src/minimal/client-runtime.js';
 import { clearInitialRscEntries } from '../src/minimal/client-utils/initial-rsc-store.js';
 import {
   Children_UNSTABLE as Children,
@@ -345,7 +345,7 @@ test.each(['slice', 'action'] as const)(
     });
     await act(async () => {
       if (kind === 'action') {
-        expect(await unstable_callServerRsc('actions#save', [])).toBe('saved');
+        expect(await callServerRsc('actions#save', [])).toBe('saved');
       } else {
         await controls.merge(await controls.fetch(encodeSliceId('sidebar')));
       }
@@ -394,7 +394,7 @@ test('page, slice and action responses share observation of the same intent prom
   );
   await act(async () => {
     await controls.merge(await controls.fetch(encodeSliceId('sidebar')));
-    expect(await unstable_callServerRsc('actions#save', [])).toBe('saved');
+    expect(await callServerRsc('actions#save', [])).toBe('saved');
     await flush();
   });
   expect(then).toHaveBeenCalledOnce();
@@ -538,7 +538,7 @@ test.each(['page', 'slice', 'action'] as const)(
       mocks.queue.push({ [INTENT_ID]: pending.promise });
       await act(async () => {
         if (source === 'action') {
-          await unstable_callServerRsc('actions#save', []);
+          await callServerRsc('actions#save', []);
         } else {
           await controls.merge(await controls.fetch(encodeSliceId('sidebar')));
         }
@@ -572,7 +572,7 @@ test('an action redirect yields to a navigation that is already in flight', asyn
   const intent = deferIntent();
   mocks.queue.push({ [INTENT_ID]: intent.promise });
   await act(async () => {
-    await unstable_callServerRsc('actions#save', []);
+    await callServerRsc('actions#save', []);
     await flush();
   });
   const destination = defer<Elements>();

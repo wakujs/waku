@@ -65,7 +65,7 @@ type InstantRouterState = {
   readonly slotIds: ReadonlySet<string>;
 };
 
-export const makeInstantRouterState = (
+export const createInstantRouterState = (
   state: RouterState,
   elements: Record<string | symbol, unknown>,
 ): InstantRouterState => ({ state, slotIds: new Set(Object.keys(elements)) });
@@ -86,7 +86,7 @@ export const getInstantSlotIds = (
   return state && 'state' in state ? state.slotIds : undefined;
 };
 
-export const makeRouterState = (
+export const createRouterState = (
   route: RouteProps,
   url: URL,
   options: {

@@ -1,8 +1,4 @@
-import type {
-  Unstable_RenderHtml,
-  Unstable_RenderHtmlFallback,
-  Unstable_RenderRsc,
-} from '../types.js';
+import type { RenderHtml, RenderHtmlFallback, RenderRsc } from '../types.js';
 import { ETAGS_ID } from '../utils-isomorphic/etags.js';
 import { getDigestIfRenderCancellation } from '../utils-isomorphic/render-cancellation.js';
 
@@ -44,9 +40,9 @@ export function createRenderUtils({
   debugId?: string | undefined;
   onError: (e: unknown) => void;
 }): {
-  renderRsc: Unstable_RenderRsc;
-  renderHtml: Unstable_RenderHtml;
-  renderHtmlFallback: Unstable_RenderHtmlFallback;
+  renderRsc: RenderRsc;
+  renderHtml: RenderHtml;
+  renderHtmlFallback: RenderHtmlFallback;
 } {
   const onError = (error: unknown): string | undefined => {
     const digest = getDigestIfRenderCancellation(error);

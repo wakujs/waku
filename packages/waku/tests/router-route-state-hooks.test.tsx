@@ -202,7 +202,7 @@ describe('useHmrRefetch', () => {
 
     let reload: (() => void) | undefined;
     const register = vi
-      .spyOn(minimalClientRuntime, 'useRegisterRscReloadListener_UNSTABLE')
+      .spyOn(minimalClientRuntime, 'useRegisterRscReloadListener')
       .mockImplementation(() => (listener) => {
         reload = listener;
         return () => {};

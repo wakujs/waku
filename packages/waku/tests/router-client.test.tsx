@@ -290,9 +290,9 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
           : undefined;
       result =
         prevValue && !('then' in data)
-          ? makeThenable(actual.unstable_combineElements(prevValue, data))
+          ? makeThenable(actual.combineElements(prevValue, data))
           : Promise.all([prev, data]).then(([a, b]) =>
-              actual.unstable_combineElements(a, b),
+              actual.combineElements(a, b),
             );
       byData.set(data, result);
     }
@@ -317,7 +317,7 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
     let merged = byResult.get(result);
     if (!merged) {
       merged = Promise.resolve(prev).then((prevRes) =>
-        actual.unstable_combineElements(prevRes, result, {
+        actual.combineElements(prevRes, result, {
           filter: (key) =>
             !(key in prevRes) || (!!overlay && key in overlay) || !pin(key),
         }),
@@ -348,7 +348,7 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
     const valueRef = React.useRef<Record<string, unknown>>(undefined);
     if (!valueRef.current) {
       valueRef.current = adoptElements({
-        root: React.createElement(actual.Children_UNSTABLE),
+        root: React.createElement(actual.Children),
         ...testHoisted.elements,
       });
     }
@@ -412,7 +412,7 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
   ) => data;
   const mergeByStore = new WeakMap<
     object,
-    ReturnType<typeof actual.useMergeElements_UNSTABLE>
+    ReturnType<typeof actual.useMergeElements>
   >();
   const useMockMergeElements = () => {
     const store = React.use(StoreContext);
@@ -535,15 +535,12 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
 
   return {
     ...actual,
-    Root_UNSTABLE: vi.fn((props: Parameters<typeof actual.Root_UNSTABLE>[0]) =>
+    Root: vi.fn((props: Parameters<typeof actual.Root>[0]) =>
       React.createElement(StatefulRoot, props),
     ),
-    useMergeElements_UNSTABLE: () =>
-      useMockMergeElements() ?? noopMergeElements,
-    useFetchRsc_UNSTABLE: () =>
-      testHoisted.fetchRsc as unknown as ReturnType<
-        typeof actual.useFetchRsc_UNSTABLE
-      >,
+    useMergeElements: () => useMockMergeElements() ?? noopMergeElements,
+    useFetchRsc: () =>
+      testHoisted.fetchRsc as unknown as ReturnType<typeof actual.useFetchRsc>,
   };
 });
 

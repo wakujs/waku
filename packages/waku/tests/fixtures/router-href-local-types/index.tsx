@@ -1,11 +1,11 @@
 import { expectType } from 'ts-expect';
 import type { TypeEqual } from 'ts-expect';
 import {
-  useSearch_UNSTABLE,
-  useSetSearch_UNSTABLE,
+  useSearch,
+  useSetSearch,
 } from '../../../src/router/client-core-utils/search.js';
 import { Link, useRouter } from '../../../src/router/client.js';
-import { unstable_createRouteHref } from '../../../src/router/href-factory.js';
+import { createRouteHref } from '../../../src/router/href-factory.js';
 
 type Search = { page: number; tag: string };
 
@@ -21,26 +21,26 @@ const codec = {
     }).toString(),
 };
 
-const product = unstable_createRouteHref({
+const product = createRouteHref({
   path: '/products/[id]',
   search: codec,
 });
-const docs = unstable_createRouteHref({
+const docs = createRouteHref({
   path: '/docs/[...parts]',
   search: codec,
 });
-const home = unstable_createRouteHref({ path: '/', search: codec });
-const post = unstable_createRouteHref({ path: '/posts/[id]' });
+const home = createRouteHref({ path: '/', search: codec });
+const post = createRouteHref({ path: '/posts/[id]' });
 post({ params: { id: '42' } });
-const grouped = unstable_createRouteHref({ path: '/(site)//about/(details)/' });
-const about = unstable_createRouteHref({ path: '/about' });
+const grouped = createRouteHref({ path: '/(site)//about/(details)/' });
+const about = createRouteHref({ path: '/about' });
 expectType<ReturnType<typeof about>>(grouped({}));
 expectType<ReturnType<typeof grouped>>(about());
-const middle = unstable_createRouteHref({ path: '/docs/[...parts]/overview' });
+const middle = createRouteHref({ path: '/docs/[...parts]/overview' });
 expectType<string>(middle({ params: { parts: [] } }));
 // @ts-expect-error parameter-only factories cannot accept search
 post({ params: { id: '42' }, search: { page: 2, tag: '' } });
-const other = unstable_createRouteHref({
+const other = createRouteHref({
   path: '/products/[id]',
   search: {
     parse: (_query: string) => ({ sort: 'asc' as 'asc' | 'desc' }),
@@ -75,11 +75,11 @@ other({ params: { id: '42' }, search: { page: 2, tag: '' } });
 
 export function TypeProbe() {
   // @ts-expect-error typed search hooks require a codec
-  useSearch_UNSTABLE(post);
-  const search = useSearch_UNSTABLE(product);
+  useSearch(post);
+  const search = useSearch(product);
   expectType<TypeEqual<typeof search, Search | null>>(true);
   expectType<Search | null>(search);
-  const setSearch = useSetSearch_UNSTABLE(product);
+  const setSearch = useSetSearch(product);
   void setSearch({ page: 2 });
   void setSearch(
     (prev) => {

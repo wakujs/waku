@@ -6,7 +6,7 @@ import type {
   PropsForPages,
   RouteSearch,
 } from '../src/router/create-pages-utils/inferred-path-types.js';
-import { unstable_redirect } from '../src/router/define-router.js';
+import { redirect } from '../src/router/define-router.js';
 
 // define-router pulls in server.js (react-server-dom-webpack); mock it so this
 // pure type/codec test loads without the `react-server` condition.
@@ -72,14 +72,14 @@ describe('search params type foundation', () => {
 
     const assertRedirect = [
       () =>
-        unstable_redirect(
+        redirect(
           typed({
             params: { id: 'x' },
             search: { page: 2, nested: { a: 'y' } },
           }),
         ),
       () =>
-        unstable_redirect(
+        redirect(
           typed({
             params: { id: 'x' },
             // @ts-expect-error search must match the route's codec
@@ -87,13 +87,13 @@ describe('search params type foundation', () => {
           }),
         ),
       () =>
-        unstable_redirect(
+        redirect(
           plain({
             // @ts-expect-error a route without a codec cannot pass search
             search: { page: 2 },
           }),
         ),
-      () => unstable_redirect('/no-codec'),
+      () => redirect('/no-codec'),
     ];
     expect(assertRedirect).toHaveLength(4);
 

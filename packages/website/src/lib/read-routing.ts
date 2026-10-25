@@ -1,7 +1,7 @@
-import { loadCreatePages, loadReadme } from './load-docs';
+import { readCreatePages, readReadme } from './load-docs';
 
-export const loadRoutingFileBased = (): string => {
-  const readme = loadReadme();
+export const readRoutingFileBased = (): string => {
+  const readme = readReadme();
   const routingSectionMatch = readme.match(
     /^## Routing\n([\s\S]*?)(?=^## [A-Z])/m,
   );
@@ -17,8 +17,8 @@ export const loadRoutingFileBased = (): string => {
   return contentAfterOverview.trim();
 };
 
-export const loadRoutingConfigBased = (): string => {
-  const createPages = loadCreatePages();
+export const readRoutingConfigBased = (): string => {
+  const createPages = readCreatePages();
   const withoutFrontmatter = createPages.replace(/^---[\s\S]*?---\n*/, '');
   const withoutMainHeading = withoutFrontmatter.replace(
     /^## Routing \(low-level API\)\n*/m,
@@ -27,8 +27,8 @@ export const loadRoutingConfigBased = (): string => {
   return withoutMainHeading.trim();
 };
 
-export const loadBeforeRouting = (): string => {
-  const readme = loadReadme();
+export const readBeforeRouting = (): string => {
+  const readme = readReadme();
   const match = readme.match(/(^## Introduction[\s\S]*?)(?=^## Routing)/m);
   const content = match?.[1];
   if (!content) {
@@ -37,8 +37,8 @@ export const loadBeforeRouting = (): string => {
   return content.trim();
 };
 
-export const loadAfterRouting = (): string => {
-  const readme = loadReadme();
+export const readAfterRouting = (): string => {
+  const readme = readReadme();
   const match = readme.match(
     /^## Routing[\s\S]*?(^## (?!Routing)[A-Z][\s\S]*)/m,
   );

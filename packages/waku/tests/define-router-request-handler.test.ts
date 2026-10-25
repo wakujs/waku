@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { describe, expect, it, vi } from 'vitest';
-import type { Unstable_RenderHtml } from '../src/lib/types.js';
+import type { RenderHtml } from '../src/lib/types.js';
 import { unstable_isRenderCancellation as isRenderCancellation } from '../src/minimal/server.js';
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
 import {
@@ -42,9 +42,7 @@ const makeStream = () =>
 const makeUtils = (loadBuildMetadata = vi.fn()) => ({
   renderRsc: vi.fn().mockImplementation(async () => makeStream()),
   parseRsc: vi.fn(),
-  renderHtml: vi
-    .fn<Unstable_RenderHtml>()
-    .mockResolvedValue(new Response('ok')),
+  renderHtml: vi.fn<RenderHtml>().mockResolvedValue(new Response('ok')),
   loadBuildMetadata,
   renderHtmlFallback: vi.fn(async () => new Response('fallback')),
 });
