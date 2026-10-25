@@ -18,11 +18,15 @@ route data at the Router boundary. An unused decoded promise may remain pending
 or resolve undefined. Consumers must treat both as absence of an intent and
 must not depend on observing unused completion through the promise alone.
 
-The experimental reference needs only the thenable factory: React serializes
-its native weak references and closes without unresolved weak work. The separate stable
-compatibility branch adds `weak-promise-stream.ts` and uses a server-side filter and finishes unused references
-with undefined. Both use React's client decoder directly. No extra completion
-helper is part of the weak-promise API.
+React 19.3.1 uses `weak-promise-stream.ts` around `renderRsc`. The filter replaces
+top-level weak promises with settled marker promises, suppresses their marker
+rows, and publishes resolved strings at complete Flight record boundaries. On
+ordinary stream completion it resolves unused references with undefined.
+Length-prefixed records pass through without inspecting their contents.
+
+The experimental reference uses React's native weak references and needs only
+the thenable factory. Both implementations use React's client decoder directly;
+the weak-promise API has no extra completion helper.
 
 `pnpm test` includes these development and production probes. To run them alone
 from the repository root:
@@ -33,10 +37,11 @@ pnpm -F waku test:weak-promise
 
 The RSC probe checks native streaming, early and late intents, first resolution,
 ordinary async dependencies, streams/iterators, binary fragmentation, aliases,
-request isolation, cancellation, and transport failure. Its expected absence
+shared producers, request isolation, cancellation, and transport failure. Its expected absence
 behavior follows the pinned runtime. The experimental reference retains a
 pending weak promise on EOF or failure; the stable fallback returns undefined
-on successful unused completion and rejects an unpublished reference on failure.
+on ordinary stream completion and rejects an unpublished reference on transport
+failure or request abort.
 
 The SSR probe runs the RSC renderer in a separate process with the `react-server`
 condition. The parent uses the matched React DOM server and Flight decoder with

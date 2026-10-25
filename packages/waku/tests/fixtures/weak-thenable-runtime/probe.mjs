@@ -449,6 +449,33 @@ await scenario(
 );
 
 await scenario(
+  'sharing a weak producer keeps active renders independent of completed renders',
+  async (signal) => {
+    const weak = createWeakPromise();
+    const gate = Promise.withResolvers();
+    const completed = run(
+      { channel: weak.promise, ordinary: null },
+      { signal },
+    );
+    const active = run(
+      { channel: weak.promise, ordinary: gate.promise },
+      { signal },
+    );
+    const [completedRoot, activeRoot] = await Promise.all([
+      completed.root,
+      active.root,
+    ]);
+    await completed.bytes;
+    await unused(completedRoot.channel);
+    weak.resolve('/active');
+    gate.resolve();
+    assert.equal(await activeRoot.channel, '/active');
+    await active.bytes;
+    await unused(completedRoot.channel);
+  },
+);
+
+await scenario(
   'request abort preserves native weak versus ordinary promise behavior',
   async (signal) => {
     const weak = createWeakPromise();
@@ -493,10 +520,7 @@ if (mode === 'native' || mode === 'filter') {
       await output.cancel('left');
       assert.equal(cancelled, 'left');
       weak.resolve('too late');
-      assert.equal(
-        await state(weak.promise),
-        mode === 'native' ? 'fulfilled' : 'pending',
-      );
+      assert.equal(await state(weak.promise), 'fulfilled');
     },
   );
 
