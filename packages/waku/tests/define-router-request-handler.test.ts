@@ -143,7 +143,7 @@ describe('request dispatch', () => {
       .mockResolvedValueOnce(new Response(new ReadableStream({ cancel })))
       .mockImplementationOnce(
         async (_stream, _html, { status }) =>
-        new Response('custom 404', { status: status ?? 200 }),
+          new Response('custom 404', { status: status ?? 200 }),
       );
     const router = unstable_defineRouter({
       resolve: async (path) => ({
