@@ -236,7 +236,7 @@ export type CreatePage = <
         component: null; // For build-time pruning
       }
   ) & {
-    unstable_disableSSR?: boolean;
+    unstable_noSsr?: boolean;
     /**
      * If true, the path will be matched exactly, without wildcards or slugs.
      * This is intended for extending support to create custom routers.
@@ -272,7 +272,7 @@ export type CreatePage = <
     Exclude<typeof page, { path: never } | { render: never }>,
     { render: 'static' | 'dynamic' }
   >,
-  'unstable_disableSSR'
+  'unstable_noSsr'
 >;
 
 export type CreateLayout = <Path extends string>(
@@ -647,7 +647,7 @@ export const createPages = <
 
     const pathSpec = parsePathWithSlug(pageRoutePath);
     const { numSlugs, numWildcards } = countSlugsAndWildcards(pathSpec);
-    const noSsr = page.unstable_disableSSR ?? false;
+    const noSsr = page.unstable_noSsr ?? false;
     const slices = page.slices || [];
     const sourceFile = page.unstable_sourceFile;
     const getEtag = page.unstable_getEtag;
@@ -977,13 +977,13 @@ export const createPages = <
   const definedRouter = createConfiguredRouter({
     getConfigs: async () => {
       await configure();
-      type RendererOption = { routePath: string; query: string | undefined };
+      type RendererOptions = { routePath: string; query: string | undefined };
       type ElementSpec = {
         isStatic: boolean;
-        renderer: (option: RendererOption) => ReactNode;
+        renderer: (options: RendererOptions) => ReactNode;
         sourceFile?: string;
-        getEtagFromOption?: (
-          option: RendererOption,
+        getEtagFromOptions?: (
+          options: RendererOptions,
         ) => Promise<string | undefined>;
       };
       type LayoutMatch = { layoutPath: string; layoutIdPath: string };
@@ -1000,29 +1000,29 @@ export const createPages = <
       // Memoize so component and getEtag get the same props reference.
       const buildElementSpec = <Props,>(
         component: FunctionComponent<Props>,
-        buildProps: (option: RendererOption) => Props,
+        buildProps: (options: RendererOptions) => Props,
         isStatic: boolean,
         sourceFile: string | undefined,
         getEtag: GetEtag<Props> | undefined,
       ): ElementSpec => {
-        const propsCache = new WeakMap<RendererOption, Props>();
-        const toProps = (option: RendererOption): Props => {
-          if (!propsCache.has(option)) {
-            propsCache.set(option, buildProps(option));
+        const propsCache = new WeakMap<RendererOptions, Props>();
+        const toProps = (options: RendererOptions): Props => {
+          if (!propsCache.has(options)) {
+            propsCache.set(options, buildProps(options));
           }
-          return propsCache.get(option)!;
+          return propsCache.get(options)!;
         };
         return {
           isStatic,
-          renderer: (option) =>
+          renderer: (options) =>
             createElement(
               component as FunctionComponent<any>,
-              toProps(option),
+              toProps(options),
               <Children />,
             ),
           ...(sourceFile ? { sourceFile } : {}),
           ...(getEtag
-            ? { getEtagFromOption: (option) => getEtag(toProps(option)) }
+            ? { getEtagFromOptions: (options) => getEtag(toProps(options)) }
             : {}),
         };
       };
@@ -1039,7 +1039,7 @@ export const createPages = <
         const getLayoutPropsMapping = createLayoutPropsMapper(layoutPath);
         return buildElementSpec(
           layout,
-          (option) => getLayoutPropsMapping(option.routePath),
+          (options) => getLayoutPropsMapping(options.routePath),
           !dynamicEntry,
           sourceFile,
           dynamicEntry?.getEtag,
@@ -1064,16 +1064,19 @@ export const createPages = <
       ): ElementSpec =>
         buildElementSpec(
           component,
-          (option) =>
+          (options) =>
             ({
-              ...getPropsMapping(option.routePath),
-              ...(option.query ? { query: option.query } : {}),
+              ...getPropsMapping(options.routePath),
+              ...(options.query ? { query: options.query } : {}),
               ...(searchCodec
                 ? {
-                    search: parseSearchOrThrow(searchCodec, option.query ?? ''),
+                    search: parseSearchOrThrow(
+                      searchCodec,
+                      options.query ?? '',
+                    ),
                   }
                 : {}),
-              path: option.routePath,
+              path: options.routePath,
             }) as unknown as Props,
           isStatic,
           sourceFile,
@@ -1086,7 +1089,7 @@ export const createPages = <
         isStatic: rootIsStatic,
         renderer: renderRoot,
         ...(rootSourceFile ? { sourceFile: rootSourceFile } : {}),
-        ...(rootGetEtag ? { getEtagFromOption: () => rootGetEtag() } : {}),
+        ...(rootGetEtag ? { getEtagFromOptions: () => rootGetEtag() } : {}),
       });
       const buildRouteConfigBase = (
         routePath: string,

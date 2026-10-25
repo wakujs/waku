@@ -10,6 +10,6 @@ export default function NoSsrPage() {
 export const getConfig = async () => {
   return {
     render: 'dynamic',
-    unstable_disableSSR: true,
+    unstable_noSsr: true,
   } as const;
 };
