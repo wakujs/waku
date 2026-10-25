@@ -210,11 +210,19 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
   });
 }
 
-// React's default transition indicator replaces the current URL through the
-// Navigation API. WebKit accepts that policy check and then never commits a
-// same-document navigation, so Playwright waits forever on the next locator
-// action. Repeating the current history entry makes WebKit emit the commit.
-// This stays in the harness; the product client does not special-case it.
+// Experimental React starts a same-document navigation with info
+// 'react-transition' after a transition has been pending for 100ms. WebKit
+// accepts that policy check and then never commits it, so Playwright waits
+// forever on the next locator action. Repeating the current history entry
+// makes WebKit emit the commit. Stable and canary builds accept the indicator
+// option and never call it, so this stays off for those versions.
+const reactDomVersion = (
+  createRequire(
+    fileURLToPath(new URL('../packages/waku/package.json', import.meta.url)),
+  )('react-dom/package.json') as { version: string }
+).version;
+const flushExperimentalTransitionNavigation =
+  reactDomVersion.includes('experimental');
 const flushReactTransitionNavigation = () => {
   if (!window.navigation) {
     return;
@@ -238,7 +246,9 @@ export const test = basicTest.extend<
 >({
   mode: ['DEV', { option: true, scope: 'worker' }],
   context: async ({ context }, contextUse) => {
-    await context.addInitScript(flushReactTransitionNavigation);
+    if (flushExperimentalTransitionNavigation) {
+      await context.addInitScript(flushReactTransitionNavigation);
+    }
     await contextUse(context);
   },
   page: async ({ page }, pageUse, testInfo) => {
