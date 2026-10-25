@@ -442,7 +442,7 @@ export const createRequestHandler = ({
             rscParams,
             clientEtags,
             requestElementCache,
-            { routerDefinition },
+            routerDefinition,
           );
           if (!entries) {
             return null;

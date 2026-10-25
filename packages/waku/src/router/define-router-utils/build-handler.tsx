@@ -142,10 +142,8 @@ export const createBuildHandler =
             undefined,
             {},
             cache,
-            {
-              routerDefinition: resolved,
-              populateRouteCache: true,
-            },
+            resolved,
+            true,
           );
           if (!entries) {
             return;

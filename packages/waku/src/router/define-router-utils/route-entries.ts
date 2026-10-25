@@ -93,13 +93,8 @@ export const createRouteEntries = (
     rscParams: unknown,
     clientEtags: Etags,
     cache: ElementCache,
-    {
-      routerDefinition,
-      populateRouteCache = false,
-    }: {
-      routerDefinition?: RouterDefinition | undefined;
-      populateRouteCache?: boolean;
-    } = {},
+    routerDefinition?: RouterDefinition,
+    populateRouteCache = false,
   ) => {
     setRscPath(rscPath);
     setRscParams(rscParams);
