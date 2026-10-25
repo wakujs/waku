@@ -250,6 +250,7 @@ const interceptedRouter = defineRouter({
                 'preferences=compact; Path=/',
               );
               result.headers.set('x-waku-test-interceptor', 'kept');
+              result.headers.set('cache-control', 'public, max-age=600');
             }
             if (gate === 'after') {
               requestRedirect('/foo');

@@ -73,6 +73,7 @@ const replaceHttpResponse = async <T,>(
   for (const name of REPLACED_RESPONSE_HEADERS) {
     headers.delete(name);
   }
+  headers.set('cache-control', 'private, no-store');
   for (const [name, value] of replacement.headers) {
     if (name !== 'set-cookie') {
       headers.set(name, value);

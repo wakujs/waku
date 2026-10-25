@@ -75,6 +75,7 @@ test.describe(`define-router`, () => {
     );
     expect(response.status()).toBe(307);
     expect(response.headers().location).toBe('/foo');
+    expect(response.headers()['cache-control']).toBe('private, no-store');
     expect(response.headers()['x-waku-test-interceptor']).toBe('kept');
     expect(
       response
@@ -103,6 +104,7 @@ test.describe(`define-router`, () => {
         `http://localhost:${port}/interceptor-cache`,
       );
       expect(response?.status()).toBe(404);
+      expect(response?.headers()['cache-control']).toBe('private, no-store');
       expect(response?.headers()['x-waku-test-interceptor']).toBe('kept');
       expect(await context.cookies()).toEqual(
         expect.arrayContaining([

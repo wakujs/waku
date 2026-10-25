@@ -329,6 +329,51 @@ describe('request dispatch', () => {
     },
   );
 
+  it.each([false, true])(
+    'does not inherit a public cache policy when replacing a document with a 404 (custom page: %s)',
+    async (has404) => {
+      const utils = makeUtils();
+      utils.renderHtml.mockImplementation(
+        async (_stream, _html, { status }) =>
+          new Response('custom 404', { status: status ?? 200 }),
+      );
+      const router = unstable_defineRouter({
+        resolve: async () => ({
+          elements: {
+            root: { render: () => 'root' },
+            route: { render: () => 'page' },
+          },
+        }),
+        getHas404: async () => has404,
+        unstable_interceptors: [
+          async (next) => {
+            const response = await next();
+            if (response instanceof Response) {
+              response.headers.set('cache-control', 'public, max-age=600');
+            }
+            requestNotFound();
+            return response;
+          },
+        ],
+      });
+
+      const response = (await router.handleRequest(
+        {
+          type: 'http',
+          pathname: '/account',
+          req: new Request('http://localhost/account'),
+        },
+        utils,
+      )) as Response;
+
+      expect(response.status).toBe(404);
+      expect(response.headers.get('cache-control')).toBe('private, no-store');
+      expect(await response.text()).toEqual(
+        has404 ? 'custom 404' : expect.stringContaining('<h1>Not Found</h1>'),
+      );
+    },
+  );
+
   it('preserves action form state when rendering the custom 404 before an interceptor returns', async () => {
     const formState = ['saved', 'form-key', 'actions#save', 0] as const;
     const tryAction = vi.fn(async () => {
@@ -382,7 +427,10 @@ describe('request dispatch', () => {
       resolve: async () => async () => {
         requestNotFound();
         return new Response('api body', {
-          headers: { 'set-cookie': 'session=api; HttpOnly' },
+          headers: {
+            'set-cookie': 'session=api; HttpOnly',
+            'cache-control': 'public, max-age=600',
+          },
         });
       },
       getHas404: async () => true,
@@ -402,6 +450,7 @@ describe('request dispatch', () => {
       'text/plain;charset=UTF-8',
     );
     expect(response.headers.getSetCookie()).toEqual(['session=api; HttpOnly']);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
     expect(utils.renderHtml).not.toHaveBeenCalled();
   });
 
