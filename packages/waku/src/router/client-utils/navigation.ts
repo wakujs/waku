@@ -42,9 +42,9 @@ import { dispatchChangeRoute } from './router-context.js';
 import type { ChangeRoute, ChangeRouteOptions } from './router-context.js';
 import {
   ROUTER_STATE_ID,
+  createRouterState,
   getInstantSlotIds,
   getRouterState,
-  makeRouterState,
   resolveServerRedirect,
   getSettledRoute as resolveSettledRoute,
 } from './router-state.js';
@@ -296,18 +296,21 @@ export const useNavigation = (
       };
       const requestedPathChanged =
         initialAttempt.route.path !== settledRoute.path;
-      const makeStateForAttempt = (
+      const createStateForAttempt = (
         attempt: NavigationAttempt,
         history: HistoryIntent,
       ): RouterState =>
-        makeRouterState(attempt.route, attempt.url, {
+        createRouterState(attempt.route, attempt.url, {
           history,
           scroll: options.shouldScroll,
           pathChanged:
             requestedPathChanged || attempt.route.path !== settledRoute.path,
           follows: attempt.follows,
         });
-      const initialState = makeStateForAttempt(initialAttempt, options.history);
+      const initialState = createStateForAttempt(
+        initialAttempt,
+        options.history,
+      );
       if (canReuseStatic || !shouldRefetch) {
         const routePatch = {
           [ROUTE_ID]: [nextRoute.path, nextRoute.query],
@@ -365,7 +368,7 @@ export const useNavigation = (
           const { error } = outcome;
           commitHistory(outcome.url, historyIntent);
           const failureState: RouterState = {
-            ...makeRouterState(outcome.route, outcome.url, {
+            ...createRouterState(outcome.route, outcome.url, {
               history: null,
               scroll: false,
               pathChanged: false,
@@ -419,14 +422,14 @@ export const useNavigation = (
             : outcome.elements;
         const destination = resolveServerRedirect(
           responsePatch,
-          makeStateForAttempt(outcome, historyIntent),
+          createStateForAttempt(outcome, historyIntent),
           outcome.route.path,
         );
         const state =
           adopted && isSameRoute(destination.route, initialAttempt.route)
             ? initialState
             : {
-                ...makeStateForAttempt(
+                ...createStateForAttempt(
                   { ...destination, follows: outcome.follows },
                   historyIntent,
                 ),

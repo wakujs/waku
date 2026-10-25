@@ -23,12 +23,12 @@ const getCategoryIndex = (category: string) => {
   return index === -1 ? GUIDE_CATEGORY_ORDER.length : index;
 };
 
-export const loadReadme = (): string => {
+export const readReadme = (): string => {
   const content = readFileSync('../../README.md', 'utf8');
   return content.replace(/\r\n?/g, '\n');
 };
 
-export const loadCreatePages = (): string => {
+export const readCreatePages = (): string => {
   const file = readFileSync('../../docs/create-pages.mdx', 'utf8');
   return file.replace(/\r\n?/g, '\n');
 };

@@ -12,8 +12,8 @@ import {
   parseExampleOption,
 } from './helpers/example-option.js';
 import {
-  getTemplateNames,
   installTemplate,
+  readTemplateNames,
 } from './helpers/install-template.js';
 
 const userAgent = process.env.npm_config_user_agent || '';
@@ -103,7 +103,7 @@ async function doPrompts() {
   const canSafelyOverwrite = (dir: string) =>
     !existsSync(dir) || readdirSync(dir).length === 0;
 
-  const templateNames = await getTemplateNames(templateRoot);
+  const templateNames = await readTemplateNames(templateRoot);
 
   if (
     !values.example &&

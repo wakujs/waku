@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { compileMDX } from '../lib/compile-mdx';
+import { findFileName } from '../lib/find-file-name';
 import { getAuthor } from '../lib/get-author';
-import { getFileName } from '../lib/get-file-name';
 import type { GuideTag } from '../types';
 import { GuideTags } from './guide-list';
 import { components } from './mdx';
@@ -16,7 +16,7 @@ export async function compilePost({
   slug: string;
   folder: string;
 }) {
-  const fileName = await getFileName(folder, slug);
+  const fileName = await findFileName(folder, slug);
 
   if (!fileName) {
     return null;

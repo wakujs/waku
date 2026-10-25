@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { compileMDX } from './compile-mdx';
 
-export const getFileName = async (folder: string, slug: string) => {
+export const findFileName = async (folder: string, slug: string) => {
   const blogFileNames: Array<string> = [];
   const blogSlugToFileName: Record<string, string> = {};
 
@@ -29,7 +29,7 @@ export const getFileName = async (folder: string, slug: string) => {
   return fileName;
 };
 
-export const getPostPaths = async (folder: string) => {
+export const readPostPaths = async (folder: string) => {
   const blogPaths: Array<string> = [];
   const blogFileNames: Array<string> = [];
 
