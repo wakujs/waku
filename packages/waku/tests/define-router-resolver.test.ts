@@ -856,7 +856,7 @@ describe('defineRouter route resolver', () => {
       const utils = makeUtils();
       await router.handleBuild({
         ...utils,
-        rscPath2pathname: (path) => 'payload/' + path,
+        rscPathToFileName: (rscPath) => 'payload/' + rscPath,
         generateFile: vi.fn(),
         generateDefaultHtml: vi.fn(),
         saveBuildMetadata: async (key, value) => {
