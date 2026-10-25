@@ -167,7 +167,7 @@ const toProcessBuild =
     await handleBuild({
       renderRsc: renderUtils.renderRsc,
       renderHtml: renderUtils.renderHtml,
-      rscPath2pathname: (rscPath) =>
+      rscPathToFileName: (rscPath) =>
         joinPath(config.rscBase, encodeRscPath(rscPath)),
       saveBuildMetadata: async (key, value) => {
         buildMetadata.set(key, value);

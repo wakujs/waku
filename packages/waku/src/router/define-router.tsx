@@ -137,7 +137,7 @@ type RouterOptions = {
  * `{ pathname, routerDefinition }` targets. Immutable routes are prerendered,
  * HTTP handlers emit static responses, and mutable routes cache only immutable
  * elements. A target's `prerender: false` caches immutable sources without
- * emitting a page; `prefetchPattern` is a regular expression matching paths
+ * emitting a page; `prefetchRegExp` is a regular expression matching paths
  * that share its client modules.
  * `resolveElement` handles `slice:<id>` requests from client `Slice`
  * components; `getBuildElementIds` lists immutable IDs to emit as standalone

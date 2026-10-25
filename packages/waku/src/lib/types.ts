@@ -72,7 +72,7 @@ export type Unstable_HandleRequest = (
 export type Unstable_HandleBuild = (utils: {
   renderRsc: Unstable_RenderRsc;
   renderHtml: Unstable_RenderHtml;
-  rscPath2pathname: (rscPath: string) => string;
+  rscPathToFileName: (rscPath: string) => string;
   saveBuildMetadata: (key: string, value: string) => Promise<void>;
   generateFile: (
     fileName: string,

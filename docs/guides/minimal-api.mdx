@@ -141,13 +141,13 @@ const handlers: Handlers = {
   handleBuild: async ({
     renderRsc,
     renderHtml,
-    rscPath2pathname,
+    rscPathToFileName,
     generateFile,
   }) => {
     const rscPath = '';
     const stream = await renderRsc({ App: <App name="Waku" /> });
     const [rscStream, htmlStream] = stream.tee();
-    await generateFile(rscPath2pathname(rscPath), rscStream);
+    await generateFile(rscPathToFileName(rscPath), rscStream);
     const html = await renderHtml(htmlStream, <Slot id="App" />, { rscPath });
     await generateFile('index.html', html.body!);
   },
@@ -399,7 +399,7 @@ The build utilities are:
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `renderRsc(elements, options?)`             | Render an RSC payload stream. Use `options.value` for a server function result.                      |
 | `renderHtml(elementsStream, html, options)` | Render HTML from an RSC stream and client shell.                                                     |
-| `rscPath2pathname(rscPath)`                 | Convert an RSC path into the correct output pathname for the RSC payload.                            |
+| `rscPathToFileName(rscPath)`                | Convert an RSC path into the file name of its RSC payload, relative to `dist/public`.                |
 | `saveBuildMetadata(key, value)`             | Persist metadata that will later be available through `loadBuildMetadata(...)` in `handleRequest`.   |
 | `generateFile(fileName, body)`              | Write a file to `dist/public`. Accepts `ReadableStream` or `string`.                                 |
 | `generateDefaultHtml(fileName, options?)`   | Write the default client-rendered HTML shell to `dist/public`, optionally with extra bootstrap code. |
@@ -418,14 +418,14 @@ Prerender one HTML page and one RSC payload:
 handleBuild: async ({
   renderRsc,
   renderHtml,
-  rscPath2pathname,
+  rscPathToFileName,
   generateFile,
 }) => {
   const rscPath = '';
   const stream = await renderRsc({ App: <App name="Waku" /> });
   const [rscStream, htmlStream] = stream.tee();
 
-  await generateFile(rscPath2pathname(rscPath), rscStream);
+  await generateFile(rscPathToFileName(rscPath), rscStream);
 
   const html = await renderHtml(htmlStream, <Slot id="App" />, { rscPath });
   await generateFile('index.html', html.body!);
@@ -466,9 +466,9 @@ handleRequest: async (input, { renderRsc, loadBuildMetadata }) => {
 Render during build:
 
 ```tsx
-handleBuild: async ({ renderRsc, generateFile, rscPath2pathname }) => {
+handleBuild: async ({ renderRsc, generateFile, rscPathToFileName }) => {
   const body = await renderRsc({ App: <App name="Waku" /> });
-  await generateFile(rscPath2pathname(''), body);
+  await generateFile(rscPathToFileName(''), body);
 },
 ```
 
@@ -872,7 +872,7 @@ if (input.type === 'http' && input.pathname === '/') {
 - `renderHtml(...)` consumes its stream. Call `tee()` if you also need to emit that same payload as a file.
 - `Slot` IDs must exactly match the keys returned by `renderRsc(...)`.
 - `undefined` is invalid for slot values. Use `null` for an intentionally empty element.
-- `rscPath2pathname(...)` should be used instead of hardcoding RSC payload file names.
+- `rscPathToFileName(...)` should be used instead of hardcoding RSC payload file names.
 - `handleBuild` emits nothing unless you explicitly call `generateFile(...)` or `generateDefaultHtml(...)`.
 - Returning `'fallback'` is not the same as returning `null`. `'fallback'` explicitly asks Waku to generate the fallback HTML response.
 - The client bootstrap for SSR uses `hydrateRoot(document, ...)`, not `createRoot(document.getElementById('root')!)`.

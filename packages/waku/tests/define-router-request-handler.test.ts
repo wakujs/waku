@@ -798,7 +798,7 @@ describe('request dispatch', () => {
     expect(utils.renderHtml).not.toHaveBeenCalled();
   });
 
-  it('loads cached-elements and path2moduleIds metadata only once', async () => {
+  it('loads cached-elements and moduleIdsByPrefetchRegExp metadata only once', async () => {
     const loadBuildMetadata = vi.fn(async (key: string) =>
       key === 'defineRouter:cachedElements' ? '{}' : undefined,
     );
@@ -819,7 +819,7 @@ describe('request dispatch', () => {
     const countFor = (key: string) =>
       loadBuildMetadata.mock.calls.filter(([k]) => k === key).length;
     expect(countFor('defineRouter:cachedElements')).toBe(1);
-    expect(countFor('defineRouter:path2moduleIds')).toBe(1);
+    expect(countFor('defineRouter:moduleIdsByPrefetchRegExp')).toBe(1);
   });
 
   it('exposes request-store APIs from router/server inside an interceptor', async () => {
