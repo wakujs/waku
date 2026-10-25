@@ -361,9 +361,12 @@ Important details:
 
 Return a `Response` from `handleRequest` to set HTTP status and headers. Helpers
 called before rendering can throw a `Response`; Waku returns it unchanged.
-Runtime streams use `Cache-Control: private, no-store` because their content can
-depend on the request, including decisions made after streaming starts. To set a
-different cache policy, return an explicit `Response` with your chosen headers.
+Runtime Flight streams use `Cache-Control: private, no-store` because their
+content can depend on the request, including decisions made after streaming
+starts. To set a different cache policy, return an explicit `Response` with your
+chosen headers.
+HTML responses from `renderHtml` and `renderHtmlFallback` leave `Cache-Control`
+to the application.
 HTTP responses are separate from the Flight payload. A client fetch receiving a
 non-success status rejects with an `Error` whose `cause` is the `Response`.
 Network failures retain the original fetch error, such as a `TypeError`.
@@ -378,7 +381,9 @@ cancelRender();
 
 `cancelRender(): never` throws internally. It carries no status or destination.
 Sibling components may continue rendering. On the client, the cancelled Slot
-renders nothing; during SSR, React uses the nearest Suspense fallback or falls
+keeps its previous content, or renders nothing on its first render. Changing its
+`id` does not remount it; use `<Slot key={id} id={id} />` when each ID should have
+its own lifetime. During SSR, React uses the nearest Suspense fallback or falls
 back to client rendering. Catch blocks and custom error boundaries must rethrow
 cancellation. `unstable_isRenderCancellation(error)` from `waku/minimal/server`
 recognizes the local signal. `unstable_hasRenderCancellationDigest(error)`,

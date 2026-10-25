@@ -214,6 +214,48 @@ describe('minimal/client fetch', () => {
     }
   });
 
+  test('a cancelled Slot id change retains its displayed content and accepts another id', async () => {
+    const Cancelled = () => {
+      throw Object.assign(new Error('Flight error'), {
+        digest: 'WAKU_CANCEL_RENDER',
+      });
+    };
+    mocks.createFromFetch.mockReturnValue(
+      resolvedThenable({ a: 'page A', b: <Cancelled />, c: 'page C' }),
+    );
+    stubFetch();
+    let select!: (id: string) => void;
+    const App = () => {
+      const [id, setId] = useState('a');
+      useEffect(() => {
+        select = setId;
+      }, []);
+      return (
+        <Root initialRscPath="cancel-id-change">
+          <Slot id={id} />
+        </Root>
+      );
+    };
+    const container = document.createElement('div');
+    const root = createRoot(container, { onCaughtError: () => {} });
+    try {
+      await act(async () => {
+        root.render(<App />);
+      });
+      expect(container.textContent).toBe('page A');
+      await act(async () => {
+        select('b');
+      });
+      expect(container.textContent).toBe('page A');
+      await act(async () => {
+        select('c');
+      });
+      expect(container.textContent).toBe('page C');
+    } finally {
+      act(() => root.unmount());
+    }
+  });
+
   test('a Slot propagates application errors to the app error boundary', async () => {
     const failure = new Error('application failure');
     const Broken = () => {
