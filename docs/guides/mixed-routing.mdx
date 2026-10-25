@@ -1,0 +1,91 @@
+---
+slug: mixed-routing
+title: Mix File Routes and Config Routes
+description: Combine discovered pages and config route modules together.
+category: Routing and Navigation
+order: 15
+tags: [Experimental]
+---
+
+This guide uses both config-based routes and file-based routes in a Waku app. It combines discovered page files and explicit route-module mappings in one `fsRouter`, which allows you to keep the benefits of file-based routing while adding custom route modules for pages outside the default pages directory. Please note that this is an temporary and experimental workaround and may change in future versions of Waku.
+
+## 1. Use the File-Based Routes first
+
+Consider the following file structure:
+
+```text
+# keep `src/pages` as the scan dir for file based routing
+src/pages/index.tsx      -> `/` page
+src/pages/about.tsx      -> `/about` page
+src/pages/_layout.tsx    -> shared layout
+# other pages outside the `src/pages` directory and cannot be discovered by the file router
+src/configured-pages.tsx -> export `ConfiguredPage` and `GreetingPage` components
+```
+
+The file `src/configured-pages.tsx` contains the components for the two configured routes.
+
+```tsx
+// src/configured-pages.tsx
+export function ConfiguredPage() {
+  return <h1>Configured static page</h1>;
+}
+
+export function GreetingPage({ name }: { name: string }) {
+  return <h1>Hello, {name}!</h1>;
+}
+```
+
+## 2. Register Both Sources in One Router
+
+Create a custom server entry:
+
+```tsx
+// src/waku.server.tsx
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/default';
+import { ConfiguredPage, GreetingPage } from './configured-pages';
+
+const fileModules = import.meta.glob('./pages/**/*.{tsx,ts}');
+const configuredModules = {
+  './pages/configured.tsx': async () => ({
+    default: ConfiguredPage,
+    getConfig: async () => ({ render: 'static' as const }),
+  }),
+  './pages/hello/[name].tsx': async () => ({
+    default: GreetingPage,
+    getConfig: async () => ({ render: 'dynamic' as const }),
+  }),
+};
+
+// Guard against file/config route module collisions
+for (const key of Object.keys(configuredModules)) {
+  if (key in fileModules) {
+    throw new Error(`File/config route module collision: ${key}`);
+  }
+}
+
+export default adapter(fsRouter({ ...fileModules, ...configuredModules }), {
+  middlewareModules: import.meta.glob([
+    './middleware/*.{tsx,ts}',
+    '!./middleware/*.{test,spec}.{tsx,ts}',
+  ]),
+});
+```
+
+A synthetic module is a mapping entry without a corresponding file. Its key still follows the file router's naming rules and uses the `./pages/` prefix. The entries above register static `/configured` and dynamic `/hello/[name]`. Waku passes the matched `name` segment to `GreetingPage`.
+
+The table below summarizes the registration and rendering behavior for each route:
+
+| URL             | Registration            | Rendering |
+| --------------- | ----------------------- | --------- |
+| `/`             | Discovered page file    | Static    |
+| `/about`        | Discovered page file    | Static    |
+| `/configured`   | Explicit module mapping | Static    |
+| `/hello/[name]` | Explicit module mapping | Dynamic   |
+
+## 3. Known Limitations
+
+Most features like middleware, shared layouts work normally for above setup, but there are some limitations to be aware of:
+
+1. With the default Node adapter, production static files are served before application middleware. Therefore, `/configured/` redirects with status 301 in development but returns prerendered HTML with status 200 in production. Dynamic `/hello/Waku/` redirects in both modes. Do not rely on this application middleware to intercept prerendered files.
+2. Features like automatic type generation only apply to discovered page files. Configured routes registered via synthetic modules do not benefit from these features.

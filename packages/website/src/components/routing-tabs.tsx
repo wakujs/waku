@@ -16,6 +16,7 @@ type TabButtonProps = {
 const TabButton = ({ tab, label, isActive, onClick }: TabButtonProps) => {
   return (
     <button
+      type="button"
       role="tab"
       id={`tab-${tab}`}
       aria-selected={isActive}
