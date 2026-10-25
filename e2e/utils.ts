@@ -340,10 +340,12 @@ const readPnpmWorkspaceOverrides = (): Record<string, string> => {
       continue;
     }
     const match = /^ {2}([^:#\s][^:]*):\s*(.*?)\s*$/.exec(line);
-    if (!match) {
+    const key = match?.[1];
+    const value = match?.[2];
+    if (!key || value === undefined) {
       continue;
     }
-    overrides[match[1]] = match[2].replace(/^['"]|['"]$/g, '');
+    overrides[key] = value.replace(/^['"]|['"]$/g, '');
   }
   return overrides;
 };
@@ -429,7 +431,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
           'utf8',
         ),
       );
-      const pnpmOverrides = {
+      const pnpmOverrides: Record<string, string> = {
         ...readPnpmWorkspaceOverrides(),
         waku: `file:${wakuPackageTgz}`,
         vite: createRequire(join(wakuDir, 'package.json'))('vite/package.json')
