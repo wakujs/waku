@@ -1,3 +1,4 @@
+import type { NavigationHref } from '../isomorphic-utils/build-route-href.js';
 import {
   addBase,
   pathnameToRoutePath,
@@ -9,6 +10,9 @@ export const pathnameToCurrentRoutePath = (pathname: string) =>
   pathnameToRoutePath(
     removeBase(pathname, import.meta.env.WAKU_CONFIG_BASE_PATH),
   );
+
+export const resolveRouteHref = (to: NavigationHref): string =>
+  addBase(to, import.meta.env.WAKU_CONFIG_BASE_PATH);
 
 export const isInsideBase = (url: URL) =>
   url.pathname.startsWith(import.meta.env.WAKU_CONFIG_BASE_PATH);
