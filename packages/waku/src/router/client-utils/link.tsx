@@ -15,40 +15,24 @@ import type {
   Ref,
   RefObject,
 } from 'react';
-import { preloadModule } from 'react-dom';
 import {
   type PrefetchOptions,
   type RouterCache,
   useRouterCache,
 } from '../client-core-utils/caches.js';
-import { isSameRscRoute, parseRoute } from '../client-core-utils/route-url.js';
+import {
+  isSameRscRoute,
+  parseRoute,
+  resolveRouteHref,
+} from '../client-core-utils/route-url.js';
 import type { NavigationHref } from '../isomorphic-utils/build-route-href.js';
-import { addBase } from '../isomorphic-utils/route-path.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
+import {
+  prefetchRouteUnlessReusable,
+  preloadRouteModules,
+} from './route-prefetch.js';
 import { RouterContext, dispatchChangeRoute } from './router-context.js';
 import { scrollToHash, shouldScrollByDefault } from './scroll.js';
-
-export const resolveRouteHref = (to: NavigationHref): string =>
-  addBase(to, import.meta.env.WAKU_CONFIG_BASE_PATH);
-
-export const preloadRouteModules = (path: string) => {
-  globalThis.__WAKU_ROUTER_PREFETCH__?.(path, (id) => {
-    preloadModule(id, { as: 'script' });
-  });
-};
-
-export const prefetchRouteUnlessReusable = (
-  cache: RouterCache,
-  route: RouteProps,
-  options: PrefetchOptions | undefined,
-  getElements: (() => Record<string, unknown>) | undefined,
-) => {
-  const elements = getElements?.();
-  if (elements && cache.canReuseStaticRoute(route, elements)) {
-    return;
-  }
-  cache.prefetchRoute(route, options);
-};
 
 const prefetchIfNotCurrent = (
   cache: RouterCache,

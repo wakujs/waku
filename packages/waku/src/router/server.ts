@@ -24,4 +24,4 @@ export { fsRouter } from './fs-router.js';
 export {
   formatRouterRequest as unstable_formatRouterRequest,
   parseRouterRequest as unstable_parseRouterRequest,
-} from './server-utils/parse-router-request.js';
+} from './server-utils/router-request.js';
