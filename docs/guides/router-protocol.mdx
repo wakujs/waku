@@ -165,9 +165,12 @@ build-time static metadata.
 
 Prerendered files can be served and reused without running runtime interceptors.
 Routes requiring authorization or another check on every request must be dynamic;
-an interceptor does not make a prerendered page private. Record an intent before
-calling `next()` when it must take effect: after `await next()`, Flight may have
-already closed its stream, and a later intent cannot reach the browser.
+an interceptor does not make a prerendered page private. For document requests,
+intents recorded before the interceptor chain returns determine the HTTP response,
+including intents recorded after `await next()`. For RSC requests, record an
+intent before calling `next()` when it must take effect: after `await next()`,
+Flight may have already closed its stream, and a later intent cannot reach the
+browser.
 
 On failure, retained elements can describe an earlier route. The attempted URL
 and error state belong to the client binding, not the server metadata.

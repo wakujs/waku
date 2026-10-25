@@ -63,6 +63,47 @@ test.describe(`define-router`, () => {
     });
   }
 
+  test('a direct document request honors an interceptor redirect recorded after rendering', async ({
+    request,
+  }) => {
+    const response = await request.get(
+      `http://localhost:${port}/interceptor-cache`,
+      {
+        headers: { 'x-waku-test-gate': 'after' },
+        maxRedirects: 0,
+      },
+    );
+    expect(response.status()).toBe(307);
+    expect(response.headers().location).toBe('/foo');
+  });
+
+  test('a direct document request honors a late interceptor 404 in its context', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      javaScriptEnabled: false,
+      extraHTTPHeaders: {
+        'x-waku-test-gate': 'after-not-found',
+        'x-waku-test-context': 'tenant-after',
+      },
+    });
+    try {
+      const page = await context.newPage();
+      const response = await page.goto(
+        `http://localhost:${port}/interceptor-cache`,
+      );
+      expect(response?.status()).toBe(404);
+      await expect(
+        page.getByRole('heading', { name: 'Scoped Not Found: tenant-after' }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: 'Allowed page' }),
+      ).toBeHidden();
+    } finally {
+      await context.close();
+    }
+  });
+
   test('a static action redirect does not become the next visit intent', async ({
     page,
   }) => {

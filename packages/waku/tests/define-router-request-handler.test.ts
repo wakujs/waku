@@ -1,5 +1,7 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { describe, expect, it, vi } from 'vitest';
 import type { Unstable_RenderHtml } from '../src/lib/types.js';
+import { unstable_isRenderCancellation as isRenderCancellation } from '../src/minimal/server.js';
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
 import {
   ACTION_LOCATION_HEADER,
@@ -13,6 +15,7 @@ import {
 import {
   createPages,
   getRequest,
+  requestNotFound,
   requestRedirect,
   unstable_defineRouter,
   unstable_rerenderRoute,
@@ -85,6 +88,137 @@ const staticRoute = (name: string) => ({
 });
 
 describe('request dispatch', () => {
+  it.each(['GET', 'POST'])(
+    'honors a redirect recorded after an interceptor awaits a document %s',
+    async (method) => {
+      const cancel = vi.fn();
+      const utils = makeUtils();
+      utils.renderHtml.mockResolvedValue(
+        new Response(new ReadableStream({ cancel })),
+      );
+      const router = unstable_defineRouter({
+        resolve: async () => ({
+          elements: {
+            root: { render: () => 'root' },
+            route: { render: () => 'page' },
+          },
+        }),
+        getHas404: async () => false,
+        unstable_interceptors: [
+          async (next) => {
+            const response = await next();
+            requestRedirect('/login');
+            return response;
+          },
+        ],
+      });
+
+      const response = (await router.handleRequest(
+        {
+          type: 'http',
+          pathname: '/account',
+          req: new Request('http://localhost/base/account', { method }),
+        },
+        utils,
+      )) as Response;
+
+      expect(response.status).toBe(method === 'POST' ? 303 : 307);
+      expect(response.headers.get('location')).toBe('/base/login');
+      expect(response.headers.get('cache-control')).toBe('private, no-store');
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(cancel.mock.calls[0]![0]).toSatisfy(isRenderCancellation);
+    },
+  );
+
+  it('renders a late interceptor 404 in its ALS context without repeating the form action', async () => {
+    const context = new AsyncLocalStorage<string>();
+    const renderNotFound = vi.fn(() => context.getStore());
+    const cancel = vi.fn();
+    const tryAction = vi.fn(async () => ({
+      action: true as const,
+      formState: null,
+    }));
+    const utils = makeUtils();
+    utils.renderHtml
+      .mockResolvedValueOnce(new Response(new ReadableStream({ cancel })))
+      .mockImplementationOnce(
+        async (_stream, _html, { status }) =>
+        new Response('custom 404', { status: status ?? 200 }),
+      );
+    const router = unstable_defineRouter({
+      resolve: async (path) => ({
+        elements: {
+          root: { render: () => 'root' },
+          route: { render: path === '/404' ? renderNotFound : () => 'page' },
+        },
+      }),
+      getHas404: async () => true,
+      unstable_interceptors: [
+        (next) =>
+          context.run('tenant', async () => {
+            const response = await next();
+            requestNotFound();
+            return response;
+          }),
+      ],
+    });
+
+    const response = (await router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/account',
+        req: new Request('http://localhost/account?q=one', { method: 'POST' }),
+        tryAction,
+      },
+      utils,
+    )) as Response;
+
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe('custom 404');
+    expect(renderNotFound).toHaveReturnedWith('tenant');
+    expect(renderNotFound).toHaveBeenCalledOnce();
+    expect(tryAction).toHaveBeenCalledOnce();
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(utils.renderHtml.mock.calls[1]![2]).toMatchObject({
+      status: 404,
+      rscPath: encodeRoutePath('/404'),
+    });
+    expect(utils.renderRsc.mock.calls[1]![0][ROUTE_ID]).toEqual([
+      '/404',
+      'q=one',
+    ]);
+    expect(context.getStore()).toBeUndefined();
+  });
+
+  it('preserves interceptor headers on an already honored HTTP intent', async () => {
+    const router = unstable_defineRouter({
+      resolve: async () => null,
+      getHas404: async () => false,
+      unstable_interceptors: [
+        async (next) => {
+          requestRedirect('/login');
+          const response = await next();
+          if (response instanceof Response) {
+            response.headers.set('set-cookie', 'session=active; HttpOnly');
+          }
+          return response;
+        },
+      ],
+    });
+    const response = (await router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/account',
+        req: new Request('http://localhost/account'),
+      },
+      makeUtils(),
+    )) as Response;
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).toBe('/login');
+    expect(response.headers.get('set-cookie')).toBe('session=active; HttpOnly');
+  });
+
   it('accounts for interceptors registered during createPages initialization', async () => {
     const router = createPages(async ({ createPage, createInterceptor }) => {
       createInterceptor(async (next) => {

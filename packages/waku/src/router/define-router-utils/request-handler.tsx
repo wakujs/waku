@@ -91,6 +91,7 @@ export const createRequestHandler = ({
     req: Request,
     fn: () => Promise<T>,
     onCancel?: () => Promise<T>,
+    onResponse?: (response: T) => Promise<T>,
   ) => Promise<T>;
   hasInterceptors?: () => boolean;
 }): HandleRequest => {
@@ -149,6 +150,28 @@ export const createRequestHandler = ({
         );
       }
       return renderRsc({ [INTENT_ID]: intent.promise });
+    };
+    const settleHttpResponse = async (
+      response: Awaited<ReturnType<HandleRequest>>,
+    ) => {
+      const httpResponse = response instanceof Response ? response : undefined;
+      const redirect = redirectResponse();
+      if (
+        !redirect &&
+        (getRouteIntent().value?.status !== 404 || httpResponse?.status === 404)
+      ) {
+        return response;
+      }
+      if (
+        redirect &&
+        httpResponse?.status === redirect.status &&
+        httpResponse.headers.get('location') ===
+          redirect.headers.get('location')
+      ) {
+        return response;
+      }
+      await cancelRenderStream(httpResponse?.body ?? null);
+      return redirect ?? renderCancelledRequest();
     };
     const handleRequest = async (
       cancelled = false,
@@ -459,6 +482,11 @@ export const createRequestHandler = ({
         return handleHttpRequest(input);
       }
     };
-    return runHandled(input.req, handleRequest, renderCancelledRequest);
+    return runHandled(
+      input.req,
+      handleRequest,
+      renderCancelledRequest,
+      input.type === 'http' ? settleHttpResponse : undefined,
+    );
   };
 };

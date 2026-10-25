@@ -79,7 +79,8 @@ export function unstable_rerenderRoute(pathname?: string, query?: string) {
 /**
  * Requests the not-found view without terminating execution. Return from the
  * current component or server function after calling it. Before the document
- * shell this can produce HTTP 404; after the shell the client shows the view.
+ * response is returned this can produce HTTP 404; after the shell the client
+ * shows the view.
  * The first intent recorded for a request wins, including concurrent renders.
  * A server function keeps its normal return value; a form submitted without
  * JavaScript responds with 404.
@@ -131,7 +132,8 @@ const getRedirectLocation = (
  * Requests navigation without terminating execution. Return explicitly after
  * calling it. Accepts an app-relative path or an absolute HTTP(S) URL; validate
  * destinations derived from user input against your own allowlist. Before a
- * dynamic document's shell this produces an HTTP redirect (303 for a form POST).
+ * dynamic document response is returned this produces an HTTP redirect
+ * (303 for a form POST).
  * After the shell, and for prerendered pages, the browser follows the intent
  * using JavaScript.
  * An absolute URL navigates the document even when it names this origin.
@@ -203,11 +205,13 @@ export function unstable_defineRouter(fns: RouterOptions): Handlers {
     req: Request,
     fn: () => Promise<T>,
     onCancel?: () => Promise<T>,
+    onResponse?: (response: T) => Promise<T>,
   ): Promise<T> => {
     const store: RouterStore = { req };
     return runWithRouterStore(store, async () => {
+      let response: T;
       try {
-        return await (fns.unstable_interceptors ?? []).reduceRight(
+        response = await (fns.unstable_interceptors ?? []).reduceRight(
           (next, interceptor) => () => interceptor(next),
           fn,
         )();
@@ -222,6 +226,11 @@ export function unstable_defineRouter(fns: RouterOptions): Handlers {
           runWithRouterStore(store, onCancel),
         );
       }
+      return onResponse
+        ? getRouteIntent().runInContext(() =>
+            runWithRouterStore(store, () => onResponse(response)),
+          )
+        : response;
     });
   };
   return {

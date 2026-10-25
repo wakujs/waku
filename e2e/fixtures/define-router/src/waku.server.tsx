@@ -242,6 +242,9 @@ const interceptedRouter = defineRouter({
           if (gate === 'after') {
             requestRedirect('/foo');
           }
+          if (gate === 'after-not-found') {
+            requestNotFound();
+          }
           return result;
         },
       ),
