@@ -119,6 +119,11 @@ from the displayed route. The destination uses an existing route cache when
 possible; otherwise it needs its own request so that rendering uses the
 destination request's URL and context.
 
+A redirect that changes only the fragment reuses the available response without
+another RSC request. Its intent is marked as followed for that route activation,
+including later fragment changes. A new response or a later visit can follow the
+intent again. An identical self-redirect remains a navigation loop.
+
 Router-managed slice fetches and actions observe their intents in the originating
 route's scope. Minimal's `useFetchRsc_UNSTABLE` only returns response data; custom
 integrations own the routing decisions for requests they make directly.
@@ -209,6 +214,9 @@ recovers from real HTTP 404s, including missing files on a static host, within t
 follow budget and stops waiting when cancelled. It does not require the Router
 cache or merge elements. It follows ready intents before returning a payload;
 the binding observes intents that arrive after commit.
+For a fragment-only follow, a loaded outcome's `followedIntent` identifies the
+promise already applied to its URL. A custom binding must suppress that promise
+after commit while retaining the intent for later route activations.
 
 This hook binds the loader to the enclosing Minimal `Root` without a Router cache:
 

@@ -6,6 +6,7 @@ import type { RouteIntentData } from '../isomorphic-utils/router-protocol.js';
 import {
   getRouteFromElements,
   has404FromElements,
+  isStaticFromElements,
 } from '../isomorphic-utils/router-protocol.js';
 import type { RouteIntentOutcome } from './observe-route-intent.js';
 import {
@@ -31,6 +32,23 @@ type FollowRequest = {
 };
 
 type FollowOptions = { has404: boolean; maxFollows: number };
+
+export function canReuseForHashRedirect(
+  decision: Extract<FollowDecision, { type: 'follow' }>,
+  requested: FollowRequest,
+  elements: Readonly<Record<string | symbol, unknown>>,
+) {
+  const rendered = getRouteFromElements(elements);
+  return (
+    isSameRscRoute(decision.target, requested.route) &&
+    decision.url.pathname === requested.url.pathname &&
+    decision.url.search === requested.url.search &&
+    (!rendered ||
+      (rendered.path === decision.target.path &&
+        (isStaticFromElements(elements) ||
+          rendered.query === decision.target.query)))
+  );
+}
 
 export function getRouteIntentDecision(
   outcome: RouteIntentOutcome | undefined,

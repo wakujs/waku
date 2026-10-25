@@ -13,7 +13,10 @@ import {
 import { useRouterCache } from '../client-core-utils/caches.js';
 import { observeRouteIntent } from '../client-core-utils/observe-route-intent.js';
 import type { RouteIntentOutcome } from '../client-core-utils/observe-route-intent.js';
-import { getRouteIntentDecision } from '../client-core-utils/route-follow.js';
+import {
+  canReuseForHashRedirect,
+  getRouteIntentDecision,
+} from '../client-core-utils/route-follow.js';
 import { parseRoute } from '../client-core-utils/route-url.js';
 import {
   INTENT_ID,
@@ -57,8 +60,9 @@ export const RouteIntent = ({
       }
       const state = getRouterState(source);
       if (
-        followedStateByPromise.current.has(pending) &&
-        followedStateByPromise.current.get(pending) === state
+        state?.followedIntent === pending ||
+        (followedStateByPromise.current.has(pending) &&
+          followedStateByPromise.current.get(pending) === state)
       ) {
         return;
       }
@@ -69,13 +73,14 @@ export const RouteIntent = ({
           window.location.href,
         );
         const requested = state?.requested;
-        const decision = getRouteIntentDecision(outcome, source, {
+        const attempt = {
           route: requested
             ? { path: requested[0], query: requested[1] }
             : (sourceRoute ?? parseRoute(requestedUrl)),
           url: requestedUrl,
           follows: state?.follows ?? 0,
-        });
+        };
+        const decision = getRouteIntentDecision(outcome, source, attempt);
         if (!decision) {
           return;
         }
@@ -98,6 +103,7 @@ export const RouteIntent = ({
           return;
         }
         const { target, url } = decision;
+        const reuse = canReuseForHashRedirect(decision, attempt, source);
         startTransition(() => {
           router
             .changeRoute(target, {
@@ -105,7 +111,8 @@ export const RouteIntent = ({
                 ? state.scroll !== null
                 : target.path !== sourceRoute?.path,
               history: 'replace',
-              refetch: true,
+              refetch: !reuse,
+              followedIntent: reuse ? pending : undefined,
               url,
               follows: (state?.follows ?? 0) + 1,
             })

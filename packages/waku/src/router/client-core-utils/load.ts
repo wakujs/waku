@@ -3,6 +3,7 @@ import { INTENT_ID } from '../isomorphic-utils/router-protocol.js';
 import { getRouteIntentOutcome } from './observe-route-intent.js';
 import {
   MAX_FOLLOWS_PER_NAVIGATION,
+  canReuseForHashRedirect,
   decideRouteIntent,
   getRouteIntentDecision,
 } from './route-follow.js';
@@ -42,6 +43,8 @@ export type LoadOutcome =
       url: URL;
       elements: Elements;
       follows: number;
+      /** Already followed; bindings must skip this promise's post-commit intent. */
+      followedIntent?: PromiseLike<string | undefined>;
     }
   | { type: 'reused'; route: RouteProps; url: URL; follows: number }
   | {
@@ -97,6 +100,8 @@ export const rejectOnAbort = <T>(
  * Cancellation stops waiting even if the callback ignores its
  * signal. Pending intents do not delay loading; the binding observes them after
  * committing and reconciles the final response's route metadata.
+ * Fragment-only redirects retain the response and return `followedIntent`;
+ * bindings must suppress its replay for this activation, including hash changes.
  *
  * @example
  * const outcome = await unstable_load(fetchRoute, route, { signal, has404 });
@@ -141,6 +146,16 @@ export const load = async (
           opts.has404,
         );
         if (decision?.type === 'follow') {
+          if (canReuseForHashRedirect(decision, attempt, elements)) {
+            return {
+              type: 'loaded',
+              route: decision.target,
+              url: decision.url,
+              elements,
+              follows: attempt.follows + 1,
+              followedIntent: pending,
+            };
+          }
           return run({
             route: decision.target,
             url: decision.url,

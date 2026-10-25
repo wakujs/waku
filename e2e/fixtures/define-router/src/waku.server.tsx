@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Suspense } from 'react';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { readFile } from 'node:fs/promises';
 // NOTE: I think we need one spec to use non-default adapter
@@ -91,6 +92,15 @@ const sliceSources = {
 };
 
 const requestContext = new AsyncLocalStorage<string>();
+let releaseFragment: (() => void) | undefined;
+
+const LateFragmentRedirect = async () => {
+  await new Promise<void>((resolve) => {
+    releaseFragment = resolve;
+  });
+  requestRedirect('/fragment-late#comments');
+  return null;
+};
 
 const ContextNotFound = async () => {
   await Promise.resolve();
@@ -102,6 +112,44 @@ const ContextNotFound = async () => {
 const routerOptions: Parameters<typeof defineRouter>[0] = {
   getHas404: async () => true,
   resolve: async (path) => {
+    if (path === '/fragment-release') {
+      return async () => {
+        const release = releaseFragment;
+        if (!release) {
+          return new Response('No pending fragment', { status: 404 });
+        }
+        releaseFragment = undefined;
+        release();
+        return new Response(null, { status: 204 });
+      };
+    }
+    if (path === '/fragment-ready' || path === '/fragment-late') {
+      return {
+        elements: {
+          root,
+          route: {
+            render: () => {
+              if (path === '/fragment-ready') {
+                requestRedirect(path + '#comments');
+              }
+              return (
+                <>
+                  <h1>Fragment {path.slice('/fragment-'.length)}</h1>
+                  <Link to={path + '#other'}>Other section</Link>
+                  <p id="comments">Comments</p>
+                  <p id="other">Other section</p>
+                  {path === '/fragment-late' && (
+                    <Suspense fallback={null}>
+                      <LateFragmentRedirect />
+                    </Suspense>
+                  )}
+                </>
+              );
+            },
+          },
+        },
+      };
+    }
     if (path === '/404') {
       return {
         elements: { root, route: { render: () => <ContextNotFound /> } },

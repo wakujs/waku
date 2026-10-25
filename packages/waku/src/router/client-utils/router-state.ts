@@ -56,6 +56,7 @@ export type RouterState = {
   readonly history: 'push' | 'replace' | null;
   readonly scroll: { readonly pathChanged: boolean } | null;
   readonly follows: number;
+  readonly followedIntent?: PromiseLike<string | undefined>;
   readonly failedFrom?: RouteProps;
   readonly originalState?: RouterState;
 };
