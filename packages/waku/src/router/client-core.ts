@@ -1,10 +1,10 @@
 'use client';
 
 export {
-  createActionRouting as unstable_createActionRouting,
-  useActionRouting as useActionRouting_UNSTABLE,
-} from './client-core-utils/action-routing.js';
-export type { ActionRouting as Unstable_ActionRouting } from './client-core-utils/action-routing.js';
+  createServerFunctionRouting as unstable_createServerFunctionRouting,
+  useServerFunctionRouting as useServerFunctionRouting_UNSTABLE,
+} from './client-core-utils/server-function-routing.js';
+export type { ServerFunctionRouting as Unstable_ServerFunctionRouting } from './client-core-utils/server-function-routing.js';
 
 export {
   createRscParams as unstable_createRscParams,

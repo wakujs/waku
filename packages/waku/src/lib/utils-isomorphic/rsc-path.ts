@@ -45,25 +45,25 @@ export const formatRscUrl = (rscPath: string, baseUrl: string | URL): URL => {
   return url;
 };
 
-const FUNC_PREFIX = 'F/';
+const SERVER_FUNCTION_PREFIX = 'F/';
 
-export const encodeFuncId = (funcId: string) => {
-  const [file, name] = funcId.split('#') as [string, string];
+export const encodeServerFunctionId = (serverFunctionId: string) => {
+  const [file, name] = serverFunctionId.split('#') as [string, string];
   if (name.includes('/')) {
     throw new Error('Function name must not include `/`: ' + name);
   }
   if (file.startsWith('_') || file.startsWith('/')) {
-    return FUNC_PREFIX + '_' + file + '/' + name;
+    return SERVER_FUNCTION_PREFIX + '_' + file + '/' + name;
   }
-  return FUNC_PREFIX + file + '/' + name;
+  return SERVER_FUNCTION_PREFIX + file + '/' + name;
 };
 
-export const decodeFuncId = (encoded: string) => {
-  if (!encoded.startsWith(FUNC_PREFIX)) {
+export const decodeServerFunctionId = (encoded: string) => {
+  if (!encoded.startsWith(SERVER_FUNCTION_PREFIX)) {
     return null;
   }
   const index = encoded.lastIndexOf('/');
-  const file = encoded.slice(FUNC_PREFIX.length, index);
+  const file = encoded.slice(SERVER_FUNCTION_PREFIX.length, index);
   const name = encoded.slice(index + 1);
   if (file.startsWith('_')) {
     return file.slice(1) + '#' + name;

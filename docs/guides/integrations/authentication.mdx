@@ -78,7 +78,7 @@ export const auth = async (): Promise<Session | null> => {
 };
 ```
 
-`auth()` works anywhere the router runs your code: pages, layouts, slices, server actions and API route handlers. It does not work in a static render. Static pages and layouts are prerendered at build time, so anything that reads the session must be `render: 'dynamic'`; see [Sessions on static pages](#sessions-on-static-pages) for keeping the rest of the page static.
+`auth()` works anywhere the router runs your code: pages, layouts, slices, server functions and API route handlers. It does not work in a static render. Static pages and layouts are prerendered at build time, so anything that reads the session must be `render: 'dynamic'`; see [Sessions on static pages](#sessions-on-static-pages) for keeping the rest of the page static.
 
 ## Protecting routes
 
@@ -129,7 +129,7 @@ GET /RSC/R/dashboard.txt           -> 200  22,532 bytes, including every figure 
 ```
 
 With `requireSession()` in the data functions, the same request carries error
-slots and nothing else. A server action is an endpoint of its own and an API
+slots and nothing else. A server function is an endpoint of its own and an API
 route is outside every layout, so neither is covered by anything but its own
 check either.
 
@@ -233,7 +233,7 @@ GET /dashboard             -> 303  Location: /login?callbackUrl=%2Fdashboard
 GET /RSC/R/dashboard.txt   -> 303  Location: /RSC/R/login.txt?query=callbackUrl%3D%252Fdashboard
 ```
 
-A route match is still an optimistic redirect, not a boundary. A server action dispatched from the client carries no route — it reports `{ type: 'action' }` — so no path rule covers it, which is why the data layer checks for itself.
+A route match is still an optimistic redirect, not a boundary. A server function called from the client carries no route — it reports `{ type: 'call' }` — so no path rule covers it, which is why the data layer checks for itself.
 
 ## Signing in: setting a cookie from a server action
 

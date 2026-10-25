@@ -22,7 +22,7 @@ export const buildMergePatch = (
   const responseRoute = getRouteFromElements(elements) ?? outcome.route;
   const routeSlotId = getRouteSlotId(responseRoute.path);
   const rscRouteChanged = !isSameRscRoute(responseRoute, opts.settled);
-  // A server action can merge newer values while this request waits.
+  // A server function call can merge newer values while this request waits.
   return combineElements({}, elements, {
     filter: (key) =>
       key === ROUTE_ID ||

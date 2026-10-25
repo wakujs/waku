@@ -4,7 +4,10 @@ import type { Etags } from './utils-isomorphic/etags.js';
 
 type Elements = Record<string, unknown>;
 
-/** Serializes slots, optional server-action value and validators into a Flight stream. */
+/**
+ * Serializes slots, an optional server function return value, and validators
+ * into a Flight stream.
+ */
 export type Unstable_RenderRsc = (
   elements: Elements,
   options?: {
@@ -39,7 +42,10 @@ export type Unstable_EmitFile = (
   body: ReadableStream,
 ) => Promise<void>;
 
-/** Dispatches payload, action and HTTP requests; return null to leave a request unhandled. */
+/**
+ * Dispatches payload, server function, and HTTP requests; return null to leave
+ * a request unhandled.
+ */
 export type Unstable_HandleRequest = (
   input: (
     | { type: 'rsc'; rscPath: string; rscParams: unknown }

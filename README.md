@@ -1117,7 +1117,7 @@ Data should be fetched on the server when possible for the best user experience,
 
 ## Mutations
 
-Data mutations can be performed via [server actions](https://react.dev/reference/rsc/server-actions) or API endpoints.
+Data mutations can be performed via [server functions](https://react.dev/reference/rsc/server-functions) or API endpoints.
 
 ### API endpoints
 
@@ -1276,23 +1276,23 @@ export const getConfig = async () => {
 };
 ```
 
-### Server actions
+### Server functions
 
-Server actions allow you to define and securely execute server-side logic directly from your React components without the need for manually setting up API endpoints, sending `POST` requests to them with `fetch`, or managing pending states and errors.
+Server functions allow you to define and securely execute server-side logic directly from your React components without the need for manually setting up API endpoints, sending `POST` requests to them with `fetch`, or managing pending states and errors.
 
-#### Defining and protecting actions
+#### Defining and protecting server functions
 
-The `'use server'` directive marks an async function as a server action. Waku automatically creates a reference to the action that can be passed as props or imported into client components, which can then call the referenced function.
+The `'use server'` directive marks an async function as a server function. Waku automatically creates a reference to the function that can be passed as props or imported into client components, which can then call the referenced function.
 
-When the directive is placed at the top of a function body, it will mark that specific function as an action. Alternatively, the directive can be placed at the top of a file, which will mark _all_ exported functions as actions at once.
+When the directive is placed at the top of a function body, it will mark that specific function as a server function. Alternatively, the directive can be placed at the top of a file, which will mark _all_ exported functions as server functions at once.
 
-Be careful not to add the directive where inappropriate and inadvertently create unwanted endpoints. Endpoints created by server actions are _not_ secured unless you add your own authentication and authorization logic inside the function body.
+Be careful not to add the directive where inappropriate and inadvertently create unwanted endpoints. Endpoints created by server functions are _not_ secured unless you add your own authentication and authorization logic inside the function body.
 
 > The `'use server'` directive has no relation to the`'use client'` directive. It does **not** mark a component as a server component and should **not** be placed at the top of server components!
 
-#### Making and consuming actions
+#### Making and consuming server functions
 
-When creating an inline server action within a server component, it can be passed as props to a client component.
+When creating an inline server function within a server component, it can be passed as props to a client component.
 
 ```tsx
 // ./src/pages/contact.tsx
@@ -1331,7 +1331,7 @@ export const ContactForm = ({ sendMessage }) => {
 };
 ```
 
-When creating server actions in a separate file, they can be imported directly into client components.
+When creating server functions in a separate file, they can be imported directly into client components.
 
 > When using a top-level `'use server'` directive, note that _all_ exported functions will be made into API endpoints. So be careful only to export functions intended for this purpose. Add server-side logic to validate proper authentication and authorization if appropriate.
 
@@ -1359,11 +1359,11 @@ export const ContactButton = () => {
 };
 ```
 
-#### Invoking actions
+#### Invoking server functions
 
-Actions can be invoked via event handlers such as `onClick` or `onSubmit`, as in the examples above, or in a `useEffect` hook, based on whichever conditions you choose.
+Server functions can be invoked via event handlers such as `onClick` or `onSubmit`, as in the examples above, or in a `useEffect` hook, based on whichever conditions you choose.
 
-They can also be invoked via an `action` prop on native `<form>` elements. In this case the server action will automatically receive a parameter of `FormData` with all of the form field values, including hidden ones.
+They can also be invoked via an `action` prop on native `<form>` elements. In this case the server function will automatically receive a parameter of `FormData` with all of the form field values, including hidden ones.
 
 ```tsx
 // ./src/actions/send-message.ts
@@ -1395,7 +1395,7 @@ export const ContactForm = () => {
 };
 ```
 
-If you must pass additional arguments to a form action beyond its native form fields, you can use the `bind` method to create an extended server action with the extra arguments.
+If you must pass additional arguments to a form action beyond its native form fields, you can use the `bind` method to create an extended server function with the extra arguments.
 
 ```tsx
 // ./src/components/create-todo-button.tsx
@@ -1415,9 +1415,9 @@ export const ContactForm = ({ author = 'guest' }) => {
 };
 ```
 
-#### Enhancing actions
+#### Enhancing server functions
 
-Server actions integrate with many other React APIs such as the [`useTransition`](https://react.dev/reference/react/useTransition) hook for handling pending states, the [`useActionState`](https://react.dev/reference/react/useActionState) hook for accessing returned values, and the [`useOptimistic`](https://react.dev/reference/react/useOptimistic) hook for performing optimistic UI updates.
+Server functions integrate with many other React APIs such as the [`useTransition`](https://react.dev/reference/react/useTransition) hook for handling pending states, the [`useActionState`](https://react.dev/reference/react/useActionState) hook for accessing returned values, and the [`useOptimistic`](https://react.dev/reference/react/useOptimistic) hook for performing optimistic UI updates.
 
 See the talk [What's new in React 19?](https://www.youtube.com/watch?v=AJOGzVygGcY) to learn more.
 
@@ -1481,7 +1481,7 @@ the build output lives in `dist`. It is the only folder you need to copy, then r
 ### Pure SSG
 
 The build output for SSG lives in `dist/public`. You can copy (or upload to any hosting service) the `dist/public` folder.
-With Pure SSG, dynamic features (like dynamic rendering, server actions, API routes) do not work.
+With Pure SSG, dynamic features (like dynamic rendering, server functions, API routes) do not work.
 
 ### Vercel
 

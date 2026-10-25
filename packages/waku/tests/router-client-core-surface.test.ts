@@ -43,8 +43,8 @@ describe('waku/router/client-core surface', () => {
       'unstable_MAX_FOLLOWS_PER_NAVIGATION',
       'unstable_ROUTE_ID',
       'unstable_buildMergePatch',
-      'unstable_createActionRouting',
       'unstable_createRscParams',
+      'unstable_createServerFunctionRouting',
       'unstable_decideFollow',
       'unstable_decodeRoutePath',
       'unstable_decodeSliceId',
@@ -66,7 +66,6 @@ describe('waku/router/client-core surface', () => {
       'unstable_matchRouteParams',
       'unstable_parseRoute',
       'unstable_pathnameToRoutePath',
-      'useActionRouting_UNSTABLE',
       'useHmrRefetch_UNSTABLE',
       'useInitialRoute_UNSTABLE',
       'useInitialRscParams_UNSTABLE',
@@ -74,6 +73,7 @@ describe('waku/router/client-core surface', () => {
       'useRouterCache_UNSTABLE',
       'useRouterHost_UNSTABLE',
       'useSearch_UNSTABLE',
+      'useServerFunctionRouting_UNSTABLE',
       'useSetSearch_UNSTABLE',
     ]);
   });

@@ -39,7 +39,10 @@ import {
   useMergeElements_UNSTABLE,
 } from '../src/minimal/client.js';
 
-type CallServer = (funcId: string, args: unknown[]) => Promise<unknown>;
+type CallServer = (
+  serverFunctionId: string,
+  args: unknown[],
+) => Promise<unknown>;
 
 const mocks = vi.hoisted(() => ({
   createFromFetch:
@@ -404,7 +407,7 @@ describe('minimal/client server actions', () => {
     stubFetch();
 
     await expect(unstable_callServerRsc('actions#do', [])).rejects.toThrow(
-      'Server action returned elements without a mounted Root component',
+      'Server function returned elements without a mounted Root component',
     );
   });
 

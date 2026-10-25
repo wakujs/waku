@@ -18,7 +18,7 @@ const RSC_QUERY_PARAM = 'query';
 type RouterRequest =
   | { type: 'route'; path: string; query: string | undefined }
   | { type: 'slice'; id: string }
-  | { type: 'action' };
+  | { type: 'call' };
 
 /**
  * Reads a request the way `waku/router` will, so middleware can match on a
@@ -30,8 +30,8 @@ type RouterRequest =
  * out of reach without consuming it.
  *
  * A path rule is an optimistic redirect, not an authorization boundary: it
- * cannot see a client-dispatched action, though a form posted without
- * JavaScript reports as the route it posts to.
+ * cannot see a client-dispatched server function call, though a form posted
+ * without JavaScript reports as the route it posts to.
  */
 export function parseRouterRequest(req: Request): RouterRequest | null {
   const input = parseRequest(req);
@@ -46,7 +46,7 @@ export function parseRouterRequest(req: Request): RouterRequest | null {
     };
   }
   if (input.type === 'call') {
-    return { type: 'action' };
+    return { type: 'call' };
   }
   const { rscPath, rscParams } = input;
   const query = rscParams ? (rscParams.get(RSC_QUERY_PARAM) ?? '') : undefined;

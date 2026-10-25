@@ -14,14 +14,14 @@ import {
   useElementsPromise_UNSTABLE as useElementsPromise,
 } from 'waku/minimal/client';
 import type { Unstable_RscEnhancer } from 'waku/minimal/client';
-import { createActionRouting } from './client-core-utils/action-routing.js';
-import type { ActionRouting } from './client-core-utils/action-routing.js';
 import { useRouterCache } from './client-core-utils/caches.js';
 import type { PrefetchOptions } from './client-core-utils/caches.js';
 import { RouterHostContext } from './client-core-utils/host.js';
 import type { RouterHost } from './client-core-utils/host.js';
 import { useInitialRscParams } from './client-core-utils/initial-route.js';
 import { parseRoute } from './client-core-utils/route-url.js';
+import type { ServerFunctionRouting } from './client-core-utils/server-function-routing.js';
+import { createServerFunctionRouting } from './client-core-utils/server-function-routing.js';
 import {
   prefetchRouteUnlessReusable,
   preloadRouteModules,
@@ -188,11 +188,11 @@ const ThrowError = ({ error }: { error: unknown }) => {
 };
 
 const InnerRouter = ({
-  actionRouting,
+  serverFunctionRouting,
   fallbackRoute,
   routeInterceptor,
 }: {
-  actionRouting: ActionRouting;
+  serverFunctionRouting: ServerFunctionRouting;
   fallbackRoute: RouteProps;
   routeInterceptor: ((route: RouteProps) => RouteProps | false) | undefined;
 }) => {
@@ -203,7 +203,12 @@ const InnerRouter = ({
     changeRoute,
     getElements,
     error: navigationError,
-  } = useNavigation(elements, fallbackRoute, routeInterceptor, actionRouting);
+  } = useNavigation(
+    elements,
+    fallbackRoute,
+    routeInterceptor,
+    serverFunctionRouting,
+  );
 
   const navigate = useCallback<RouterHost['navigate']>(
     (href, opts) => {
@@ -226,8 +231,8 @@ const InnerRouter = ({
   ) : (
     <Slot id={getRouteSlotId(currentRoute.path)} />
   );
-  // TODO a followable error thrown by the root layout, or by an action it
-  // calls, is not followed. The layout's own ErrorBoundary catches it first,
+  // TODO a followable error thrown by the root layout, or by a server function
+  // it calls, is not followed. The layout's own ErrorBoundary catches it first,
   // so wrapping this slot in another handler does not reach it
   const rootElement = (
     <Slot id="root">
@@ -248,19 +253,19 @@ const InnerRouter = ({
 };
 
 const EMPTY_RSC_ENHANCERS: readonly Unstable_RscEnhancer[] = [];
-const mountedActionRoutings: ActionRouting[] = [];
-const actionRoutingEnhancer: Unstable_RscEnhancer =
+const mountedServerFunctionRoutings: ServerFunctionRouting[] = [];
+const serverFunctionRoutingEnhancer: Unstable_RscEnhancer =
   (next) => (rscPath, rscParams, options) => {
     if (options.type !== 'call') {
       return next(rscPath, rscParams, options);
     }
-    const actionRouting = mountedActionRoutings.at(-1);
-    if (!actionRouting) {
+    const serverFunctionRouting = mountedServerFunctionRoutings.at(-1);
+    if (!serverFunctionRouting) {
       throw new Error(
-        'Action routing is not connected. Call mount-time actions from useEffect, not useLayoutEffect.',
+        'Server function routing is not connected. Call mount-time server functions from useEffect, not useLayoutEffect.',
       );
     }
-    return actionRouting.enhancer(next)(rscPath, rscParams, options);
+    return serverFunctionRouting.enhancer(next)(rscPath, rscParams, options);
   };
 const routerRscEnhancers = new WeakMap<
   readonly Unstable_RscEnhancer[],
@@ -270,7 +275,11 @@ const routerRscEnhancers = new WeakMap<
 const getRouterRscEnhancers = (enhancers: readonly Unstable_RscEnhancer[]) => {
   let pipeline = routerRscEnhancers.get(enhancers);
   if (!pipeline) {
-    pipeline = [...enhancers, serverRedirectEnhancer, actionRoutingEnhancer];
+    pipeline = [
+      ...enhancers,
+      serverRedirectEnhancer,
+      serverFunctionRoutingEnhancer,
+    ];
     routerRscEnhancers.set(enhancers, pipeline);
   }
   return pipeline;
@@ -279,8 +288,8 @@ const getRouterRscEnhancers = (enhancers: readonly Unstable_RscEnhancer[]) => {
 /**
  * Client router root. Each instance provides navigation state to its
  * descendants. Instances can start from different `initialRoute` values, but
- * navigation uses the document's shared URL and history. Server action
- * requests use the most recently mounted Minimal Root. `initialRoute` defaults
+ * navigation uses the document's shared URL and history. Server function
+ * calls use the most recently mounted Minimal Root. `initialRoute` defaults
  * to the current browser location.
  */
 export function Router({
@@ -293,7 +302,7 @@ export function Router({
    * Initial input and transport enhancers, last entry outermost. Snapshotted
    * once per mount; keep the array reference stable across renders, including
    * initial Suspense retries. Create it before rendering React and remount to
-   * change it with a new array. Router redirect and action routing wrap this
+   * change it with a new array. Router redirect and server function routing wrap this
    * list, so result caches here do not retain their reconciled metadata.
    */
   unstable_rscEnhancers?: readonly Unstable_RscEnhancer[];
@@ -305,19 +314,19 @@ export function Router({
    */
   unstable_routeInterceptor?: (route: RouteProps) => RouteProps | false;
 }) {
-  const [actionRouting] = useState(createActionRouting);
+  const [serverFunctionRouting] = useState(createServerFunctionRouting);
   const [rscEnhancers] = useState(() =>
     getRouterRscEnhancers(unstable_rscEnhancers),
   );
   useLayoutEffect(() => {
-    mountedActionRoutings.push(actionRouting);
+    mountedServerFunctionRoutings.push(serverFunctionRouting);
     return () => {
-      mountedActionRoutings.splice(
-        mountedActionRoutings.lastIndexOf(actionRouting),
+      mountedServerFunctionRoutings.splice(
+        mountedServerFunctionRoutings.lastIndexOf(serverFunctionRouting),
         1,
       );
     };
-  }, [actionRouting]);
+  }, [serverFunctionRouting]);
   const initialRscPath = encodeRoutePath(initialRoute.path);
   const initialRscParams = useInitialRscParams(
     initialRscPath,
@@ -331,7 +340,7 @@ export function Router({
     >
       <MissingRouteHandler>
         <InnerRouter
-          actionRouting={actionRouting}
+          serverFunctionRouting={serverFunctionRouting}
           fallbackRoute={initialRoute}
           routeInterceptor={unstable_routeInterceptor}
         />

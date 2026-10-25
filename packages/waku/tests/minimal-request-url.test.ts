@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  encodeFuncId,
   encodeRscPath,
+  encodeServerFunctionId,
 } from '../src/lib/utils-isomorphic/rsc-path.js';
 import {
   unstable_formatRscUrl as formatRscUrl,
@@ -56,7 +56,7 @@ describe('Minimal request URLs', () => {
 
   test('server-call URLs are distinct from payload URLs', () => {
     const url = formatRscUrl(
-      encodeFuncId('src/actions.ts#save'),
+      encodeServerFunctionId('src/actions.ts#save'),
       'https://example.com/',
     );
     expect(parseRequest(new Request(url))).toEqual({ type: 'call' });

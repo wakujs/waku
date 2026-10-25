@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  encodeFuncId,
   encodeRscPath,
+  encodeServerFunctionId,
 } from '../src/lib/utils-isomorphic/rsc-path.js';
 import {
   encodeRoutePath,
@@ -94,11 +94,11 @@ describe('parseRouterRequest', () => {
     expect(parseRouterRequest(req(url))).toMatchObject({ query: '' });
   });
 
-  it('reports a server action as an action, with no route', () => {
+  it('reports a server function call with no route', () => {
     const url =
       'http://localhost/RSC/' +
-      encodeRscPath(encodeFuncId('src/actions.ts#deleteInvoice'));
-    expect(parseRouterRequest(req(url))).toEqual({ type: 'action' });
+      encodeRscPath(encodeServerFunctionId('src/actions.ts#deleteInvoice'));
+    expect(parseRouterRequest(req(url))).toEqual({ type: 'call' });
   });
 
   it('reports a slice request', () => {
@@ -236,9 +236,10 @@ describe('formatRouterRequest', () => {
     ).toBe('/app/new');
   });
 
-  it('returns null for an action, which has no route to rewrite', () => {
+  it('returns null for a server function call, which has no route to rewrite', () => {
     const url =
-      'http://localhost/RSC/' + encodeRscPath(encodeFuncId('src/a.ts#go'));
+      'http://localhost/RSC/' +
+      encodeRscPath(encodeServerFunctionId('src/a.ts#go'));
     expect(formatRouterRequest(req(url), '/new')).toBeNull();
   });
 });

@@ -25,7 +25,7 @@ In short: **static at build time, fresh at request time, cache explicitly.**
 The result is a simple render model. Code runs in one of three places, and every piece of the app clearly belongs to one of them:
 
 1. **At build time.** Static pages and layouts execute once during the production build.
-2. **On the server, per request.** Dynamic pages and layouts, server actions, and API routes.
+2. **On the server, per request.** Dynamic pages and layouts, server functions, and API routes.
 3. **In the browser.** Client components (which also render once on the server to produce the initial HTML).
 
 Because the model is small, you rarely have to ask "when does this code actually run?" The answer is in the file you are looking at.
