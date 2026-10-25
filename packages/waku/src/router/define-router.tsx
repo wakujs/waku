@@ -24,12 +24,7 @@ import type { NavigationHref } from './isomorphic-utils/build-route-href.js';
 import { pathnameToRoutePath } from './isomorphic-utils/route-path.js';
 import { encodeRoutePath } from './isomorphic-utils/router-protocol.js';
 
-export {
-  getRequest,
-  getRscPath as unstable_getRscPath,
-  getRscParams as unstable_getRscParams,
-  setNonce as unstable_setNonce,
-};
+export { getRequest, getRscPath, getRscParams, setNonce };
 export type { HandlerInterceptor };
 
 const encodePathname = (pathname: string) => {
@@ -45,15 +40,15 @@ const encodePathname = (pathname: string) => {
  * Renders the route the current server function was called from into its
  * response. The client drops it if the user has left that route by then.
  */
-export function unstable_rerenderRoute(): void;
+export function rerenderRoute(): void;
 /**
  * Renders a route into the response of the current server function. `pathname`
  * is serialized as a URL pathname, so dot segments are resolved and unescaped
  * non-ASCII characters are percent-encoded. `query` is the search string
  * without `?`, serialized as URL search params, so `q=a b` becomes `q=a+b`.
  */
-export function unstable_rerenderRoute(pathname: string, query?: string): void;
-export function unstable_rerenderRoute(pathname?: string, query?: string) {
+export function rerenderRoute(pathname: string, query?: string): void;
+export function rerenderRoute(pathname?: string, query?: string) {
   if (pathname === undefined) {
     getRerender()();
     return;
@@ -68,7 +63,7 @@ export function unstable_rerenderRoute(pathname?: string, query?: string) {
   );
 }
 
-export function unstable_notFound(): never {
+export function notFound(): never {
   throw createCustomError('Not Found', { status: 404 });
 }
 
@@ -81,7 +76,7 @@ export function unstable_notFound(): never {
  * followed by the browser, which resends the body on 307 and 308, so those
  * answer 303 instead.
  */
-export function unstable_redirect(
+export function redirect(
   to: NavigationHref | `http://${string}` | `https://${string}` | URL,
   status: 303 | 307 | 308 = 307,
 ): never {
@@ -151,7 +146,7 @@ type RouterOptions = {
  * Immutable sources must render the same content for the lifetime of their ID
  * or explicit cache key. Use a bounded set of keys, not arbitrary request paths.
  */
-export function unstable_defineRouter(fns: RouterOptions): Handlers {
+export function defineRouter(fns: RouterOptions): Handlers {
   const routeEntries = createRouteEntries(
     fns.resolve,
     fns.resolveElement,

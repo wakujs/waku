@@ -1,12 +1,12 @@
 export {
-  unstable_defineRouter,
+  defineRouter as unstable_defineRouter,
   getRequest,
-  unstable_getRscPath,
-  unstable_getRscParams,
-  unstable_rerenderRoute,
-  unstable_setNonce,
-  unstable_notFound,
-  unstable_redirect,
+  getRscPath as unstable_getRscPath,
+  getRscParams as unstable_getRscParams,
+  rerenderRoute as unstable_rerenderRoute,
+  setNonce as unstable_setNonce,
+  notFound as unstable_notFound,
+  redirect as unstable_redirect,
 } from './define-router.js';
 export type { HandlerInterceptor } from './define-router.js';
 export { createPages } from './create-pages.js';

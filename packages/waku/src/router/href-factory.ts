@@ -3,7 +3,7 @@ import {
   type ConstructedHref,
   buildRouteHref,
 } from './isomorphic-utils/build-route-href.js';
-import type { Unstable_SearchCodec } from './isomorphic-utils/search-codec.js';
+import type { SearchCodec } from './isomorphic-utils/search-codec.js';
 
 type HrefTarget<Path extends string, Search> = {
   hash?: string;
@@ -32,7 +32,7 @@ type RouteHrefFactory<
   readonly path: Path;
 } & ([Search] extends [never]
   ? { readonly searchCodec?: never }
-  : { readonly searchCodec: Unstable_SearchCodec<Search> });
+  : { readonly searchCodec: SearchCodec<Search> });
 
 /**
  * Bind a route pattern and optional search codec. Calling the factory encodes
@@ -55,7 +55,7 @@ type RouteHrefFactory<
  * const href = product({ params: { id: '42' }, search: { page: 2 } });
  * // <Link to={href}>Product</Link>
  */
-export function unstable_createRouteHref<
+export function createRouteHref<
   const Path extends string,
   Search extends Record<string, unknown> = never,
 >({
@@ -63,10 +63,10 @@ export function unstable_createRouteHref<
   search,
 }: {
   path: Path;
-  search?: Unstable_SearchCodec<Search>;
+  search?: SearchCodec<Search>;
 } & ([Search] extends [never]
   ? unknown
-  : { search: Unstable_SearchCodec<Search> })): RouteHrefFactory<Path, Search> {
+  : { search: SearchCodec<Search> })): RouteHrefFactory<Path, Search> {
   const factory = Object.assign(
     (target?: HrefTarget<Path, Search>) => {
       const pathname = buildRouteHref(path, target?.params);

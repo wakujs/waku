@@ -46,13 +46,16 @@ import {
 } from './isomorphic-utils/router-protocol.js';
 
 export { ErrorBoundary } from './client-core-utils/error-boundary.js';
-export { useParams_UNSTABLE } from './client-core-utils/route-hooks.js';
+export { useParams as useParams_UNSTABLE } from './client-core-utils/route-hooks.js';
 export {
-  useSearch_UNSTABLE,
-  useSetSearch_UNSTABLE,
+  useSearch as useSearch_UNSTABLE,
+  useSetSearch as useSetSearch_UNSTABLE,
 } from './client-core-utils/search.js';
 export { Slice } from './client-core-utils/slice.js';
-export { Link, useNavigationStatus_UNSTABLE } from './client-utils/link.js';
+export {
+  Link,
+  useNavigationStatus as useNavigationStatus_UNSTABLE,
+} from './client-utils/link.js';
 export type { LinkProps } from './client-utils/link.js';
 
 type NavigateOptions = {

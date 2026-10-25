@@ -1,11 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { getErrorInfo } from '../src/lib/utils-isomorphic/custom-errors.js';
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
-import {
-  unstable_redirect,
-  unstable_rerenderRoute,
-} from '../src/router/define-router.js';
-import { unstable_createRouteHref } from '../src/router/href-factory.js';
+import { redirect, rerenderRoute } from '../src/router/define-router.js';
+import { createRouteHref } from '../src/router/href-factory.js';
 import {
   ROUTE_ID,
   encodeRoutePath,
@@ -187,7 +184,7 @@ describe('define-router action requests', () => {
         type: 'http',
         tryAction: async () => {
           message = 'after';
-          unstable_rerenderRoute('/');
+          rerenderRoute('/');
           return { action: true as const, formState: 'form-state' };
         },
         pathname: '/',
@@ -243,7 +240,7 @@ describe('define-router action requests', () => {
         type: 'http',
         tryAction: async () => {
           message = 'after';
-          unstable_rerenderRoute();
+          rerenderRoute();
           return { action: true as const, formState: 'form-state' };
         },
         pathname: '/form',
@@ -297,7 +294,7 @@ describe('define-router action requests', () => {
         type: 'http',
         tryAction: async () => {
           message = 'after';
-          unstable_rerenderRoute('/');
+          rerenderRoute('/');
           return { action: true as const, formState: 'form-state' };
         },
         pathname: '/',
@@ -358,7 +355,7 @@ describe('define-router action requests', () => {
       {
         type: 'call',
         pathname: '/RSC/F/actions/submit.txt',
-        fn: async () => unstable_rerenderRoute(pathname),
+        fn: async () => rerenderRoute(pathname),
         args: [],
         req: new Request('http://localhost/RSC/F/actions/submit.txt', {
           method: 'POST',
@@ -382,9 +379,7 @@ describe('define-router action requests', () => {
   });
 
   it('rejects a relative pathname to rerender', () => {
-    expect(() => unstable_rerenderRoute('a')).toThrow(
-      'Pathname must start with `/`',
-    );
+    expect(() => rerenderRoute('a')).toThrow('Pathname must start with `/`');
   });
 
   it.each([
@@ -410,7 +405,7 @@ describe('define-router action requests', () => {
       {
         type: 'call',
         pathname: '/RSC/F/actions/submit.txt',
-        fn: async () => unstable_rerenderRoute('/search', query),
+        fn: async () => rerenderRoute('/search', query),
         args: [],
         req: new Request('http://localhost/RSC/F/actions/submit.txt', {
           method: 'POST',
@@ -472,11 +467,9 @@ describe('define-router action requests', () => {
 });
 
 describe('unstable_redirect', () => {
-  const getRedirectInfo = (
-    location: Parameters<typeof unstable_redirect>[0],
-  ) => {
+  const getRedirectInfo = (location: Parameters<typeof redirect>[0]) => {
     try {
-      unstable_redirect(location, 303);
+      redirect(location, 303);
     } catch (e) {
       return getErrorInfo(e);
     }
@@ -498,7 +491,7 @@ describe('unstable_redirect', () => {
 
   it('accepts a backslash the url parser keeps in a query', () => {
     try {
-      unstable_redirect(new URL('https://example.com/s?q=a\\b'), 303);
+      redirect(new URL('https://example.com/s?q=a\\b'), 303);
     } catch (e) {
       expect(getErrorInfo(e)).toEqual({
         status: 303,
@@ -510,7 +503,7 @@ describe('unstable_redirect', () => {
   it('does not carry credentials into the error it throws', () => {
     // a redirect thrown mid stream reaches the client as this digest
     try {
-      unstable_redirect(new URL('https://user:pw@other.example/x'), 303);
+      redirect(new URL('https://user:pw@other.example/x'), 303);
     } catch (e) {
       expect(getErrorInfo(e)).toEqual({
         status: 303,
@@ -521,7 +514,7 @@ describe('unstable_redirect', () => {
 
   it('accepts a URL target', () => {
     try {
-      unstable_redirect(new URL('https://example.com/next?a=1'), 303);
+      redirect(new URL('https://example.com/next?a=1'), 303);
     } catch (e) {
       expect(getErrorInfo(e)).toEqual({
         status: 303,
@@ -539,13 +532,11 @@ describe('unstable_redirect', () => {
     'https://',
     'https://[',
   ])('rejects invalid redirect location %s', (location) => {
-    expect(() => unstable_redirect(location)).toThrow(
-      'Invalid redirect location',
-    );
+    expect(() => redirect(location)).toThrow('Invalid redirect location');
   });
 
   it('redirects to an eagerly built href with encoded params', () => {
-    const post = unstable_createRouteHref({ path: '/posts/[id]' });
+    const post = createRouteHref({ path: '/posts/[id]' });
     expect(getRedirectInfo(post({ params: { id: 'hello world' } }))).toEqual({
       status: 303,
       location: '/posts/hello%20world',

@@ -15,7 +15,7 @@ import {
   parseClientEtags,
 } from '../src/lib/utils-isomorphic/etags.js';
 import { createRenderUtils } from '../src/lib/utils-server/render.js';
-import { unstable_callServerRsc as callServerRsc } from '../src/minimal/client-runtime.js';
+import { callServerRsc } from '../src/minimal/client-runtime.js';
 import { clearInitialRscEntries } from '../src/minimal/client-utils/initial-rsc-store.js';
 import {
   Root_UNSTABLE as Root,

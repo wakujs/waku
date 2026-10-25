@@ -11,7 +11,7 @@ import type { FetchRsc } from '../src/router/client-core-utils/caches.js';
 import { RouterContext } from '../src/router/client-utils/router-context.js';
 import type { ChangeRoute } from '../src/router/client-utils/router-context.js';
 import { Link, useRouter } from '../src/router/client.js';
-import { unstable_createRouteHref } from '../src/router/href-factory.js';
+import { createRouteHref } from '../src/router/href-factory.js';
 import { encodeRoutePath } from '../src/router/isomorphic-utils/router-protocol.js';
 
 const href = '/artifacts/a%20b%2Fc?download=1#details';
@@ -20,7 +20,7 @@ const route = {
   query: 'download=1',
   hash: '#details',
 };
-const artifact = unstable_createRouteHref({
+const artifact = createRouteHref({
   path: '/artifacts/[id]',
   search: {
     parse: (query: string) => ({

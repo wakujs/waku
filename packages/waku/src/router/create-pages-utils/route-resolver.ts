@@ -1,5 +1,5 @@
 import type { Unstable_ElementSource as ElementSource } from 'waku/minimal/server';
-import type { unstable_defineRouter } from '../define-router.js';
+import type { defineRouter } from '../define-router.js';
 import { getPathMapping } from '../isomorphic-utils/path-spec.js';
 import {
   getSliceSlotId,
@@ -9,7 +9,7 @@ import type { ConfigRegistry } from './config-registry.js';
 import type { RendererOption, RouteConfig } from './config.js';
 import { getPathSpecCacheId } from './element-ids.js';
 
-type Resolve = Parameters<typeof unstable_defineRouter>[0]['resolve'];
+type Resolve = Parameters<typeof defineRouter>[0]['resolve'];
 type RouterDefinition = Extract<
   Awaited<ReturnType<Resolve>>,
   { elements: unknown }

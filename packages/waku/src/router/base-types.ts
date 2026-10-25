@@ -15,8 +15,8 @@ export type {
   GetConfigResponse,
   SearchCodecsForPages,
 } from './create-pages-utils/inferred-path-types.js';
-export type { Unstable_SearchCodec } from './isomorphic-utils/search-codec.js';
-export { unstable_createRouteHref } from './href-factory.js';
+export type { SearchCodec as Unstable_SearchCodec } from './isomorphic-utils/search-codec.js';
+export { createRouteHref as unstable_createRouteHref } from './href-factory.js';
 
 export interface RouteConfig {
   // routes to be overridden by users

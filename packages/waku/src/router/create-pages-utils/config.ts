@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
-import type { unstable_defineRouter } from '../define-router.js';
+import type { defineRouter } from '../define-router.js';
 import {
   type PathSpec,
   pathSpecAsString,
 } from '../isomorphic-utils/path-spec.js';
-import type { Unstable_SearchCodec } from '../isomorphic-utils/search-codec.js';
+import type { SearchCodec } from '../isomorphic-utils/search-codec.js';
 
 export type ApiHandler = (
   req: Request,
@@ -12,7 +12,7 @@ export type ApiHandler = (
 ) => Promise<Response>;
 
 export type HandlerInterceptor = NonNullable<
-  Parameters<typeof unstable_defineRouter>[0]['unstable_interceptors']
+  Parameters<typeof defineRouter>[0]['unstable_interceptors']
 >[number];
 
 export type SlotId = string;
@@ -53,7 +53,7 @@ export type RouteConfig = {
   >;
   noSsr?: boolean;
   slices?: string[];
-  searchCodec?: Unstable_SearchCodec<any>;
+  searchCodec?: SearchCodec<any>;
 };
 
 type ApiConfig = {

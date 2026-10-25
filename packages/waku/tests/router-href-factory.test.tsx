@@ -16,13 +16,13 @@ import {
 import { RouterHostContext } from '../src/router/client-core-utils/host.js';
 import type { RouterHost } from '../src/router/client-core-utils/host.js';
 import {
-  useSearch_UNSTABLE,
-  useSetSearch_UNSTABLE,
+  useSearch,
+  useSetSearch,
 } from '../src/router/client-core-utils/search.js';
-import { unstable_createRouteHref } from '../src/router/href-factory.js';
+import { createRouteHref } from '../src/router/href-factory.js';
 
 type Search = { page: number; tag: string };
-type SetSearch = ReturnType<typeof useSetSearch_UNSTABLE<string, Search>>;
+type SetSearch = ReturnType<typeof useSetSearch<string, Search>>;
 
 const codec = {
   parse: (query: string): Search => {
@@ -40,7 +40,7 @@ const codec = {
     }).toString(),
 };
 
-const product = unstable_createRouteHref({
+const product = createRouteHref({
   path: '/products/[id]',
   search: codec,
 });
@@ -58,7 +58,7 @@ describe('locally typed href factories', () => {
   test('serializes eagerly without parsing, returning a primitive href', () => {
     const parse = vi.fn(codec.parse);
     const serialize = vi.fn(codec.serialize);
-    const route = unstable_createRouteHref({
+    const route = createRouteHref({
       path: '/products/[id]',
       search: { parse, serialize },
     });
@@ -83,7 +83,7 @@ describe('locally typed href factories', () => {
       throw new Error('Missing page');
     });
     const serialize = vi.fn(codec.serialize);
-    const required = unstable_createRouteHref({
+    const required = createRouteHref({
       path: '/required',
       search: { parse, serialize },
     });
@@ -93,29 +93,29 @@ describe('locally typed href factories', () => {
   });
 
   test('builds parameter-only routes without a codec', () => {
-    const post = unstable_createRouteHref({ path: '/posts/[id]' });
+    const post = createRouteHref({ path: '/posts/[id]' });
     expect(post({ params: { id: 'a b' }, hash: 'comments' })).toBe(
       '/posts/a%20b#comments',
     );
-    const home = unstable_createRouteHref({ path: '/' });
+    const home = createRouteHref({ path: '/' });
     expect(home({})).toBe('/');
     expect(post.searchCodec).toBeUndefined();
     expect(home()).toBe('/');
   });
 
   test('normalizes empty and group segments before constructing the href', () => {
-    const about = unstable_createRouteHref({
+    const about = createRouteHref({
       path: '/(site)//about/(details)/',
     });
     expect(about({})).toBe('/about');
-    const docs = unstable_createRouteHref({
+    const docs = createRouteHref({
       path: '/docs/[...parts]/overview',
     });
     expect(docs({ params: { parts: [] } })).toBe('/docs/overview');
   });
 
   test('preserves group, slug, and catch-all matcher checks', () => {
-    const route = unstable_createRouteHref({
+    const route = createRouteHref({
       path: '/(catalog)/@[name]/[...parts]',
       search: codec,
     });
@@ -129,7 +129,7 @@ describe('locally typed href factories', () => {
     expect(() => product({})).toThrow(/Missing param/);
     // @ts-expect-error runtime callers can supply a non-string slug
     expect(() => product({ params: { id: 42 } })).toThrow(/Missing param/);
-    const root = unstable_createRouteHref({
+    const root = createRouteHref({
       path: '/[...parts]',
       search: codec,
     });
@@ -137,14 +137,14 @@ describe('locally typed href factories', () => {
   });
 
   test('rejects empty catch-all members that would produce a scheme-relative href', () => {
-    const route = unstable_createRouteHref({ path: '/[...parts]' });
+    const route = createRouteHref({ path: '/[...parts]' });
     expect(() => route({ params: { parts: ['', 'evil.example'] } })).toThrow(
       /catch-all param/,
     );
   });
 
   test('rejects empty catch-all members within a prefixed route', () => {
-    const docs = unstable_createRouteHref({ path: '/docs/[...parts]' });
+    const docs = createRouteHref({ path: '/docs/[...parts]' });
     expect(() =>
       docs({ params: { parts: ['guides', '', 'routing'] } }),
     ).toThrow(/catch-all param/);
@@ -152,7 +152,7 @@ describe('locally typed href factories', () => {
 
   test('leaves raw-input validation to the serializer', () => {
     const parse = vi.fn(codec.parse);
-    const lossy = unstable_createRouteHref({
+    const lossy = createRouteHref({
       path: '/lossy',
       search: {
         parse,
@@ -168,7 +168,7 @@ describe('locally typed href factories', () => {
       '/lossy?page=1&tag=',
     );
     expect(parse).not.toHaveBeenCalled();
-    const strict = unstable_createRouteHref({
+    const strict = createRouteHref({
       path: '/strict',
       search: {
         ...codec,
@@ -187,15 +187,15 @@ describe('locally typed href factories', () => {
   });
 
   test('rejects completed dot segments without rejecting encoded or prefixed values', () => {
-    const post = unstable_createRouteHref({ path: '/products/[id]' });
-    const docs = unstable_createRouteHref({ path: '/docs/[...parts]' });
+    const post = createRouteHref({ path: '/products/[id]' });
+    const docs = createRouteHref({ path: '/docs/[...parts]' });
     for (const id of ['.', '..']) {
       expect(() => post({ params: { id } })).toThrow(/dot-segment/);
       expect(() => docs({ params: { parts: ['a', id, 'b'] } })).toThrow(
         /dot-segment/,
       );
     }
-    const prefixed = unstable_createRouteHref({ path: '/@[id]' });
+    const prefixed = createRouteHref({ path: '/@[id]' });
     expect(prefixed({ params: { id: '..' } })).toBe('/@..');
     for (const id of ['a/..', '%2e%2e', 'a.b']) {
       const href = post({ params: { id } });
@@ -205,7 +205,7 @@ describe('locally typed href factories', () => {
 
   test('preserves serialized encoding without parsing or applying defaults', () => {
     const parse = vi.fn(codec.parse);
-    const route = unstable_createRouteHref({
+    const route = createRouteHref({
       path: '/query',
       search: { parse, serialize: () => 'tag=a%20b' },
     });
@@ -261,11 +261,11 @@ describe('typed search over RouterHost', () => {
     let search: Search | null = null;
     let setSearch!: SetSearch;
     const Probe = ({ codec = searchCodec }) => {
-      search = useSearch_UNSTABLE({
+      search = useSearch({
         path: '/products/[id]',
         searchCodec: codec,
       });
-      setSearch = useSetSearch_UNSTABLE({
+      setSearch = useSetSearch({
         path: '/products/[id]',
         searchCodec: codec,
       });
@@ -313,8 +313,8 @@ describe('typed search over RouterHost', () => {
     let search: Search | null = null;
     let setSearch!: SetSearch;
     const Probe = () => {
-      search = useSearch_UNSTABLE(route);
-      setSearch = useSetSearch_UNSTABLE(route);
+      search = useSearch(route);
+      setSearch = useSetSearch(route);
       return null;
     };
     await render(
@@ -351,8 +351,8 @@ describe('typed search over RouterHost', () => {
     let search: Search | null = null;
     let setSearch!: SetSearch;
     const Probe = () => {
-      search = useSearch_UNSTABLE(product);
-      setSearch = useSetSearch_UNSTABLE(product);
+      search = useSearch(product);
+      setSearch = useSetSearch(product);
       return null;
     };
     const rerender = await render(
@@ -386,7 +386,7 @@ describe('typed search over RouterHost', () => {
 
   test('returns null and does not parse or update on a mismatched path', async () => {
     const parse = vi.fn(codec.parse);
-    const route = unstable_createRouteHref({
+    const route = createRouteHref({
       path: '/products/[id]',
       search: { ...codec, parse },
     });
@@ -394,8 +394,8 @@ describe('typed search over RouterHost', () => {
     let search: Search | null = null;
     let setSearch!: SetSearch;
     const Probe = () => {
-      search = useSearch_UNSTABLE(route);
-      setSearch = useSetSearch_UNSTABLE(route);
+      search = useSearch(route);
+      setSearch = useSetSearch(route);
       return null;
     };
     await render(
@@ -417,7 +417,7 @@ describe('typed search over RouterHost', () => {
   });
 
   test('propagates serializer and navigation errors', async () => {
-    const strictProduct = unstable_createRouteHref({
+    const strictProduct = createRouteHref({
       path: '/products/[id]',
       search: {
         ...codec,
@@ -432,7 +432,7 @@ describe('typed search over RouterHost', () => {
     const navigate = vi.fn<RouterHost['navigate']>().mockResolvedValue();
     let setSearch!: SetSearch;
     const Probe = () => {
-      setSearch = useSetSearch_UNSTABLE(strictProduct);
+      setSearch = useSetSearch(strictProduct);
       return null;
     };
     await render(
@@ -453,14 +453,14 @@ describe('typed search over RouterHost', () => {
 
   test("parses the current query but not a parse-only codec's serialized update", async () => {
     const parse = vi.fn(codec.parse);
-    const route = unstable_createRouteHref({
+    const route = createRouteHref({
       path: '/products/[id]',
       search: { ...codec, parse },
     });
     const navigate = vi.fn<RouterHost['navigate']>().mockResolvedValue();
     let setSearch!: SetSearch;
     const Probe = () => {
-      setSearch = useSetSearch_UNSTABLE(route);
+      setSearch = useSetSearch(route);
       return null;
     };
     await render(
@@ -485,8 +485,8 @@ describe('typed search over RouterHost', () => {
     const searches: (Search | null)[] = [];
     const setters: SetSearch[] = [];
     const Probe = ({ index }: { index: number }) => {
-      searches[index] = useSearch_UNSTABLE(product);
-      setters[index] = useSetSearch_UNSTABLE(product);
+      searches[index] = useSearch(product);
+      setters[index] = useSetSearch(product);
       return null;
     };
     const first = vi.fn<RouterHost['navigate']>().mockResolvedValue();

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Unstable_RenderHtml } from '../src/lib/types.js';
+import type { RenderHtml } from '../src/lib/types.js';
 import {
   unstable_createCustomError,
   unstable_getErrorInfo,
@@ -36,9 +36,7 @@ const makeStream = () =>
 const makeUtils = (loadBuildMetadata = vi.fn()) => ({
   renderRsc: vi.fn().mockResolvedValue(makeStream()),
   parseRsc: vi.fn(),
-  renderHtml: vi
-    .fn<Unstable_RenderHtml>()
-    .mockResolvedValue(new Response('ok')),
+  renderHtml: vi.fn<RenderHtml>().mockResolvedValue(new Response('ok')),
   loadBuildMetadata,
   renderHtmlFallback: vi.fn(async () => new Response('fallback')),
 });
