@@ -24,12 +24,12 @@ function createFlightRecordScanner(
   let remaining = 0;
   const scratch = new Uint8Array(MARKER_BODY_LENGTH + 1);
   let row: true | { id: string; header: Uint8Array; size: number } | undefined;
-  const isAtBoundary = () =>
-    !buffered.length && !remaining && row === undefined;
   return {
-    isAtBoundary,
+    isOutputAtBoundary() {
+      return !remaining && row !== true;
+    },
     end() {
-      if (!isAtBoundary()) {
+      if (buffered.length || remaining || row !== undefined) {
         throw new Error('Truncated Flight record');
       }
     },
@@ -228,7 +228,7 @@ export function renderWithWeakPromises(
         for (const [state, entry] of entriesByState) {
           entry.unsubscribe = state.subscribe(() => {
             try {
-              if (records.isAtBoundary()) {
+              if (records.isOutputAtBoundary()) {
                 flush();
               }
             } catch (error) {

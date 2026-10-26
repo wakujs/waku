@@ -37,11 +37,13 @@ pnpm -F waku test:weak-promise
 
 The RSC probe checks native streaming, early and late intents, first resolution,
 ordinary async dependencies, streams/iterators, binary fragmentation, aliases,
-shared producers, request isolation, cancellation, and transport failure. Its expected absence
-behavior follows the pinned runtime. The experimental reference retains a
-pending weak promise on EOF or failure; the stable fallback returns undefined
-on ordinary stream completion and rejects an unpublished reference on transport
-failure or request abort.
+shared producers, request isolation, cancellation, and transport failure. Its
+expected absence behavior follows the pinned runtime. The experimental reference
+retains a pending weak promise on EOF or failure; the stable fallback returns
+undefined on ordinary stream completion and rejects an unpublished reference on
+transport failure. Production-path probes use `createRenderUtils` to verify EOF
+and transport cancellation. The direct-filter request-abort probe supplies an
+additional signal; `renderRsc` itself has no signal option.
 
 The SSR probe runs the RSC renderer in a separate process with the `react-server`
 condition. The parent uses the matched React DOM server and Flight decoder with

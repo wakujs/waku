@@ -646,6 +646,47 @@ await scenario(
   },
 );
 
+await scenario(
+  'Minimal renderRsc preserves weak semantics on transport cancellation',
+  async () => {
+    const { createRenderUtils } = await import(
+      sourceRoot + 'lib/utils-server/render.ts'
+    );
+    const weak = createWeakPromise();
+    const gate = Promise.withResolvers();
+    const render = createRenderUtils({
+      renderToReadableStream: (data, renderOptions) =>
+        server.renderToReadableStream(data, {}, renderOptions),
+      temporaryReferences: undefined,
+      buildId: '',
+      onError: () => 'minimal-probe-error',
+      loadSsrEntryModule: async () => {
+        throw new Error('unused');
+      },
+    });
+    const abort = new AbortController();
+    const stream = await render.renderRsc({
+      INTENT: weak.promise,
+      ordinary: gate.promise,
+    });
+    const transport = stream.pipeThrough(new TransformStream(), {
+      signal: abort.signal,
+    });
+    const root = await client.createFromReadableStream(transport, options);
+    const ordinaryRejection = assert.rejects(
+      Promise.resolve(root.ordinary),
+      /transport disconnected/,
+    );
+    abort.abort(new Error('transport disconnected'));
+    await ordinaryRejection;
+    assert.equal(
+      await state(root.INTENT),
+      mode === 'native' ? 'pending' : 'rejected',
+    );
+    gate.resolve();
+  },
+);
+
 console.log(
   JSON.stringify(
     { mode, versions, nodeEnv: process.env.NODE_ENV, results },

@@ -164,6 +164,36 @@ test('resolution at a boundary publishes while the source is idle', async () => 
   expect((await reader.read()).done).toBe(true);
 });
 
+test.each(['2:', '2:o4', '2:{"value":"'])(
+  'weak publication precedes a buffered partial record: %s',
+  async (prefix) => {
+    const weak = createWeakPromise();
+    const { source, markers, output } = controlledRender({
+      INTENT: weak.promise,
+    });
+    const root = '0:{"INTENT":"$@1"}\n';
+    source.enqueue(
+      encoder.encode('1:' + JSON.stringify(await markers.INTENT) + '\n' + root),
+    );
+    const reader = output.getReader();
+    expect(new TextDecoder().decode((await reader.read()).value)).toBe(root);
+    const published = vi.fn();
+    const publication = reader
+      .read()
+      .then((part) => published(new TextDecoder().decode(part.value)));
+    try {
+      source.enqueue(encoder.encode(prefix));
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      weak.resolve('late');
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(published).toHaveBeenCalledExactlyOnceWith('1:"late"\n');
+    } finally {
+      await reader.cancel();
+      await publication;
+    }
+  },
+);
+
 test('one-byte chunks preserve UTF-8, binary, aliases and unused EOF completion', async () => {
   const resolved = createWeakPromise();
   const unused = createWeakPromise();
