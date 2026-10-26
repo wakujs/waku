@@ -86,7 +86,7 @@ test.describe('weak promises', () => {
       'data-hydrated',
       'true',
     );
-    // eslint-disable-next-line playwright/no-force-option -- Assert hydration before completing the streamed document.
+    // eslint-disable-next-line playwright/no-force-option -- WebKit's stability check stalls while the document response is open.
     await page.getByTestId('weak-counter').click({ force: true });
     await expect(page.getByTestId('weak-counter')).toHaveText('1');
     const release = await request.get(
