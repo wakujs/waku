@@ -369,6 +369,10 @@ for a successful content commit and render the error rather than an unfetched
 slot. A boundary handles initial HTTP 404s; application error boundaries handle
 ordinary render errors, and Minimal's Slot boundary handles render cancellation.
 
+An empty RSC response applies no updates. Ordinary navigation preserves its
+current view and URL. Cancellation after an instant shell commits keeps that
+shell and destination URL; waiting slots settle to their retained values.
+
 Router's `useMergeInstantElements` owns the eager rendering policy. It uses
 Minimal's merge callback to retain pinned slots, wait on the response for other
 slots, and include cached immutable slots and client navigation intent. The

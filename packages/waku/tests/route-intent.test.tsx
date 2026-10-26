@@ -9,6 +9,7 @@ import { callServerRsc } from '../src/minimal/client-runtime.js';
 import { clearInitialRscEntries } from '../src/minimal/client-utils/initial-rsc-store.js';
 import {
   Children_UNSTABLE as Children,
+  Slot_UNSTABLE as Slot,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useFetchRsc_UNSTABLE as useFetchRsc,
   useMergeElements_UNSTABLE as useMergeElements,
@@ -1192,6 +1193,50 @@ test('an empty response leaves the current route and view unchanged', async () =
   mocks.queue.push(payload('/done'));
   await act(async () => {
     intent.resolve({ status: 307, location: '/done' });
+    await flush();
+  });
+  expect(window.location.pathname).toBe('/done');
+  expect(view.textContent).toContain('Page /done');
+});
+
+test('an empty response retains an already committed instant shell and settles its waiting slots', async () => {
+  mocks.queue.push({
+    ...payload('/one'),
+    [getRouteSlotId('/one')]: <Slot id="body" />,
+    [getRouteSlotId('/cancelled')]: (
+      <>
+        <h1>Cached destination shell</h1>
+        <Suspense fallback={<p>Waiting for response</p>}>
+          <Slot id="body" />
+        </Suspense>
+      </>
+    ),
+    body: <p>Active body</p>,
+    [ETAGS_ID]: { root: 1, [getRouteSlotId('/cancelled')]: 1 },
+  });
+  const view = await mount();
+  const response = defer<Elements>();
+  mocks.queue.push(response.promise);
+  let navigating!: Promise<void>;
+  await act(async () => {
+    navigating = controls.router.push('/cancelled', { unstable_instant: true });
+    await flush();
+  });
+  expect(window.location.pathname).toBe('/cancelled');
+  expect(view.textContent).toContain('Cached destination shell');
+  expect(view.textContent).toContain('Waiting for response');
+  await act(async () => {
+    response.resolve({});
+    await navigating;
+    await flush();
+  });
+  expect(window.location.pathname).toBe('/cancelled');
+  expect(view.textContent).toContain('Cached destination shell');
+  expect(view.textContent).toContain('Active body');
+  expect(view.textContent).not.toContain('Waiting for response');
+  mocks.queue.push(payload('/done'));
+  await act(async () => {
+    await controls.router.push('/done');
     await flush();
   });
   expect(window.location.pathname).toBe('/done');
