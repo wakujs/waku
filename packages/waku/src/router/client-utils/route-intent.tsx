@@ -139,15 +139,12 @@ export const RouteIntent = ({
     if (!getElements) {
       return;
     }
-    const unregister = cache.connectRouteIntentObserver((type, signal) => {
+    const unregister = cache.connectRouteIntentObserver((_type, signal) => {
       const scope = getRouterState(getElements());
       return (responseElements) => {
         const pending = responseElements[INTENT_ID] as
           PromiseLike<string | undefined> | undefined;
-        if (
-          !pending ||
-          (type !== 'call' && getRouteFromElements(responseElements))
-        ) {
+        if (!pending || getRouteFromElements(responseElements)) {
           return responseElements;
         }
         observeRouteIntent(pending, (outcome) => {

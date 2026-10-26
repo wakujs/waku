@@ -1,5 +1,6 @@
 import {
   unstable_cancelRender as cancelRender,
+  unstable_cancelRenderStream as cancelRenderStream,
   unstable_hasRenderCancellationDigest as hasRenderCancellationDigest,
   unstable_isRenderCancellation as isRenderCancellation,
 } from 'waku/minimal/server';
@@ -205,9 +206,11 @@ export function defineRouter(fns: RouterOptions): Handlers {
     const store: RouterStore = { req };
     return runWithRouterStore(store, async () => {
       let response: T;
+      let innerResponse: T | undefined;
       try {
         response = await (fns.unstable_interceptors ?? []).reduceRight(
-          (next, interceptor) => () => interceptor(next),
+          (next, interceptor) => () =>
+            interceptor(async () => (innerResponse = await next())),
           fn,
         )();
       } catch (error) {
@@ -217,7 +220,14 @@ export function defineRouter(fns: RouterOptions): Handlers {
         ) {
           throw error;
         }
-        return getRouteIntent().runInContext(() =>
+        void cancelRenderStream(
+          innerResponse instanceof Response
+            ? innerResponse.body
+            : innerResponse instanceof ReadableStream
+              ? innerResponse
+              : null,
+        )?.catch(() => {});
+        response = await getRouteIntent().runInContext(() =>
           runWithRouterStore(store, onCancel),
         );
       }

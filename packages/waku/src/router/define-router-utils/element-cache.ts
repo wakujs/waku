@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
 import type { Unstable_ElementSource as ElementSource } from 'waku/minimal/server';
-import { unstable_isRenderCancellation as isRenderCancellation } from 'waku/minimal/server';
+import {
+  unstable_hasRenderCancellationDigest as hasRenderCancellationDigest,
+  unstable_isRenderCancellation as isRenderCancellation,
+} from 'waku/minimal/server';
 import { deserializeRsc, serializeRsc } from 'waku/server';
 import type { RouteIntentData } from '../isomorphic-utils/router-protocol.js';
 import { captureRouteIntent, getRouteIntent } from './request-store.js';
@@ -46,13 +49,26 @@ export const createElementCache = (
         getRouteIntent().record(entry.intent);
       }
     },
-    get: (cacheId: CacheId) =>
-      cache.get(cacheId)?.then(({ result, intent }) => {
+    get: (cacheId: CacheId) => {
+      const entry = cache.get(cacheId);
+      return entry?.then(async ({ result, intent }) => {
         if (intent) {
           getRouteIntent().record(intent);
         }
-        return deserializeRsc(result) as Promise<ReactNode>;
-      }),
+        try {
+          return (await deserializeRsc(result)) as ReactNode;
+        } catch (error) {
+          if (
+            !intent &&
+            hasRenderCancellationDigest(error) &&
+            cache.get(cacheId) === entry
+          ) {
+            cache.delete(cacheId);
+          }
+          throw error;
+        }
+      });
+    },
     set: async (cacheId: CacheId, render: ElementSource['render']) => {
       if (cache.has(cacheId)) {
         return;
@@ -62,7 +78,7 @@ export const createElementCache = (
         try {
           element = await render();
         } catch (error) {
-          if (!isRenderCancellation(error)) {
+          if (!isRenderCancellation(error) || !getRouteIntent().value) {
             throw error;
           }
           const cancelled = Promise.reject(error);

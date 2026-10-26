@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  unstable_cancelRender as cancelRender,
   unstable_hasRenderCancellationDigest as hasRenderCancellationDigest,
   unstable_isRenderCancellation as isRenderCancellation,
 } from '../src/minimal/server.js';
@@ -239,8 +240,78 @@ describe('intent metadata', () => {
         hasRenderCancellationDigest,
       );
       expect(getRouteIntent().value).toEqual({ status: 404 });
+      expect(restored.has('slot/cancelled')).toBe(true);
     });
   });
+
+  it('evicts a decoded cancellation without an intent and retries its source', async () => {
+    const cache = createElementCache();
+    cache.preload('slot/cancelled', {
+      data: btoa(JSON.stringify({ cancelled: true })),
+    });
+    await withinRequest(async () => {
+      await expect(cache.get('slot/cancelled')).rejects.toSatisfy(
+        hasRenderCancellationDigest,
+      );
+      expect(cache.has('slot/cancelled')).toBe(false);
+      await cache.set('slot/cancelled', () => 'recovered');
+      expect(await cache.get('slot/cancelled')).toBe('recovered');
+    });
+  });
+
+  it.each(['root', 'route'] as const)(
+    'retries a cancelled immutable %s without learning a static route',
+    async (slot) => {
+      let renders = 0;
+      const guarded = {
+        immutable: true,
+        cacheKey: 'guarded',
+        render: () => {
+          if (++renders === 1) {
+            cancelRender();
+          }
+          return 'recovered';
+        },
+      };
+      const router = unstable_defineRouter({
+        resolve: async () => ({
+          elements: {
+            root: { immutable: true, render: () => 'root' },
+            route: { immutable: true, cacheKey: 'page', render: () => 'page' },
+            [slot]: guarded,
+          },
+        }),
+        getHas404: async () => false,
+      });
+      const utils = {
+        renderRsc: vi.fn(
+          async (_elements: Record<string, unknown>) => new ReadableStream(),
+        ),
+        renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
+        loadBuildMetadata: vi.fn(),
+      };
+      const input = {
+        type: 'rsc' as const,
+        pathname: '/RSC/R/page',
+        rscPath: 'R/page',
+        rscParams: undefined,
+        req: new Request('http://localhost/RSC/R/page'),
+      };
+      const id = slot === 'route' ? 'route:/page' : slot;
+      await router.handleRequest(input, utils);
+      const first = utils.renderRsc.mock.calls[0]![0];
+      await expect(first[id]).rejects.toSatisfy(
+        (error: unknown) =>
+          isRenderCancellation(error) || hasRenderCancellationDigest(error),
+      );
+      expect(first.IS_STATIC).toBe(false);
+
+      await router.handleRequest(input, utils);
+      expect(utils.renderRsc.mock.calls[1]![0][id]).toBe('recovered');
+      expect(renders).toBe(2);
+    },
+  );
 
   it('encodes Unicode destinations and preserves existing escapes in HTTP headers', async () => {
     const router = unstable_defineRouter({

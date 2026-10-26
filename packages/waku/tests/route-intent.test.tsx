@@ -287,6 +287,28 @@ test('a not-found intent uses the outer fallback when no root is available', asy
   expect(window.location.pathname).toBe('/one');
 });
 
+test('browser navigation recovers from not-found without a root error boundary', async () => {
+  mocks.queue.push(payload('/one'));
+  const view = await mount();
+  const intent = deferIntent();
+  mocks.queue.push(payload('/two', intent.promise));
+  await act(async () => {
+    await controls.router.push('/two');
+    await flush();
+    intent.resolve({ status: 404 });
+    await flush();
+  });
+  expect(view.textContent).toContain('Not Found');
+
+  mocks.queue.push(payload('/one'));
+  await act(async () => {
+    window.history.replaceState({}, '', '/one');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await flush();
+  });
+  expect(view.textContent).toContain('Page /one');
+});
+
 test.each([false, true])(
   'a redirect to a missing route follows the custom 404 once (instant: %s)',
   async (instant) => {
@@ -360,6 +382,45 @@ test.each(['slice', 'action'] as const)(
     });
     expect(window.location.pathname).toBe('/done');
     expect(view.textContent).toContain('Page /done');
+  },
+);
+
+test.each([
+  { ready: true, intent: { status: 307, location: '/login' } },
+  { ready: false, intent: { status: 307, location: '/login' } },
+  { ready: true, intent: { status: 404 } },
+  { ready: false, intent: { status: 404 } },
+] as const)(
+  'a server-function rerender owns its $intent intent (ready: $ready)',
+  async ({ ready, intent }) => {
+    mocks.queue.push(payload('/one'));
+    const view = await mount();
+    const pending = deferIntent();
+    if (ready) {
+      pending.resolve(intent);
+    }
+    mocks.queue.push({
+      ...payload('/posts/1', pending.promise),
+      _value: 'saved',
+    });
+    if (intent.status === 307) {
+      mocks.queue.push(payload('/login'));
+    }
+    await act(async () => {
+      expect(await callServerRsc('actions#save', [])).toBe('saved');
+      await flush();
+      if (!ready) {
+        pending.resolve(intent);
+        await flush();
+      }
+    });
+    if (intent.status === 307) {
+      expect(window.location.pathname).toBe('/login');
+      expect(view.textContent).toContain('Page /login');
+    } else {
+      expect(view.textContent).toContain('Not Found');
+      expect(view.textContent).not.toContain('Page /posts/1');
+    }
   },
 );
 

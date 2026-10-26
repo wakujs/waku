@@ -157,6 +157,7 @@ export const createRequestHandler = ({
     input,
     { renderRsc, renderHtml, renderHtmlFallback, loadBuildMetadata },
   ) => {
+    let isApiRequest = false;
     const redirectResponse = () => {
       const requested = getRouteIntent().value;
       if (!requested || !('location' in requested)) {
@@ -185,7 +186,12 @@ export const createRequestHandler = ({
         cancelRender();
       }
       if (input.type === 'http') {
-        return redirectResponse() ?? handleRequest(true);
+        return (
+          redirectResponse() ??
+          (isApiRequest
+            ? new Response('Not Found', { status: 404 })
+            : handleRequest(true))
+        );
       }
       if (input.type === 'rsc' && decodeSliceId(input.rscPath) === null) {
         const pathname = decodeRoutePath(input.rscPath);
@@ -214,6 +220,19 @@ export const createRequestHandler = ({
         !redirect &&
         (getRouteIntent().value?.status !== 404 || httpResponse?.status === 404)
       ) {
+        if (
+          getRouteIntent().value?.status === 404 &&
+          httpResponse &&
+          !httpResponse.headers.has('cache-control')
+        ) {
+          const headers = new Headers(httpResponse.headers);
+          headers.set('cache-control', 'private, no-store');
+          return new Response(httpResponse.body, {
+            status: httpResponse.status,
+            statusText: httpResponse.statusText,
+            headers,
+          });
+        }
         return response;
       }
       if (
@@ -413,6 +432,7 @@ export const createRequestHandler = ({
           return beforeRenderRedirect;
         }
         if (typeof resolved === 'function') {
+          isApiRequest = true;
           const url = new URL(req.url);
           url.pathname = pathname;
           const apiReq = new Request(url, req);

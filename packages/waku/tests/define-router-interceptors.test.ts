@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { createElement } from 'react';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { describe, expect, it, vi } from 'vitest';
+import type { RenderHtml } from '../src/lib/types.js';
 import { unstable_cancelRender as cancelRender } from '../src/minimal/server.js';
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
 import { createPages } from '../src/router/create-pages.js';
@@ -59,7 +60,12 @@ const callHandleRequest = (
     },
     {
       renderRsc: vi.fn().mockResolvedValue(makeStream()),
-      renderHtml: vi.fn().mockResolvedValue(new Response('ok')),
+      renderHtml: vi
+        .fn<RenderHtml>()
+        .mockImplementation(
+          async (_stream, _html, { status }) =>
+            new Response('ok', { status: status ?? 200 }),
+        ),
       renderHtmlFallback: vi.fn(),
       loadBuildMetadata: vi.fn(),
     },

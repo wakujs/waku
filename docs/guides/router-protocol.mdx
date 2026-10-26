@@ -100,7 +100,9 @@ when the requesting component stops with `cancelRender()`. Do not await an
 unused intent to decide whether a route has loaded. HTTP document requests use
 redirect statuses or render the 404 page when the shell has not been sent.
 Router does not start a form action if an intent has already been recorded.
-An action that has already run retains its form state for the not-found view.
+An action that has already run retains its form state when the handler renders
+the not-found view. A not-found intent recorded by an interceptor after `await next()`
+renders a new response without form state.
 
 The first recorded intent wins. Its promise can settle and reach the browser
 before other components finish, so a later intent cannot replace it. Concurrent

@@ -262,7 +262,9 @@ const InnerRouter = ({
     >
       <RouterHostContext value={host}>
         <RouteIntent onError={onIntentError} />
-        {rootAvailable ? <Slot id="root">{routeElement}</Slot> : routeElement}
+        <MissingRouteHandler>
+          {rootAvailable ? <Slot id="root">{routeElement}</Slot> : routeElement}
+        </MissingRouteHandler>
       </RouterHostContext>
     </RouterContext>
   );
@@ -382,7 +384,9 @@ export function INTERNAL_ServerRouter({ route }: { route: RouteProps }) {
       >
         {/* Match the client tree so useId stays stable during hydration. */}
         <RouteIntent onError={() => {}} />
-        <Slot id="root">{routeElement}</Slot>
+        <MissingRouteHandler>
+          <Slot id="root">{routeElement}</Slot>
+        </MissingRouteHandler>
       </RouterHostContext>
     </RouterContext>
   );
