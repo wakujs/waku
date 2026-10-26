@@ -244,15 +244,12 @@ describe('intent metadata', () => {
     });
   });
 
-  it('evicts a decoded cancellation without an intent and retries its source', async () => {
+  it('ignores a preloaded cancellation without an intent and retries its source', async () => {
     const cache = createElementCache();
     cache.preload('slot/cancelled', {
-      data: btoa(JSON.stringify({ cancelled: true })),
+      data: btoa('0:E{"digest":"WAKU_CANCEL_RENDER"}\n'),
     });
     await withinRequest(async () => {
-      await expect(cache.get('slot/cancelled')).rejects.toSatisfy(
-        hasRenderCancellationDigest,
-      );
       expect(cache.has('slot/cancelled')).toBe(false);
       await cache.set('slot/cancelled', () => 'recovered');
       expect(await cache.get('slot/cancelled')).toBe('recovered');

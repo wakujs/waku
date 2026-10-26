@@ -5,13 +5,14 @@ import process from 'node:process';
 import assert from 'node:assert/strict';
 import { createRequire, registerHooks } from 'node:module';
 import { dirname, join } from 'node:path';
-import { URL, fileURLToPath } from 'node:url';
+import { URL, fileURLToPath, pathToFileURL } from 'node:url';
 import { writeFileSync } from 'node:fs';
 
 const {
   AbortController,
   AbortSignal,
   ReadableStream,
+  Request,
   Response,
   TextDecoder,
   TextEncoder,
@@ -686,6 +687,160 @@ await scenario(
     gate.resolve();
   },
 );
+
+const routerProbeClient =
+  'data:text/javascript,' +
+  encodeURIComponent(`
+    import client from ${JSON.stringify(pathToFileURL(require.resolve('react-server-dom-webpack/client.edge')).href)};
+    export const createFromReadableStream = (stream) =>
+      client.createFromReadableStream(stream, ${JSON.stringify(options)});
+  `);
+const routerProbeHooks = registerHooks({
+  resolve(specifier, context, nextResolve) {
+    if (specifier === 'waku/minimal/server') {
+      return nextResolve(sourceRoot + 'minimal/server.ts', context);
+    }
+    if (specifier === 'waku/server') {
+      return nextResolve(sourceRoot + 'server.ts', context);
+    }
+    if (specifier === '@vitejs/plugin-rsc/react/rsc/client') {
+      return nextResolve(routerProbeClient, context);
+    }
+    return nextResolve(specifier, context);
+  },
+});
+try {
+  const { createElementCache } = await import(
+    sourceRoot + 'router/define-router-utils/element-cache.ts'
+  );
+  const { createRouteEntries } = await import(
+    sourceRoot + 'router/define-router-utils/route-entries.ts'
+  );
+  const { getRouteIntent, runWithRouterStore } = await import(
+    sourceRoot + 'router/define-router-utils/request-store.ts'
+  );
+  const { cancelRender, isRenderCancellation } = await import(
+    sourceRoot + 'lib/utils-isomorphic/render-cancellation.ts'
+  );
+  const { serializeRsc } = await import(sourceRoot + 'server.ts');
+  const inRequest = (fn) =>
+    runWithRouterStore({ req: new Request('http://localhost/page') }, fn);
+
+  await scenario(
+    'Router retries a nested cancelled immutable render',
+    async () => {
+      let factories = 0;
+      let renders = 0;
+      const saved = new Map();
+      const cache = createElementCache((id, entry) => saved.set(id, entry));
+      async function AsyncGuard() {
+        await tick();
+        if (++renders === 1) cancelRender();
+        return 'recovered';
+      }
+      const entries = createRouteEntries(
+        async () => ({
+          elements: {
+            root: { immutable: true, render: () => 'root' },
+            route: {
+              immutable: true,
+              cacheKey: 'page',
+              render: () => {
+                factories++;
+                return React.createElement(
+                  'section',
+                  null,
+                  React.createElement(AsyncGuard),
+                );
+              },
+            },
+          },
+        }),
+        undefined,
+        async () => false,
+      );
+      await inRequest(async () => {
+        const first = await entries.getEntriesForRoute(
+          'R/page',
+          undefined,
+          {},
+          cache,
+        );
+        await assert.rejects(
+          Promise.resolve(first.elements['route:/page']),
+          isRenderCancellation,
+        );
+        assert.equal(first.elements.IS_STATIC, false);
+        assert.equal(first.etags['route:/page'], undefined);
+        assert.equal(cache.has('key/page'), false);
+        assert.equal(saved.has('key/page'), false);
+      });
+      await inRequest(async () => {
+        const second = await entries.getEntriesForRoute(
+          'R/page',
+          undefined,
+          {},
+          cache,
+        );
+        const bytes = await serializeRsc(second.elements['route:/page']);
+        assert.match(new TextDecoder().decode(bytes), /recovered/);
+        assert.equal(second.elements.IS_STATIC, true);
+        assert.equal(second.etags['route:/page'], 1);
+      });
+      assert.equal(factories, 2);
+      assert.equal(renders, 2);
+    },
+  );
+
+  await scenario(
+    'Router replays an intent from a nested cancelled render',
+    async () => {
+      const saved = new Map();
+      const cache = createElementCache((id, entry) => saved.set(id, entry));
+      async function AsyncGuard() {
+        await tick();
+        getRouteIntent().record({ status: 404 });
+        cancelRender();
+      }
+      await inRequest(async () => {
+        await cache.set('slot/page', () =>
+          React.createElement('section', null, React.createElement(AsyncGuard)),
+        );
+      });
+      const restored = createElementCache();
+      restored.preload('slot/page', saved.get('slot/page'));
+      await inRequest(async () => {
+        const page = await restored.get('slot/page');
+        assert.equal(page.type, 'section');
+        assert.deepEqual(getRouteIntent().value, { status: 404 });
+        const bytes = await serializeRsc(page);
+        assert.match(new TextDecoder().decode(bytes), /WAKU_CANCEL_RENDER/);
+        assert.equal(restored.has('slot/page'), true);
+      });
+    },
+  );
+
+  await scenario(
+    'Router caches cancellation-like text and binary data',
+    async () => {
+      const marker = '\n1:E{"digest":"WAKU_CANCEL_RENDER"}\n';
+      const text = '長い文字列'.repeat(400) + marker;
+      const binary = new TextEncoder().encode(marker);
+      const cache = createElementCache();
+      await inRequest(async () => {
+        await cache.set('slot/page', () =>
+          React.createElement('section', { binary }, text),
+        );
+        const page = await cache.get('slot/page');
+        assert.equal(page.props.children, text);
+        assert.deepEqual(page.props.binary, binary);
+        assert.equal(cache.has('slot/page'), true);
+      });
+    },
+  );
+} finally {
+  routerProbeHooks.deregister();
+}
 
 console.log(
   JSON.stringify(

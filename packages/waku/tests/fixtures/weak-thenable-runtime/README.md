@@ -45,6 +45,10 @@ transport failure. Production-path probes use `createRenderUtils` to verify EOF
 and transport cancellation. The direct-filter request-abort probe supplies an
 additional signal; `renderRsc` itself has no signal option.
 
+Router cache probes use `serializeRsc` and the matched Flight decoder to check
+nested cancellation, retry, intent replay, and cancellation-like text and binary
+data.
+
 The SSR probe runs the RSC renderer in a separate process with the `react-server`
 condition. The parent uses the matched React DOM server and Flight decoder with
 normal conditions. It verifies an HTML shell precedes late redirects/not-found
