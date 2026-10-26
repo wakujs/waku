@@ -18,13 +18,15 @@ import type {
   ProcessBuild,
   ProcessRequest,
 } from '../types.js';
-import { getDigest, getErrorInfo } from '../utils-isomorphic/custom-errors.js';
 import { sanitizeLog } from '../utils-isomorphic/log.js';
 import { joinPath } from '../utils-isomorphic/path.js';
 import { DEBUG_ID_HEADER } from '../utils-isomorphic/react-debug-channel.js';
+import {
+  hasRenderCancellationDigest,
+  isRenderCancellation,
+} from '../utils-isomorphic/render-cancellation.js';
 import { encodeRscPath } from '../utils-isomorphic/rsc-path.js';
 import { stringToStream } from '../utils-isomorphic/stream.js';
-import { resolveRedirectLocation } from '../utils-server/redirect.js';
 import { createRenderUtils } from '../utils-server/render.js';
 import { getInput } from '../utils-server/request.js';
 
@@ -40,16 +42,6 @@ const toProcessRequest =
   (handleRequest: HandleRequest): ProcessRequest =>
   async (req) => {
     const temporaryReferences = createTemporaryReferenceSet();
-
-    const input = await getInput(
-      req,
-      config,
-      temporaryReferences,
-      decodeReply,
-      decodeAction,
-      decodeFormState,
-      loadServerAction,
-    );
 
     const debugId =
       (import.meta.env.DEV && req.headers.get(DEBUG_ID_HEADER.toLowerCase())) ||
@@ -69,63 +61,46 @@ const toProcessRequest =
       createDebugChannel,
       debugId,
       onError: (e) => {
-        const digest = getDigest(e);
-        if (digest === undefined) {
-          console.error('Error during rendering:', sanitizeLog(e));
-        }
-        return digest;
+        console.error('Error during rendering:', sanitizeLog(e));
       },
     });
 
     let res: Awaited<ReturnType<typeof handleRequest>>;
+    let input: Parameters<HandleRequest>[0] | undefined;
     try {
+      input = await getInput(
+        req,
+        config,
+        temporaryReferences,
+        decodeReply,
+        decodeAction,
+        decodeFormState,
+        loadServerAction,
+      );
       res = await handleRequest(input, {
         ...renderUtils,
         loadBuildMetadata: async (key: string) => buildMetadata.get(key),
       });
     } catch (e) {
-      const info = getErrorInfo(e);
-      const documentLocation = info?.location
-        ? resolveRedirectLocation(info.location, req.url, config.basePath)
-        : undefined;
-      // a document request is a real navigation, so it keeps the 3xx
-      if (documentLocation && input.type !== 'http') {
-        return new Response(
-          await renderUtils.renderRsc({}, { documentLocation }),
-          // a 200 that a shared cache must not hand to the next user
-          { headers: { 'cache-control': 'private, no-store' } },
-        );
-      }
-      const isRefusedLocation = !!info?.location && !documentLocation;
-      const isDocumentPost = input.type === 'http' && req.method === 'POST';
-      // 307 and 308 resend the body to the destination
-      const redirectStatus = isDocumentPost ? 303 : info?.status || 307;
-      const status = isRefusedLocation
-        ? 500
-        : documentLocation
-          ? redirectStatus
-          : info?.status || 500;
-      let message: string;
-      if (info) {
-        message = (e as { message?: string } | undefined)?.message || String(e);
+      if (isRenderCancellation(e) || hasRenderCancellationDigest(e)) {
+        res =
+          input?.type === 'rsc' || input?.type === 'call'
+            ? await renderUtils.renderRsc({})
+            : new Response(null, { status: 204 });
+      } else if (e instanceof Response) {
+        return e;
       } else {
         console.warn(sanitizeLog(e));
-        message = 'Internal Server Error';
+        return new Response('Internal Server Error', { status: 500 });
       }
-      const body = stringToStream(message);
-      const headers = documentLocation
-        ? {
-            location: documentLocation,
-            'cache-control': 'private, no-store',
-          }
-        : {};
-      return new Response(body, { status, headers });
     } finally {
       finishDebugChannel?.();
     }
 
     if (res instanceof ReadableStream) {
-      return new Response(res);
+      return new Response(res, {
+        headers: { 'cache-control': 'private, no-store' },
+      });
     } else if (res && res !== 'fallback') {
       return res;
     }
@@ -149,10 +124,7 @@ const toProcessBuild =
       loadSsrEntryModule,
       buildId: import.meta.env.WAKU_BUILD_ID ?? '',
       onError: (e) => {
-        if (!getErrorInfo(e)) {
-          errors.push(e);
-        }
-        return getDigest(e);
+        errors.push(e);
       },
     });
 

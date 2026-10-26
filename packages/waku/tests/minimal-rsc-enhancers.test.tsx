@@ -384,10 +384,6 @@ test('filtering action elements preserves the return value and Minimal build che
     await root.fetch('next', undefined, { onBuildIdMismatch: mismatch }),
   ).toEqual({});
   expect(mismatch).toHaveBeenCalledOnce();
-  request.mockImplementation(async () =>
-    Response.json({ _location: '/elsewhere' }),
-  );
-  await expect(root.fetch('next')).rejects.toThrow('document navigation');
 });
 
 test('action enhancers can return only client-owned symbol keys', async () => {

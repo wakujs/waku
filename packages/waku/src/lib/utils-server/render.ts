@@ -1,5 +1,6 @@
 import type { RenderHtml, RenderHtmlFallback, RenderRsc } from '../types.js';
 import { ETAGS_ID } from '../utils-isomorphic/etags.js';
+import { getDigestIfRenderCancellation } from '../utils-isomorphic/render-cancellation.js';
 
 const validateRscElementIds = (elements: Record<string, unknown>) => {
   for (const id of Object.keys(elements)) {
@@ -18,7 +19,7 @@ export function createRenderUtils({
   buildId,
   createDebugChannel,
   debugId,
-  onError,
+  onError: reportError,
 }: {
   temporaryReferences: unknown;
   renderToReadableStream: (
@@ -37,12 +38,20 @@ export function createRenderUtils({
       })
     | undefined;
   debugId?: string | undefined;
-  onError: (e: unknown) => string | undefined;
+  onError: (e: unknown) => void;
 }): {
   renderRsc: RenderRsc;
   renderHtml: RenderHtml;
   renderHtmlFallback: RenderHtmlFallback;
 } {
+  const onError = (error: unknown): string | undefined => {
+    const digest = getDigestIfRenderCancellation(error);
+    if (digest) {
+      return digest;
+    }
+    reportError(error);
+  };
+
   return {
     async renderRsc(elements, options) {
       validateRscElementIds(elements);
@@ -51,9 +60,6 @@ export function createRenderUtils({
         : { ...elements };
       if (options && 'value' in options) {
         data._value = options.value;
-      }
-      if (options?.documentLocation) {
-        data._location = options.documentLocation;
       }
       if (options?.etags && Object.keys(options.etags).length) {
         data[ETAGS_ID] = options.etags;
@@ -86,7 +92,6 @@ export function createRenderUtils({
         formState: options.formState as never,
         nonce: options.nonce,
         extraScriptContent: options.unstable_extraScriptContent,
-        rethrowNotFound: options.unstable_rethrowNotFound,
         debugId,
         onError,
       });

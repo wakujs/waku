@@ -7,9 +7,8 @@ import { describe, expect, test } from 'vitest';
 import * as router from '../src/router/base-types.js';
 import {
   MAX_FOLLOWS_PER_NAVIGATION,
-  decideFollow,
-  isFollowable,
-} from '../src/router/client-core-utils/error-route.js';
+  decideRouteIntent,
+} from '../src/router/client-core-utils/route-follow.js';
 import * as clientCore from '../src/router/client-core.js';
 import * as client from '../src/router/client.js';
 
@@ -39,13 +38,14 @@ describe('waku/router/client-core surface', () => {
       'RouterHostContext_UNSTABLE',
       'Slice_UNSTABLE',
       'unstable_HAS404_ID',
+      'unstable_INTENT_ID',
       'unstable_IS_STATIC_ID',
       'unstable_MAX_FOLLOWS_PER_NAVIGATION',
       'unstable_ROUTE_ID',
       'unstable_buildMergePatch',
       'unstable_createRscParams',
       'unstable_createServerFunctionRouting',
-      'unstable_decideFollow',
+      'unstable_decideRouteIntent',
       'unstable_decodeRoutePath',
       'unstable_decodeSliceId',
       'unstable_encodeRoutePath',
@@ -56,7 +56,6 @@ describe('waku/router/client-core surface', () => {
       'unstable_getRouteUrl',
       'unstable_getSliceSlotId',
       'unstable_has404FromElements',
-      'unstable_isFollowable',
       'unstable_isRouteSlotId',
       'unstable_isSameRoute',
       'unstable_isSameRscRoute',
@@ -111,9 +110,8 @@ describe('waku/router/client-core surface', () => {
     }
   });
 
-  test('follow primitives are the error-route module', () => {
-    expect(clientCore.unstable_decideFollow).toBe(decideFollow);
-    expect(clientCore.unstable_isFollowable).toBe(isFollowable);
+  test('follow primitives share the route intent implementation', () => {
+    expect(clientCore.unstable_decideRouteIntent).toBe(decideRouteIntent);
     expect(clientCore.unstable_MAX_FOLLOWS_PER_NAVIGATION).toBe(
       MAX_FOLLOWS_PER_NAVIGATION,
     );

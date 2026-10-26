@@ -1,5 +1,13 @@
 import type { buildElements } from '../lib/utils-server/build-elements.js';
 
+export {
+  cancelRender as unstable_cancelRender,
+  cancelRenderStream as unstable_cancelRenderStream,
+  hasRenderCancellationDigest as unstable_hasRenderCancellationDigest,
+  isRenderCancellation as unstable_isRenderCancellation,
+} from '../lib/utils-isomorphic/render-cancellation.js';
+export { createWeakPromise as unstable_createWeakPromise } from '../lib/utils-server/weak-promise.js';
+
 export type {
   Handlers as Unstable_Handlers,
   HandleRequest as Unstable_HandleRequest,
@@ -10,10 +18,6 @@ export type {
 } from '../lib/types.js';
 export type { Etags as Unstable_Etags } from '../lib/utils-isomorphic/etags.js';
 export { buildElements as unstable_buildElements } from '../lib/utils-server/build-elements.js';
-export {
-  createCustomError as unstable_createCustomError,
-  getErrorInfo as unstable_getErrorInfo,
-} from '../lib/utils-isomorphic/custom-errors.js';
 export { formatRscUrl as unstable_formatRscUrl } from '../lib/utils-isomorphic/rsc-path.js';
 export { parseRequest as unstable_parseRequest } from '../lib/utils-server/request-url.js';
 

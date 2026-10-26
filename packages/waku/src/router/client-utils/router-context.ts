@@ -9,6 +9,7 @@ export type ChangeRouteOptions = {
   url?: URL | undefined;
   instant?: boolean | undefined;
   follows?: number | undefined;
+  followedIntent?: PromiseLike<string | undefined> | undefined;
   pendingTransition?: ((fn: TransitionFunction) => void) | undefined;
   onSuperseded?: (() => void) | undefined;
 };
@@ -22,6 +23,9 @@ export const RouterContext = createContext<{
   route: RouteProps;
   changeRoute: ChangeRoute;
   getElements?: () => Record<string, unknown>;
+  isCurrentRoute?: (
+    source: Readonly<Record<string | symbol, unknown>>,
+  ) => boolean;
 } | null>(null);
 
 export const dispatchChangeRoute = (

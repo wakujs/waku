@@ -32,7 +32,11 @@ import {
   unstable_isImmutableElement as isImmutableElement,
   useFetchRsc_UNSTABLE,
 } from '../src/minimal/client.js';
-import { unstable_buildElements as buildElements } from '../src/minimal/server.js';
+import {
+  unstable_buildElements as buildElements,
+  unstable_cancelRender as cancelRender,
+  unstable_isRenderCancellation as isRenderCancellation,
+} from '../src/minimal/server.js';
 
 const testHoisted = vi.hoisted(() => ({
   elements: {} as Record<string, unknown>,
@@ -337,6 +341,51 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
 });
 
 describe('unstable_buildElements', () => {
+  it('cancelled renders omit new validators and clear previously cached validators', async () => {
+    const render = () => cancelRender();
+    const getEtag = async () => 'new';
+    const { elements, etags } = await buildElements(
+      { cached: 'old' },
+      {
+        fresh: { getEtag, render },
+        cached: { getEtag, render },
+        immutable: { immutable: true, render },
+      },
+    );
+
+    expect(etags).toEqual({ cached: '' });
+    for (const element of Object.values(elements)) {
+      await expect(element).rejects.toSatisfy(isRenderCancellation);
+    }
+  });
+
+  it('cancelled factories carry cancellation while siblings still render', async () => {
+    const result = await buildElements(
+      {},
+      {
+        cancelled: { render: async () => cancelRender() },
+        sibling: { render: () => 'sibling' },
+      },
+    );
+    expect(result.elements.sibling).toBe('sibling');
+    await expect(result.elements.cancelled).rejects.toSatisfy(
+      isRenderCancellation,
+    );
+    const failure = new Error('application failure');
+    await expect(
+      buildElements(
+        {},
+        {
+          broken: {
+            render: () => {
+              throw failure;
+            },
+          },
+        },
+      ),
+    ).rejects.toBe(failure);
+  });
+
   it('omits matched slots, attaches/clears tags, and maps immutable to the sentinel', async () => {
     const render = () => Promise.resolve('el');
     const { elements, etags } = await buildElements(

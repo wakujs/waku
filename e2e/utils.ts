@@ -177,9 +177,7 @@ export const ignoreErrors: RegExp[] = [
   /^(Error during rendering: )?Error: Not Found(\\n|\s)+at SyncPage/,
   /^(Error during rendering: )?Error: Not Found(\\n|\s)+at AsyncPage/,
   /^(Error during rendering: )?Error: Not Found(\\n|\s)+at info/,
-  /^(Error during rendering: )?Error: Not Found(\\n|\s)+at createCustomError/,
   /^(Error during rendering: )?Error: Redirect(\\n|\s)+at info/,
-  /^(Error during rendering: )?Error: Redirect(\\n|\s)+at createCustomError/,
   // FIXME Is this too general and miss meaningful errors?
   /^(Error during rendering: )?\[Error: An error occurred in the Server Components render\./,
   // XXX Is it okay to ignore this error?

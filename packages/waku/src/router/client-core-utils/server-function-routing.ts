@@ -65,7 +65,11 @@ export const createServerFunctionRouting = (): ServerFunctionRouting => {
         );
       }
       const origin = connection.getSettledRoute();
-      const result = await next(rscPath, rscParams, {
+      const applyIntent = connection.cache.captureRouteIntentScope(
+        'call',
+        options.signal,
+      );
+      const response = await next(rscPath, rscParams, {
         ...options,
         fetch: (input, init) => {
           const headers = new Headers(
@@ -79,6 +83,9 @@ export const createServerFunctionRouting = (): ServerFunctionRouting => {
           return options.fetch(input, { ...init, headers });
         },
       });
+      const elements = applyIntent?.(response.elements) ?? response.elements;
+      const result =
+        elements === response.elements ? response : { ...response, elements };
       const { cache, getSettledRoute, getPendingRoute, onRouteChange } =
         connection;
       const handleServerFunctionElements = (
@@ -113,11 +120,11 @@ export const createServerFunctionRouting = (): ServerFunctionRouting => {
       ) {
         return { ...result, elements: {} };
       }
-      const elements = combineElements({}, result.elements, {
+      const originElements = combineElements({}, result.elements, {
         filter: (key) => key !== IS_ORIGIN_ID,
       });
-      handleServerFunctionElements(elements);
-      return { ...result, elements };
+      handleServerFunctionElements(originElements);
+      return { ...result, elements: originElements };
     },
   };
 };

@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import { ETAGS_ID, IMMUTABLE_ETAG } from '../src/lib/utils-isomorphic/etags.js';
+import { cancelRender } from '../src/lib/utils-isomorphic/render-cancellation.js';
 import { createRenderUtils } from '../src/lib/utils-server/render.js';
 import { createHtmlFallback } from '../src/lib/utils-server/ssr.js';
 
@@ -56,21 +57,6 @@ describe('createRenderUtils', () => {
     expect(plainHtml).toContain('import("/entry.js");');
     expect(plainHtml).not.toContain('nonce=');
     expect(renderToReadableStream).not.toHaveBeenCalled();
-  });
-
-  test('carries a document location', async () => {
-    const { renderToReadableStream, renderUtils } = makeRenderUtils();
-
-    await renderUtils.renderRsc(
-      {},
-      { documentLocation: 'https://other.example/x' },
-    );
-
-    expect(renderToReadableStream).toHaveBeenCalledWith(
-      { _location: 'https://other.example/x' },
-      expect.anything(),
-      expect.anything(),
-    );
   });
 
   test('adds server function value with the renderRsc value option', async () => {
@@ -186,32 +172,6 @@ describe('createRenderUtils', () => {
     expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8');
   });
 
-  test('passes onError to the html render', async () => {
-    const renderHtmlStream = vi.fn().mockResolvedValue({
-      stream: new ReadableStream(),
-      status: undefined,
-    });
-    const onError = vi.fn();
-    const renderToReadableStream = vi.fn(() => new ReadableStream());
-    const renderUtils = createRenderUtils({
-      temporaryReferences: undefined,
-      renderToReadableStream,
-      loadSsrEntryModule: async () =>
-        ({ INTERNAL_renderHtmlStream: renderHtmlStream }) as any,
-      buildId: '',
-      onError,
-    });
-
-    await renderUtils.renderHtml(new ReadableStream(), 'app', { rscPath: '' });
-
-    expect(renderToReadableStream).toHaveBeenCalledWith('app', { onError });
-    expect(renderHtmlStream).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      expect.objectContaining({ onError }),
-    );
-  });
-
   test('passes extra bootstrap code to the HTML renderer', async () => {
     const renderHtmlStream = vi.fn().mockResolvedValue({
       stream: new ReadableStream(),
@@ -242,15 +202,55 @@ describe('createRenderUtils', () => {
     );
   });
 
-  test('passes onError to the RSC render', async () => {
-    const { renderToReadableStream, renderUtils, onError } = makeRenderUtils();
+  test('filters cancellation before reporting application errors from Flight and SSR', async () => {
+    const renderToReadableStream = vi.fn(
+      (_data: unknown, _options?: object) => new ReadableStream(),
+    );
+    const renderHtmlStream = vi.fn().mockResolvedValue({
+      stream: new ReadableStream(),
+      status: undefined,
+    });
+    const reportError = vi.fn((_error: unknown) => 'ignored reporter return');
+    const renderUtils = createRenderUtils({
+      temporaryReferences: undefined,
+      renderToReadableStream,
+      loadSsrEntryModule: async () =>
+        ({ INTERNAL_renderHtmlStream: renderHtmlStream }) as any,
+      buildId: '',
+      onError: reportError,
+    });
 
     await renderUtils.renderRsc({ App: 'app' });
+    await renderUtils.renderHtml(new ReadableStream(), 'html', { rscPath: '' });
 
-    expect(renderToReadableStream).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ onError }),
-      expect.anything(),
+    type RenderOptions = {
+      onError: (error: unknown) => string | undefined;
+    };
+    const flightOptions = renderToReadableStream.mock.calls.map(
+      ([, options]) => options as RenderOptions,
     );
+    const ssrOptions = renderHtmlStream.mock.calls[0]![2] as RenderOptions;
+    let cancellation: unknown;
+    try {
+      cancelRender();
+    } catch (error) {
+      cancellation = error;
+    }
+    const decodedCancellation = Object.assign(new Error('Flight error'), {
+      digest: 'WAKU_CANCEL_RENDER',
+    });
+    const applicationError = Object.assign(new Error('application error'), {
+      digest: 'arbitrary',
+    });
+    for (const { onError } of [...flightOptions, ssrOptions]) {
+      expect(onError(cancellation)).toBe('WAKU_CANCEL_RENDER');
+      expect(onError(decodedCancellation)).toBe('WAKU_CANCEL_RENDER');
+      expect(onError(applicationError)).toBeUndefined();
+    }
+    expect(reportError.mock.calls).toEqual([
+      [applicationError],
+      [applicationError],
+      [applicationError],
+    ]);
   });
 });

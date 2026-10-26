@@ -13,7 +13,6 @@ import {
   useRegisterRscReloadListener_UNSTABLE as useRegisterRscReloadListener,
 } from 'waku/minimal/client';
 import { useRouterCache } from '../client-core-utils/caches.js';
-import { isFollowable } from '../client-core-utils/error-route.js';
 import { useHmrRefetch } from '../client-core-utils/hmr.js';
 import { useInitialRoute } from '../client-core-utils/initial-route.js';
 import {
@@ -26,6 +25,7 @@ import type { ServerFunctionRouting } from '../client-core-utils/server-function
 import { useServerFunctionRouting } from '../client-core-utils/server-function-routing.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
+  INTENT_ID,
   IS_STATIC_ID,
   ROUTE_ID,
   getRouteFromElements,
@@ -74,6 +74,7 @@ type Navigation = {
   route: RouteProps;
   changeRoute: ChangeRoute;
   getElements: () => Elements;
+  isCurrentRoute: (source: Elements) => boolean;
   error: NavigationError | undefined;
 };
 
@@ -280,11 +281,6 @@ export const useNavigation = (
         return;
       }
       setNavigationError(undefined);
-      const finishRequest = () => {
-        if (requestRef.current === request) {
-          requestRef.current = undefined;
-        }
-      };
       if (import.meta.hot) {
         registerRscReloadListener(() => {}, { replace: true });
       }
@@ -299,14 +295,23 @@ export const useNavigation = (
       const createStateForAttempt = (
         attempt: NavigationAttempt,
         history: HistoryIntent,
-      ): RouterState =>
-        createRouterState(attempt.route, attempt.url, {
-          history,
-          scroll: options.shouldScroll,
-          pathChanged:
-            requestedPathChanged || attempt.route.path !== settledRoute.path,
-          follows: attempt.follows,
-        });
+      ): RouterState => {
+        const followedIntent =
+          options.followedIntent ??
+          (!shouldRefetch && isSameRscRoute(attempt.route, settledRoute)
+            ? getRouterState(elements)?.followedIntent
+            : undefined);
+        return {
+          ...createRouterState(attempt.route, attempt.url, {
+            history,
+            scroll: options.shouldScroll,
+            pathChanged:
+              requestedPathChanged || attempt.route.path !== settledRoute.path,
+            follows: attempt.follows,
+          }),
+          ...(followedIntent ? { followedIntent } : {}),
+        };
+      };
       const initialState = createStateForAttempt(
         initialAttempt,
         options.history,
@@ -314,6 +319,9 @@ export const useNavigation = (
       if (canReuseStatic || !shouldRefetch) {
         const routePatch = {
           [ROUTE_ID]: [nextRoute.path, nextRoute.query],
+          [INTENT_ID]: isSameRscRoute(nextRoute, settledRoute)
+            ? getElements()[INTENT_ID]
+            : cache.getStaticRouteIntent(nextRoute),
           ...(canReuseStatic ? { [IS_STATIC_ID]: true } : {}),
         };
         request.queuedState = initialState;
@@ -337,7 +345,6 @@ export const useNavigation = (
           signal: controller.signal,
           refetch: shouldRefetch,
           has404,
-          settled: loadedRoute,
           base,
           url: routeUrl,
           follows: initialFollows,
@@ -349,7 +356,11 @@ export const useNavigation = (
           },
           ...(instantResponse ? { adopt: instantResponse } : {}),
         });
-        if (outcome.type === 'aborted' || requestRef.current !== request) {
+        if (requestRef.current !== request) {
+          return {};
+        }
+        if (outcome.type === 'aborted') {
+          requestRef.current = undefined;
           return {};
         }
         const historyIntent =
@@ -358,11 +369,10 @@ export const useNavigation = (
           options.history !== null
             ? 'replace'
             : options.history;
-        if (outcome.type === 'external') {
-          commitHistory(outcome.from, historyIntent);
-          finishRequest();
-          window.location.replace(outcome.url.href);
-          throw outcome.error;
+        if (outcome.type === 'leave') {
+          commitHistory(outcome.url, historyIntent);
+          window.location.replace(outcome.location.href);
+          return {};
         }
         if (outcome.type === 'failed') {
           const { error } = outcome;
@@ -415,6 +425,7 @@ export const useNavigation = (
           outcome.type === 'reused'
             ? {
                 [ROUTE_ID]: [outcome.route.path, outcome.route.query],
+                [INTENT_ID]: cache.getStaticRouteIntent(outcome.route),
                 [IS_STATIC_ID]:
                   cache.canReuseStaticRoute(outcome.route, base) ||
                   isStaticFromElements(base),
@@ -434,6 +445,9 @@ export const useNavigation = (
                   historyIntent,
                 ),
                 ...(adopted ? { originalState: initialState } : {}),
+                ...(outcome.type === 'loaded' && outcome.followedIntent
+                  ? { followedIntent: outcome.followedIntent }
+                  : {}),
               };
         request.target = destination.route;
         request.queuedState = state;
@@ -508,6 +522,19 @@ export const useNavigation = (
   );
 
   const getPendingRoute = useCallback(() => requestRef.current?.target, []);
+  const isCurrentRoute = useCallback(
+    (source: Elements) => {
+      const committed = getElements();
+      const state = getRouterState(source);
+      const request = requestRef.current;
+      return (
+        getRouterState(committed) === state &&
+        committed[INTENT_ID] === source[INTENT_ID] &&
+        (!request || (!!request.queuedState && request.queuedState === state))
+      );
+    },
+    [getElements],
+  );
   const commitServerFunctionRoute = useCallback(
     (nextRoute: RouteProps) => {
       const is404 = nextRoute.path === '/404';
@@ -518,9 +545,7 @@ export const useNavigation = (
         history: is404 ? null : 'push',
         url: is404 ? new URL(window.location.href) : getRouteUrl(nextRoute),
       }).catch((error) => {
-        if (!isFollowable(error)) {
-          console.error('Error while handling route updates:', error);
-        }
+        console.error('Error while handling route updates:', error);
       });
     },
     [changeRoute],
@@ -550,9 +575,7 @@ export const useNavigation = (
             ? new URL(window.location.href)
             : getRouteUrl(nextRoute),
         }).catch((err) => {
-          if (!isFollowable(err)) {
-            console.error('Error while navigating back:', err);
-          }
+          console.error('Error while navigating back:', err);
         });
       });
     };
@@ -566,6 +589,7 @@ export const useNavigation = (
     route,
     changeRoute,
     getElements,
+    isCurrentRoute,
     error: navigationError,
   };
 };

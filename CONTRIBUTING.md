@@ -78,7 +78,7 @@ functions. A deprecated alias keeps the name it shipped with; the
 convention applies to the name an API is introduced under. The marker belongs
 to the name a package entry point exports. Internal modules use the unmarked
 name, and an import from a package entry point may drop the marker, as in
-`unstable_createCustomError as createCustomError`.
+`unstable_createRouteHref as createRouteHref`.
 
 ### For AI agents
 

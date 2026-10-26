@@ -25,8 +25,9 @@ import { createServerFunctionRouting } from './client-core-utils/server-function
 import { useNavigation } from './client-utils/navigation.js';
 import {
   MissingRouteHandler,
-  RenderErrorHandler,
+  RenderError,
 } from './client-utils/render-error.js';
+import { RouteIntent } from './client-utils/route-intent.js';
 import {
   prefetchRouteUnlessReusable,
   preloadRouteModules,
@@ -35,7 +36,10 @@ import {
   RouterContext,
   dispatchChangeRoute,
 } from './client-utils/router-context.js';
-import { serverRedirectEnhancer } from './client-utils/router-state.js';
+import {
+  getRouterState,
+  serverRedirectEnhancer,
+} from './client-utils/router-state.js';
 import { shouldScrollByDefault } from './client-utils/scroll.js';
 import type { NavigationHref } from './isomorphic-utils/build-route-href.js';
 import type { RouteProps } from './isomorphic-utils/route-path.js';
@@ -83,9 +87,10 @@ type NavigateOptions = {
  * Resolves once the requested navigation has been handled: after its response
  * when the route needs one, right away when it does not, and when a newer
  * navigation supersedes it (see `unstable_onSuperseded`). Rejects when the
- * navigation fails, when a redirect hands the page to the browser, and when no
- * custom 404 route can answer a missing route. A redirect or 404 received while
- * fetching is followed before this resolves. It does not wait for React to
+ * route fetch fails, including an HTTP 404 without a custom page. A network
+ * HTTP 404 follows the custom page before this resolves. A streamed redirect
+ * or not-found intent can be handled after this resolves, including handing
+ * an absolute redirect to the browser. It does not wait for React to
  * render, so the address bar may still show the previous URL.
  */
 type Navigate = (
@@ -185,10 +190,6 @@ const createServerStub = (name: string) => () => {
   throw new Error(`${name} is not in the server`);
 };
 
-const ThrowError = ({ error }: { error: unknown }) => {
-  throw error;
-};
-
 const InnerRouter = ({
   serverFunctionRouting,
   fallbackRoute,
@@ -204,6 +205,7 @@ const InnerRouter = ({
     route: currentRoute,
     changeRoute,
     getElements,
+    isCurrentRoute,
     error: navigationError,
   } = useNavigation(
     elements,
@@ -211,6 +213,20 @@ const InnerRouter = ({
     routeInterceptor,
     serverFunctionRouting,
   );
+
+  const [intentError, setIntentError] = useState<{
+    error: unknown;
+    scope: ReturnType<typeof getRouterState>;
+  }>();
+  const onIntentError = useCallback(
+    (error: unknown, source: Readonly<Record<string | symbol, unknown>>) => {
+      setIntentError({ error, scope: getRouterState(source) });
+    },
+    [],
+  );
+  const error =
+    navigationError ??
+    (intentError?.scope === getRouterState(elements) ? intentError : undefined);
 
   const navigate = useCallback<RouterHost['navigate']>(
     (href, opts) => {
@@ -228,28 +244,26 @@ const InnerRouter = ({
     [currentRoute, navigate],
   );
 
-  const routeElement = navigationError ? (
-    <ThrowError error={navigationError.error} />
+  const routeElement = error ? (
+    <RenderError error={error.error} />
   ) : (
     <Slot id={getRouteSlotId(currentRoute.path)} />
   );
-  // TODO a followable error thrown by the root layout, or by a server function
-  // it calls, is not followed. The layout's own ErrorBoundary catches it first,
-  // so wrapping this slot in another handler does not reach it
-  const rootElement = (
-    <Slot id="root">
-      <RenderErrorHandler>{routeElement}</RenderErrorHandler>
-    </Slot>
-  );
+  const rootAvailable =
+    'root' in elements && (!error || elements.root !== null);
   return (
     <RouterContext
       value={{
         route: currentRoute,
         changeRoute,
         getElements,
+        isCurrentRoute,
       }}
     >
-      <RouterHostContext value={host}>{rootElement}</RouterHostContext>
+      <RouterHostContext value={host}>
+        <RouteIntent onError={onIntentError} />
+        {rootAvailable ? <Slot id="root">{routeElement}</Slot> : routeElement}
+      </RouterHostContext>
     </RouterContext>
   );
 };
@@ -353,7 +367,6 @@ export function Router({
 
 export function INTERNAL_ServerRouter({ route }: { route: RouteProps }) {
   const routeElement = <Slot id={getRouteSlotId(route.path)} />;
-  const rootElement = <Slot id="root">{routeElement}</Slot>;
   return (
     <RouterContext
       value={{
@@ -367,7 +380,9 @@ export function INTERNAL_ServerRouter({ route }: { route: RouteProps }) {
           navigate: createServerStub('navigate'),
         }}
       >
-        {rootElement}
+        {/* Match the client tree so useId stays stable during hydration. */}
+        <RouteIntent onError={() => {}} />
+        <Slot id="root">{routeElement}</Slot>
       </RouterHostContext>
     </RouterContext>
   );
