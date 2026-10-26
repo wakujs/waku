@@ -86,13 +86,13 @@ test.describe('weak promises', () => {
       'data-hydrated',
       'true',
     );
-    await page.getByTestId('weak-counter').click();
+    // eslint-disable-next-line playwright/no-force-option -- Assert hydration before completing the streamed document.
+    await page.getByTestId('weak-counter').click({ force: true });
     await expect(page.getByTestId('weak-counter')).toHaveText('1');
-    expect(
-      (
-        await request.get(`http://localhost:${port}/weak-release?id=${id}`)
-      ).ok(),
-    ).toBe(true);
+    const release = await request.get(
+      `http://localhost:${port}/weak-release?id=${id}`,
+    );
+    await expect(release).toBeOK();
     await expect(page.getByTestId('weak-intent')).toHaveText('late intent');
     await expect(page.getByTestId('weak-body')).toHaveText('complete');
     await expect(page.getByTestId('weak-error')).toBeEmpty();
