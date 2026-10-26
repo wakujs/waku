@@ -1,29 +1,25 @@
-import { fsRouter } from 'waku';
+import { createPages } from 'waku';
 import adapter from 'waku/adapters/default';
 import { ConfiguredPage, GreetingPage } from './configured-pages';
 
-const fileModules = import.meta.glob('./pages/**/*.{tsx,ts}');
+const pages = createPages(async ({ createPage, unstable_createFileRoutes }) => {
+  await unstable_createFileRoutes(import.meta.glob('./pages/**/*.{tsx,ts}'));
 
-// These module keys register routes without corresponding files in pages.
-const configuredModules = {
-  './pages/configured.tsx': async () => ({
-    default: ConfiguredPage,
-    getConfig: async () => ({ render: 'static' as const }),
-  }),
-  './pages/hello/[name].tsx': async () => ({
-    default: GreetingPage,
-    getConfig: async () => ({ render: 'dynamic' as const }),
-  }),
-};
+  return [
+    createPage({
+      path: '/configured',
+      render: 'static',
+      component: ConfiguredPage,
+    }),
+    createPage({
+      path: '/hello/[name]',
+      render: 'dynamic',
+      component: GreetingPage,
+    }),
+  ];
+});
 
-// Object spread would otherwise silently replace a discovered module.
-for (const key of Object.keys(configuredModules)) {
-  if (key in fileModules) {
-    throw new Error(`File/config route module collision: ${key}`);
-  }
-}
-
-export default adapter(fsRouter({ ...fileModules, ...configuredModules }), {
+export default adapter(pages, {
   // A custom server entry replaces managed middleware discovery too.
   middlewareModules: import.meta.glob([
     './middleware/*.{tsx,ts}',

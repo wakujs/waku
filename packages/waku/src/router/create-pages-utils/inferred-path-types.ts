@@ -132,8 +132,17 @@ export type AnyPage = {
   staticPaths?: readonly string[] | readonly (readonly string[])[];
 };
 
+type PagesFromResult<PagesResult> = PagesResult extends {
+  DO_NOT_USE_pages: infer Pages extends AnyPage;
+}
+  ? Pages
+  : Extract<PagesResult, AnyPage>;
+
 /**
  * PathsForPages will take the response of createPages and return the paths for all user defined pages.
+ *
+ * Pass generated FilePages as the second argument to include file routes without
+ * widening to string when the createPages callback returns an empty array.
  *
  * @example
  * const pages = createPages(async ({ createPage }) => [
@@ -154,15 +163,10 @@ export type AnyPage = {
  */
 export type PathsForPages<
   PagesResult extends { DO_NOT_USE_pages: AnyPage } | AnyPage,
-> = PagesResult extends { DO_NOT_USE_pages: AnyPage }
-  ? CollectPaths<PagesResult['DO_NOT_USE_pages']> extends never
-    ? string
-    : CollectPaths<PagesResult['DO_NOT_USE_pages']>
-  : PagesResult extends AnyPage
-    ? CollectPaths<PagesResult> extends never
-      ? string
-      : CollectPaths<PagesResult>
-    : never;
+  FilePages extends AnyPage = never,
+> = [CollectPaths<PagesFromResult<PagesResult> | FilePages>] extends [never]
+  ? string
+  : CollectPaths<PagesFromResult<PagesResult> | FilePages>;
 
 type _GetSlugs<
   Route extends string,

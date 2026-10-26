@@ -40,12 +40,15 @@ async function runTypegen() {
     process.exit(1);
   }
 
-  if (!(await detectFsRouterUsage(srcDir))) {
-    console.error('fsRouter usage not detected in waku.server.ts');
+  const usage = await detectFsRouterUsage(srcDir);
+  if (!usage) {
+    console.error(
+      'Supported fsRouter or unstable_createFileRoutes usage not detected in waku.server.ts',
+    );
     process.exit(1);
   }
 
-  const result = await generateFsRouterTypes(pagesDir);
+  const result = await generateFsRouterTypes(pagesDir, usage);
   if (!result) {
     console.error('Failed to generate types (no page files found)');
     process.exit(1);

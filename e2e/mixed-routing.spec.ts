@@ -63,12 +63,20 @@ test.describe('mixed routing', () => {
   }) => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
+    const documentRequests: string[] = [];
+    page.on('request', (request) => {
+      if (
+        request.isNavigationRequest() &&
+        request.frame() === page.mainFrame()
+      ) {
+        documentRequests.push(request.url());
+      }
+    });
     await page.getByRole('link', { name: 'About', exact: true }).click();
     await expect(
       page.getByRole('heading', { name: 'File-based about' }),
     ).toBeVisible();
 
-    // Configured URLs use ordinary anchors because typegen omits virtual modules.
     await page
       .getByRole('link', { name: 'Configured static', exact: true })
       .click();
@@ -80,11 +88,13 @@ test.describe('mixed routing', () => {
       .click();
     await expect(page.getByTestId('name')).toHaveText('Waku');
 
-    await waitForHydration(page);
+    await expect(page).toHaveURL(`http://localhost:${port}/hello/Waku`);
     await page.getByRole('link', { name: 'Home', exact: true }).click();
     await expect(
       page.getByRole('heading', { name: 'File-based home' }),
     ).toBeVisible();
+    await expect(page).toHaveURL(`http://localhost:${port}/`);
+    expect(documentRequests).toEqual([]);
   });
 
   for (const name of ['Waku', 'Ada']) {

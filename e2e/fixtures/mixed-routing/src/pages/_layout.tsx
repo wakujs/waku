@@ -14,12 +14,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <li>
               <Link to="/about">About</Link>
             </li>
-            {/* shortcut: use document navigation while typegen omits virtual routes. */}
             <li>
-              <a href="/configured">Configured static</a>
+              <Link to="/configured">Configured static</Link>
             </li>
             <li>
-              <a href="/hello/Waku">Configured dynamic</a>
+              <Link to="/hello/Waku">Configured dynamic</Link>
             </li>
           </ul>
         </nav>

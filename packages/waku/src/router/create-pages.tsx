@@ -6,6 +6,8 @@ import {
 } from 'waku/minimal/client';
 import { unstable_createCustomError as createCustomError } from 'waku/minimal/server';
 import { ErrorBoundary } from '../router/client.js';
+import { registerFileRoutes } from './create-file-routes.js';
+import type { Unstable_CreateFileRoutes } from './create-file-routes.js';
 import type {
   ApiHandler,
   HandlerInterceptor,
@@ -492,12 +494,17 @@ export const createPages = <
     createApi: CreateApi;
     createSlice: CreateSlice;
     createInterceptor: CreateInterceptor;
+    unstable_createFileRoutes: Unstable_CreateFileRoutes;
   }) => Promise<AllPages>,
   options?: {
     unstable_skipBuild?: (routePath: string) => boolean;
   },
 ) => {
   let configured = false;
+  const dynamicPageByPattern = new Map<
+    string,
+    { path: string; source: string | undefined }
+  >();
 
   // layout lookups retain (group) path and pathMaps store without group
   // paths are stored without groups to easily detect duplicates
@@ -647,6 +654,26 @@ export const createPages = <
 
     const pathSpec = parsePathWithSlug(pageRoutePath);
     const { numSlugs, numWildcards } = countSlugsAndWildcards(pathSpec);
+    if (page.render === 'dynamic' && !page.exactPath && numSlugs > 0) {
+      // Parameter names do not distinguish two URL matchers.
+      const pattern = JSON.stringify(
+        parsePathWithSlug(getGrouplessPath(page.path)).map((segment) =>
+          segment.type === 'literal'
+            ? segment
+            : { ...segment, name: undefined },
+        ),
+      );
+      const previous = dynamicPageByPattern.get(pattern);
+      if (previous) {
+        throw new Error(
+          `Duplicated dynamic route pattern: ${previous.path} (${previous.source ?? 'configured route'}) and ${page.path} (${page.unstable_sourceFile ?? 'configured route'})`,
+        );
+      }
+      dynamicPageByPattern.set(pattern, {
+        path: page.path,
+        source: page.unstable_sourceFile,
+      });
+    }
     const noSsr = page.unstable_noSsr ?? false;
     const slices = page.slices || [];
     const sourceFile = page.unstable_sourceFile;
@@ -951,6 +978,19 @@ export const createPages = <
         createApi,
         createSlice,
         createInterceptor,
+        unstable_createFileRoutes: (modules, options) =>
+          registerFileRoutes(
+            {
+              createPage,
+              createLayout,
+              createRoot,
+              createApi,
+              createSlice,
+              createInterceptor,
+            },
+            modules,
+            options,
+          ),
       });
       await ready;
 

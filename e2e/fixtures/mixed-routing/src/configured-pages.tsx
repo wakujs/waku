@@ -3,7 +3,7 @@ export function ConfiguredPage() {
     <section data-route-source="config">
       <title>Configured static page</title>
       <h1>Configured static page</h1>
-      <p>This route comes from an explicit module mapping.</p>
+      <p>This route comes from createPage.</p>
     </section>
   );
 }
