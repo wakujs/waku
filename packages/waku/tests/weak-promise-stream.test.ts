@@ -212,6 +212,34 @@ test('one-byte chunks preserve UTF-8, binary, aliases and unused EOF completion'
   );
 });
 
+test('fragmented ordinary records retain their bytes after subsequent records', async () => {
+  const weak = createWeakPromise();
+  const { source, markers, output } = controlledRender({
+    INTENT: weak.promise,
+  });
+  const first = '0:{"INTENT":"$@1","value":"first"}\n';
+  const second = '2:{"value":"second"}\n';
+  const input =
+    first + '1:' + JSON.stringify(await markers.INTENT) + '\n' + second;
+  for (const byte of encoder.encode(input)) {
+    source.enqueue(new Uint8Array([byte]));
+  }
+  source.close();
+  const reader = output.getReader();
+  const parts: Uint8Array[] = [];
+  while (true) {
+    const part = await reader.read();
+    if (part.done) {
+      break;
+    }
+    parts.push(part.value);
+  }
+  const actual = await new Response(
+    new Blob(parts.map((part) => new Uint8Array(part))),
+  ).text();
+  expect(actual).toBe(first + second + '1:"$undefined"\n');
+});
+
 test('cancellation before a safe boundary avoids encoding a large resolved value', async () => {
   const weak = createWeakPromise();
   const { source, markers, output, cancel } = controlledRender({

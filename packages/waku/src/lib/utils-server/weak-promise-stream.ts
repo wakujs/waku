@@ -5,6 +5,9 @@ const decoder = new TextDecoder();
 const lengthTags = new Set(
   Array.from('TAOoUSsLlGgMmVb', (tag) => tag.charCodeAt(0)),
 );
+const MARKER_PREFIX = 'waku-weak-';
+const MARKER_BODY_LENGTH = MARKER_PREFIX.length + 36 + 2;
+
 type WeakState = NonNullable<ReturnType<typeof getWeakPromise>>;
 type Entry = {
   placeholder: Promise<string>;
@@ -12,38 +15,23 @@ type Entry = {
   unsubscribe?: () => void;
 };
 
-function forwardFlightRecords(
+function createFlightRecordScanner(
   emit: (bytes: Uint8Array) => void,
   consumeMarker: (id: string, row: string) => boolean,
-  flush: () => void,
-  markerLength: number,
+  onBoundary: () => void,
 ) {
   let buffered = new Uint8Array(0);
   let remaining = 0;
-  let line:
-    | true
-    | { id: string; header: Uint8Array; parts: Uint8Array[]; size: number }
-    | undefined;
-  let flushRequested = false;
-  const partial = () => !!buffered.length || !!remaining || line !== undefined;
-  const boundary = () => {
-    if (flushRequested) {
-      flushRequested = false;
-      flush();
-    }
-  };
+  const scratch = new Uint8Array(MARKER_BODY_LENGTH + 1);
+  let row: true | { id: string; header: Uint8Array; size: number } | undefined;
+  const isAtBoundary = () =>
+    !buffered.length && !remaining && row === undefined;
   return {
-    requestFlush() {
-      flushRequested = true;
-      if (!partial()) {
-        boundary();
-      }
-    },
+    isAtBoundary,
     end() {
-      if (partial()) {
+      if (!isAtBoundary()) {
         throw new Error('Truncated Flight record');
       }
-      boundary();
     },
     push(chunk: Uint8Array) {
       let input = chunk;
@@ -61,50 +49,39 @@ function forwardFlightRecords(
           offset += size;
           remaining -= size;
           if (!remaining) {
-            boundary();
+            onBoundary();
           }
           continue;
         }
-        if (line !== undefined) {
+        if (row !== undefined) {
           const newline = input.indexOf(10, offset);
           const end = newline === -1 ? input.length : newline + 1;
           const bytes = input.subarray(offset, end);
-          if (line === true) {
+          if (row === true) {
             emit(bytes);
+          } else if (row.size + bytes.length > scratch.length) {
+            emit(row.header);
+            emit(scratch.slice(0, row.size));
+            emit(bytes);
+            row = true;
           } else {
+            scratch.set(bytes, row.size);
+            row.size += bytes.length;
             if (
-              line.size + bytes.length >
-              markerLength + (newline === -1 ? 0 : 1)
+              newline !== -1 &&
+              !consumeMarker(
+                row.id,
+                decoder.decode(scratch.subarray(0, row.size - 1)),
+              )
             ) {
-              emit(line.header);
-              line.parts.forEach(emit);
-              emit(bytes);
-              line = true;
-            } else {
-              line.parts.push(bytes.slice());
-              line.size += bytes.length;
-              if (newline !== -1) {
-                const body = new Uint8Array(line.size);
-                let position = 0;
-                for (const part of line.parts) {
-                  body.set(part, position);
-                  position += part.length;
-                }
-                if (
-                  consumeMarker(line.id, decoder.decode(body.subarray(0, -1)))
-                ) {
-                  flushRequested = true;
-                } else {
-                  emit(line.header);
-                  line.parts.forEach(emit);
-                }
-              }
+              emit(row.header);
+              emit(scratch.slice(0, row.size));
             }
           }
           offset = end;
           if (newline !== -1) {
-            line = undefined;
-            boundary();
+            row = undefined;
+            onBoundary();
           }
           continue;
         }
@@ -124,40 +101,38 @@ function forwardFlightRecords(
           emit(input.subarray(offset, comma + 1));
           offset = comma + 1;
           if (!remaining) {
-            boundary();
+            onBoundary();
           }
-        } else {
-          const newline = input.indexOf(10, colon + 1);
-          const bodyEnd = newline === -1 ? input.length : newline;
-          const body = input.subarray(colon + 1, bodyEnd);
-          if (newline === -1) {
-            if (body.length > markerLength) {
-              line = true;
-              emit(input.subarray(offset));
-            } else {
-              line = {
-                id: decoder.decode(input.subarray(offset, colon)),
-                header: input.slice(offset, colon + 1),
-                parts: [body.slice()],
-                size: body.length,
-              };
-            }
-            return;
-          }
-          if (
-            body.length <= markerLength &&
-            consumeMarker(
-              decoder.decode(input.subarray(offset, colon)),
-              decoder.decode(body),
-            )
-          ) {
-            flushRequested = true;
-          } else {
-            emit(input.subarray(offset, newline + 1));
-          }
-          offset = newline + 1;
-          boundary();
+          continue;
         }
+        const newline = input.indexOf(10, colon + 1);
+        const bodyEnd = newline === -1 ? input.length : newline;
+        const body = input.subarray(colon + 1, bodyEnd);
+        if (newline === -1) {
+          if (body.length > MARKER_BODY_LENGTH) {
+            row = true;
+            emit(input.subarray(offset));
+          } else {
+            scratch.set(body);
+            row = {
+              id: decoder.decode(input.subarray(offset, colon)),
+              header: input.slice(offset, colon + 1),
+              size: body.length,
+            };
+          }
+          return;
+        }
+        if (
+          body.length > MARKER_BODY_LENGTH ||
+          !consumeMarker(
+            decoder.decode(input.subarray(offset, colon)),
+            decoder.decode(body),
+          )
+        ) {
+          emit(input.subarray(offset, newline + 1));
+        }
+        offset = newline + 1;
+        onBoundary();
       }
       buffered = input.slice(offset);
     },
@@ -171,7 +146,6 @@ export function renderWithWeakPromises(
 ) {
   const entriesByState = new Map<WeakState, Entry>();
   const entriesByMarker = new Map<string, Entry>();
-  let markerLength = 0;
   for (const [key, value] of Object.entries(data)) {
     const state = getWeakPromise(value);
     if (!state) {
@@ -179,11 +153,10 @@ export function renderWithWeakPromises(
     }
     let entry = entriesByState.get(state);
     if (!entry) {
-      const marker = 'waku-weak-' + crypto.randomUUID();
+      const marker = MARKER_PREFIX + crypto.randomUUID();
       entry = { placeholder: Promise.resolve(marker) };
       entriesByState.set(state, entry);
       entriesByMarker.set(JSON.stringify(marker), entry);
-      markerLength = Math.max(markerLength, JSON.stringify(marker).length);
     }
     data[key] = entry.placeholder;
   }
@@ -235,7 +208,7 @@ export function renderWithWeakPromises(
       }
     }
   };
-  const records = forwardFlightRecords(
+  const records = createFlightRecordScanner(
     emit,
     (id, row) => {
       const entry = entriesByMarker.get(row);
@@ -246,8 +219,7 @@ export function renderWithWeakPromises(
       entry.id = id;
       return true;
     },
-    () => flush(),
-    markerLength,
+    flush,
   );
   return new ReadableStream<Uint8Array>(
     {
@@ -256,7 +228,9 @@ export function renderWithWeakPromises(
         for (const [state, entry] of entriesByState) {
           entry.unsubscribe = state.subscribe(() => {
             try {
-              records.requestFlush();
+              if (records.isAtBoundary()) {
+                flush();
+              }
             } catch (error) {
               fail(error);
             }
