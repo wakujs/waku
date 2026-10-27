@@ -89,14 +89,6 @@ test.describe(`ssr-redirect`, () => {
     );
   });
 
-  test('static normal-return redirect follows after hydration', async ({
-    page,
-  }) => {
-    await page.goto(`http://localhost:${port}/intent-static`);
-    await expect(page.getByRole('heading')).toHaveText('Destination Page');
-    await expect(page).toHaveURL(`http://localhost:${port}/destination`);
-  });
-
   test('flat pass-through preserves opaque action values and client props', async ({
     page,
   }) => {

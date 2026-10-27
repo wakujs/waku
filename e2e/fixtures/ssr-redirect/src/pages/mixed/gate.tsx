@@ -2,7 +2,7 @@ import { requestRedirect } from 'waku/router/server';
 
 export default function Gate() {
   requestRedirect('/destination');
-  return <p>Redirecting from a static page in a dynamic layout</p>;
+  return null;
 }
 
-export const getConfig = async () => ({ render: 'static' }) as const;
+export const getConfig = async () => ({ render: 'dynamic' }) as const;

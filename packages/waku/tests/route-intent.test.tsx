@@ -2,6 +2,7 @@
 
 import { Component, Suspense, act, use, useLayoutEffect } from 'react';
 import type { ReactNode } from 'react';
+import { createRequire } from 'node:module';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { ETAGS_ID } from '../src/lib/utils-isomorphic/etags.js';
@@ -33,6 +34,14 @@ import {
 } from '../src/router/server.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
+const { createFromReadableStream } = createRequire(import.meta.url)(
+  'react-server-dom-webpack/client.edge',
+) as {
+  createFromReadableStream: (
+    stream: ReadableStream,
+    options: unknown,
+  ) => Promise<Elements>;
+};
 const mocks = vi.hoisted(() => ({
   queue: [] as Array<Elements | Promise<Elements>>,
 }));
@@ -196,6 +205,45 @@ test('a ready redirect retains content until its destination loads', async () =>
   expect(view.textContent).toContain('Page /done');
   expect(window.location.pathname).toBe('/done');
 });
+
+test.each([false, true])(
+  'a prefetched ready redirect retains content until its destination loads (instant: %s)',
+  async (instant) => {
+    mocks.queue.push(payload('/one'));
+    const view = await mount();
+    mocks.queue.push(
+      payload(
+        '/gate',
+        Promise.resolve(JSON.stringify({ status: 307, location: '/done' })),
+      ),
+    );
+    await act(async () => {
+      controls.router.prefetch('/gate');
+      await flush();
+    });
+    const destination = defer<Elements>();
+    const requests = vi.mocked(fetch).mock.calls.length;
+    mocks.queue.push(destination.promise);
+    let navigating!: Promise<void>;
+    await act(async () => {
+      navigating = controls.router.push('/gate', {
+        unstable_instant: instant,
+      });
+      await flush();
+    });
+    expect(vi.mocked(fetch).mock.calls).toHaveLength(requests + 1);
+    expect(view.textContent).toContain('Page /one');
+    expect(view.textContent).not.toContain('Page /gate');
+    expect(window.location.pathname).toBe('/one');
+    await act(async () => {
+      destination.resolve(payload('/done'));
+      await navigating;
+      await flush();
+    });
+    expect(view.textContent).toContain('Page /done');
+    expect(window.location.pathname).toBe('/done');
+  },
+);
 
 test.each(['redirect', 'notFound', 'notFoundWithoutPage'] as const)(
   'a cancelled resolver follows %s from a pending navigation',
@@ -563,6 +611,40 @@ test('a late page intent cannot leave a reused static route', async () => {
   expect(vi.mocked(fetch).mock.calls).toHaveLength(requests);
 });
 
+test('a static response clears the previous dynamic route intent', async () => {
+  const pending = deferIntent();
+  mocks.queue.push(payload('/one', pending.promise));
+  const view = await mount();
+  const metadata = await createFromReadableStream(
+    new Response('0:{"ROUTE":["/two",""],"IS_STATIC":true,"INTENT":null}\n')
+      .body!,
+    {
+      serverConsumerManifest: {
+        moduleMap: {},
+        serverModuleMap: {},
+        moduleLoading: null,
+      },
+    },
+  );
+  mocks.queue.push({
+    ...metadata,
+    [getRouteSlotId('/two')]: <p>Page /two</p>,
+  });
+  await act(async () => {
+    await controls.router.push('/two');
+    await flush();
+  });
+  expect(controls.elements[INTENT_ID]).toBeNull();
+  const requests = vi.mocked(fetch).mock.calls.length;
+  await act(async () => {
+    pending.resolve({ status: 307, location: '/wrong' });
+    await flush();
+  });
+  expect(window.location.pathname).toBe('/two');
+  expect(view.textContent).toContain('Page /two');
+  expect(vi.mocked(fetch).mock.calls).toHaveLength(requests);
+});
+
 test('a partial intent is ignored after its originating route was left', async () => {
   const pending = deferIntent();
   mocks.queue.push(payload('/one'));
@@ -686,12 +768,12 @@ test('an action redirect yields to a navigation that is already in flight', asyn
   expect(window.location.pathname).toBe('/two');
 });
 
-test('a skipped static redirect is fetched again while its destination is reused', async () => {
+test('a dynamic redirect is fetched again while its static destination is reused', async () => {
   mocks.queue.push(payload('/one'));
   const view = await mount();
   const intent: RouteIntentData = { status: 307, location: '/done' };
   mocks.queue.push(
-    payload('/gate', Promise.resolve(JSON.stringify(intent)), true),
+    payload('/gate', Promise.resolve(JSON.stringify(intent))),
     payload('/done', Promise.resolve(undefined), true),
   );
   await act(async () => {
@@ -701,9 +783,7 @@ test('a skipped static redirect is fetched again while its destination is reused
   expect(window.location.pathname).toBe('/done');
   expect(controls.elements).not.toHaveProperty(getRouteSlotId('/gate'));
   const requests = vi.mocked(fetch).mock.calls.length;
-  mocks.queue.push(
-    payload('/gate', Promise.resolve(JSON.stringify(intent)), true),
-  );
+  mocks.queue.push(payload('/gate', Promise.resolve(JSON.stringify(intent))));
   await act(async () => {
     await controls.router.push('/gate');
     await flush();
@@ -781,13 +861,13 @@ test.each([
   },
 );
 
-test('a cached fragment intent is followed again on a later route activation', async () => {
+test('a fragment intent is followed again on a later dynamic route activation', async () => {
   mocks.queue.push(payload('/one', undefined, true));
   const view = await mount();
   const pending = Promise.resolve(
     JSON.stringify({ status: 307, location: '/article#comments' }),
   );
-  mocks.queue.push(payload('/article', pending, true));
+  mocks.queue.push(payload('/article', pending));
   await act(async () => {
     await controls.router.push('/article');
     await flush();
@@ -798,6 +878,7 @@ test('a cached fragment intent is followed again on a later route activation', a
     await flush();
   });
   expect(view.textContent).toContain('Page /one');
+  mocks.queue.push(payload('/article', pending));
   await act(async () => {
     await controls.router.push('/article');
     await flush();
@@ -806,7 +887,7 @@ test('a cached fragment intent is followed again on a later route activation', a
     '/article#comments',
   );
   expect(view.textContent).toContain('Page /article');
-  expect(vi.mocked(fetch).mock.calls).toHaveLength(2);
+  expect(vi.mocked(fetch).mock.calls).toHaveLength(3);
 });
 
 test('a hash-only navigation preserves the current server-render intent', async () => {
@@ -1218,33 +1299,24 @@ test.each(['not-found', 'malformed'] as const)(
   },
 );
 
-test('merges and repeated static visits observe a pending intent once', async () => {
+test('merges and hash changes observe a pending intent once', async () => {
   const pending = deferIntent();
   const then = vi.spyOn(pending.promise, 'then');
-  mocks.queue.push(payload('/one', pending.promise, true));
+  mocks.queue.push(payload('/one', pending.promise));
   await mount();
   for (let i = 0; i < 5; i++) {
     await act(async () => {
       await controls.merge({ sidebar: i });
+      await controls.router.push(`/one#section-${i}`);
       await flush();
     });
   }
+  expect(then).toHaveBeenCalledOnce();
   mocks.queue.push(payload('/two', undefined, true));
   await act(async () => {
     await controls.router.push('/two');
     await flush();
   });
-  for (let i = 0; i < 5; i++) {
-    await act(async () => {
-      await controls.router.push('/one');
-      await flush();
-    });
-    await act(async () => {
-      await controls.router.push('/two');
-      await flush();
-    });
-  }
-  expect(then).toHaveBeenCalledOnce();
   await act(async () => {
     pending.resolve({ status: 307, location: '/stale' });
     await flush();

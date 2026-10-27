@@ -133,7 +133,7 @@ export const load = async (
         return { type: 'reused', ...attempt };
       }
       const pending = elements[INTENT_ID] as
-        PromiseLike<string | undefined> | undefined;
+        PromiseLike<string | undefined> | null | undefined;
       if (pending) {
         const outcome = await getRouteIntentOutcome(pending);
         if (opts.signal.aborted) {

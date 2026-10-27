@@ -43,9 +43,9 @@ and transport cancellation. The renderer-level request-abort probe supplies an
 AbortSignal; `renderRsc` itself has no signal option.
 
 Router cache probes use `serializeRsc` and the matched Flight decoder to check
-immutable serialized outcomes (including nested cancellation), dynamic retry,
-intent replay, and cancellation-like text and binary data. A factory that throws
-produces no serialized result and leaves no cache entry.
+immutable serialized outcomes (including nested cancellation), dynamic retry
+and routing intents, and cancellation-like text and binary data. A factory that
+throws produces no serialized result and leaves no cache entry.
 
 The SSR probe runs the RSC renderer in a separate process with the `react-server`
 condition. The parent uses the matched React DOM server and Flight decoder with

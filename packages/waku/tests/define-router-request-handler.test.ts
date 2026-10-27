@@ -864,12 +864,12 @@ describe('request dispatch', () => {
     },
   );
 
-  it('accounts for interceptors registered during createPages initialization', async () => {
+  it('keeps static routes reusable when createPages registers an interceptor', async () => {
+    const interceptor = vi.fn();
     const router = createPages(async ({ createPage, createInterceptor }) => {
-      createInterceptor(async (next) => {
-        const result = await next();
-        requestRedirect('/login');
-        return result;
+      createInterceptor((next) => {
+        interceptor();
+        return next();
       });
       return [
         createPage({
@@ -883,38 +883,30 @@ describe('request dispatch', () => {
 
     await router.handleRequest(rscInput(encodeRoutePath('/cached')), utils);
 
-    expect(utils.renderRsc.mock.calls[0]![0][IS_STATIC_ID]).toBe(false);
+    expect(interceptor).toHaveBeenCalledOnce();
+    expect(utils.renderRsc.mock.calls[0]![0][IS_STATIC_ID]).toBe(true);
   });
 
-  it.each(['before', 'after'])(
-    'does not cache an interceptor intent recorded %s rendering',
-    async (when) => {
-      const { handleRequest } = createConfiguredRouter({
-        getConfigs: async () => [staticRoute('/cached')],
-        unstable_interceptors: [
-          async (next) => {
-            if (when === 'before') {
-              requestRedirect('/login');
-            }
-            const result = await next();
-            if (when === 'after') {
-              requestRedirect('/login');
-            }
-            return result;
-          },
-        ],
-      });
-      const utils = makeUtils();
+  it('does not cache an interceptor intent recorded before rendering', async () => {
+    const { handleRequest } = createConfiguredRouter({
+      getConfigs: async () => [staticRoute('/cached')],
+      unstable_interceptors: [
+        async (next) => {
+          requestRedirect('/login');
+          return next();
+        },
+      ],
+    });
+    const utils = makeUtils();
 
-      await handleRequest(rscInput(encodeRoutePath('/cached')), utils);
+    await handleRequest(rscInput(encodeRoutePath('/cached')), utils);
 
-      const elements = utils.renderRsc.mock.calls[0]![0];
-      expect(elements[IS_STATIC_ID]).toBe(false);
-      await expect(elements[INTENT_ID]).resolves.toBe(
-        JSON.stringify({ status: 307, location: '/login' }),
-      );
-    },
-  );
+    const elements = utils.renderRsc.mock.calls[0]![0];
+    expect(elements[IS_STATIC_ID]).toBe(false);
+    await expect(elements[INTENT_ID]).resolves.toBe(
+      JSON.stringify({ status: 307, location: '/login' }),
+    );
+  });
 
   it('does not cache a request intent recorded by resolve', async () => {
     const router = unstable_defineRouter({

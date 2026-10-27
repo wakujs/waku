@@ -4,7 +4,6 @@ import {
 } from 'waku/minimal/client';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
-  INTENT_ID,
   encodeRoutePath,
   getRouteFromElements,
   getRouteSlotId,
@@ -61,25 +60,18 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
     return applyIntent?.(elements) ?? elements;
   };
   const manager = createPrefetchManager();
-  const intentPromisesByRoutePath = new Map<
-    string,
-    Promise<string | undefined> | undefined
-  >();
+  const staticRoutePaths = new Set<string>();
 
   const getPrefetchedElements = (route: RouteProps): Elements | undefined =>
     manager.getElements(encodeRoutePath(route.path));
 
   const canReuseStaticRoute = (route: RouteProps, elements: Elements) =>
-    intentPromisesByRoutePath.has(route.path) &&
-    getRouteSlotId(route.path) in elements;
+    staticRoutePaths.has(route.path) && getRouteSlotId(route.path) in elements;
 
   const learnStaticFromElements = (elements: Elements): void => {
     const route = getRouteFromElements(elements);
     if (route && isStaticFromElements(elements)) {
-      intentPromisesByRoutePath.set(
-        route.path,
-        elements[INTENT_ID] as Promise<string | undefined> | undefined,
-      );
+      staticRoutePaths.add(route.path);
     }
   };
 
@@ -126,8 +118,6 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
     getPrefetch: (route: RouteProps): PrefetchHandle | undefined =>
       manager.get(encodeRoutePath(route.path), route.query),
     canReuseStaticRoute,
-    getStaticRouteIntent: (route: RouteProps) =>
-      intentPromisesByRoutePath.get(route.path),
     /**
      * Loads an optional initial response before static reuse, prefetch, or the
      * network, using `unstable_load`'s follow and cancellation rules.
@@ -198,7 +188,7 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
     learnStaticFromElements,
     clearCaches: (): void => {
       manager.clear();
-      intentPromisesByRoutePath.clear();
+      staticRoutePaths.clear();
     },
   };
 };

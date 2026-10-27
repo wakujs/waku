@@ -79,7 +79,19 @@ An immutable slot must have the same content for its lifetime. The `root` ID is 
 
 The server caches immutable named elements. It reuses immutable `route` content from build output, but does not cache new route content by requested pathname at runtime. Give a route source a `cacheKey` to share its cached content across pathnames, such as a reusable route shell. Sources with the same key must render the same content; use a bounded set of keys rather than arbitrary requested URLs. The cache reuses the serialized outcome, including any nested cancellation.
 
-If a source factory throws, including calling `unstable_cancelRender()`, its result and recorded intent are not cached. Concurrent requests sharing that render may therefore miss its intent. A factory cancellation during a build fails the build. Use dynamic sources for request-dependent or retryable rendering.
+Immutable and cached sources produce content only. Their factories and nested
+components must not call `requestRedirect()` or `requestNotFound()`. Put routing
+decisions in dynamic sources, server functions, or runtime handler interceptors
+before `next()`.
+
+If a source factory throws, including calling `unstable_cancelRender()`, its
+result is not cached. A factory cancellation during a build fails the build.
+Use dynamic sources for request-dependent or retryable rendering.
+
+A route whose sources are all immutable can be reused by the client without a
+request, whether or not those sources have a `cacheKey`. Handler interceptors do
+not prevent this reuse. A decision that must run on each visit requires a dynamic
+route.
 
 Additional IDs must not start with `_`, a capital letter, or `route:`; these names are reserved for Minimal and Router metadata.
 
@@ -116,7 +128,7 @@ Return an async function from `resolve` for an API endpoint. The function receiv
 The handler owns its returned `Response`, including its status and headers. Return
 `Response.redirect()` for a redirect or a response with status `404` for missing
 data. `requestRedirect()` and `requestNotFound()` are not supported inside API
-handlers; they serve React rendering and server function calls. An interceptor
+handlers; they serve dynamic React rendering and server function calls. An interceptor
 can record an intent before `next()` to skip the handler.
 
 Route params are caller-owned: match and capture them in `resolve`, then close over them in the handler or element source. Use `getRequest` from `waku/router/server` to inspect the request during resolution or rendering.
@@ -135,6 +147,10 @@ The optional `getBuildPaths` returns pathname strings, without queries or fragme
 For explicit build planning, return `{ pathname, routerDefinition?, prerender?, prefetchRegExp? }` targets. `routerDefinition` supplies a build-specific router definition or an HTTP handler rather than calling `resolve`. `prerender: false` caches only immutable sources without emitting a page, even when every source is immutable. `prefetchRegExp` is a regular expression matching paths that share the target's client modules.
 
 Omit a path to skip its build output. Omit `getBuildPaths` entirely for runtime-only routes. Custom routers do not need `PathSpec` or component source-file metadata.
+
+Build-time sources render content without route intents. Exclude invalid static
+paths from the build plan or render fallback content. On static-only deployments,
+configure redirects at the host; see [Redirect Maps](/guides/redirect-maps).
 
 Include `/404` in `getBuildPaths` to emit a static `404.html`.
 

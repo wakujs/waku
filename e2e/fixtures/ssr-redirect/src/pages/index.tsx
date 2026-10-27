@@ -11,8 +11,7 @@ export default async function HomePage() {
       <Link to="/intent">Intent Redirect</Link>
       <Link to="/intent-late">Intent Late Redirect</Link>
       <Link to="/intent-missing">Intent Missing</Link>
-      <Link to="/mixed/gate">Mixed Static Redirect</Link>
-      <Link to="/intent-static">Intent Static Redirect</Link>
+      <Link to="/mixed/gate">Mixed Redirect</Link>
     </div>
   );
 }

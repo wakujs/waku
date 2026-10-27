@@ -214,7 +214,7 @@ const routerOptions: Parameters<typeof defineRouter>[0] = {
         elements: {
           root,
           route: {
-            immutable: true,
+            immutable: path === '/action-static',
             render: () => (
               <>
                 <h1>
@@ -386,7 +386,7 @@ const runtimeRouter = defineRouter({
   resolve: async () => ({
     elements: {
       root,
-      route: { immutable: true, render: () => <AsyncPage /> },
+      route: { render: () => <AsyncPage /> },
     },
   }),
 });

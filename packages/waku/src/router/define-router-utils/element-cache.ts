@@ -1,8 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Unstable_ElementSource as ElementSource } from 'waku/minimal/server';
 import { deserializeRsc, serializeRsc } from 'waku/server';
-import type { RouteIntentData } from '../isomorphic-utils/router-protocol.js';
-import { captureRouteIntent, getRouteIntent } from './request-store.js';
 
 export const ROOT_SLOT_ID = 'root';
 
@@ -14,57 +12,39 @@ const bytesToBase64 = (bytes: Uint8Array) => {
   return btoa(binary);
 };
 
-export const base64ToBytes = (base64: string) =>
+const base64ToBytes = (base64: string) =>
   Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
 
 export type CacheId = string;
 
-export type SerializedElement = {
-  data: string;
-  intent?: RouteIntentData | undefined;
-};
-
 export const createElementCache = (
-  onSerialize?: (cacheId: CacheId, entry: SerializedElement) => void,
+  onSerialize?: (cacheId: CacheId, data: string) => void,
 ) => {
-  const cache = new Map<
-    CacheId,
-    Promise<{ result: Uint8Array; intent: RouteIntentData | undefined }>
-  >();
+  const cache = new Map<CacheId, Promise<Uint8Array>>();
   return {
-    preload: (cacheId: CacheId, { data, intent }: SerializedElement) => {
-      const result = base64ToBytes(data);
-      cache.set(cacheId, Promise.resolve({ result, intent }));
+    preload: (cacheId: CacheId, data: string) => {
+      cache.set(cacheId, Promise.resolve(base64ToBytes(data)));
     },
     has: (cacheId: CacheId) => cache.has(cacheId),
-    replayIntent: async (cacheId: CacheId) => {
-      const entry = await cache.get(cacheId);
-      if (entry?.intent) {
-        getRouteIntent().record(entry.intent);
-      }
-    },
     get: (cacheId: CacheId) =>
-      cache.get(cacheId)?.then(({ result, intent }) => {
-        if (intent) {
-          getRouteIntent().record(intent);
-        }
-        return deserializeRsc(result) as Promise<ReactNode>;
-      }),
+      cache
+        .get(cacheId)
+        ?.then((result) => deserializeRsc(result) as Promise<ReactNode>),
     set: async (cacheId: CacheId, render: ElementSource['render']) => {
       if (cache.has(cacheId)) {
         return;
       }
-      const entry = captureRouteIntent(async () =>
-        serializeRsc(await render()),
-      ).catch((error) => {
-        if (cache.get(cacheId) === entry) {
-          cache.delete(cacheId);
-        }
-        throw error;
-      });
+      const entry = (async () => serializeRsc(await render()))().catch(
+        (error) => {
+          if (cache.get(cacheId) === entry) {
+            cache.delete(cacheId);
+          }
+          throw error;
+        },
+      );
       cache.set(cacheId, entry);
-      const { result, intent } = await entry;
-      onSerialize?.(cacheId, { data: bytesToBase64(result), intent });
+      const result = await entry;
+      onSerialize?.(cacheId, bytesToBase64(result));
     },
   };
 };

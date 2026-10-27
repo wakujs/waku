@@ -74,7 +74,10 @@ export function rerenderRoute(pathname?: string, query?: string) {
  * The first intent recorded for a request wins, including concurrent renders.
  * A server function keeps its normal return value; a form submitted without
  * JavaScript responds with 404.
- * API handlers return their own HTTP responses and cannot use this helper.
+ * Use in dynamic renders, server functions, or handler interceptors before
+ * `next()`. Immutable and prerendered sources must not record route intents.
+ * API handlers return their own HTTP responses. Router does not apply intents
+ * recorded inside them.
  */
 export function requestNotFound(): void {
   getRouteIntent().record({ status: 404 });
@@ -129,11 +132,13 @@ const getRedirectLocation = (
  * destinations derived from user input against your own allowlist. Before a
  * dynamic document response is returned this produces an HTTP redirect
  * (303 for a form POST).
- * After the shell, and for prerendered pages, the browser follows the intent
- * using JavaScript.
+ * After the shell, the browser follows the intent using JavaScript.
  * An absolute URL navigates the document even when it names this origin.
  * The first intent recorded for a request wins, including concurrent renders.
- * API handlers return their own HTTP responses and cannot use this helper.
+ * Use in dynamic renders, server functions, or handler interceptors before
+ * `next()`. Immutable and prerendered sources must not record route intents.
+ * API handlers return their own HTTP responses. Router does not apply intents
+ * recorded inside them.
  */
 export function requestRedirect(
   to: NavigationHref | `http://${string}` | `https://${string}` | URL,
@@ -214,7 +219,6 @@ export function defineRouter(fns: RouterOptions): Handlers {
       resolve: fns.resolve,
       routeEntries,
       runHandled,
-      hasInterceptors: () => !!fns.unstable_interceptors?.length,
     }),
     handleBuild: createBuildHandler({
       resolve: fns.resolve,

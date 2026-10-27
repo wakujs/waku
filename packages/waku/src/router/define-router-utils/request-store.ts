@@ -17,10 +17,7 @@ export type RouterStore = {
 
 const routerStorage = new AsyncLocalStorage<RouterStore>();
 
-const createRouteIntent = (
-  signal?: AbortSignal,
-  forward?: (intent: RouteIntentData) => void,
-) => {
+const createRouteIntent = (signal: AbortSignal) => {
   const { promise, resolve } = createWeakPromise();
   let value: RouteIntentData | undefined;
   return {
@@ -29,12 +26,11 @@ const createRouteIntent = (
       return value;
     },
     record(intent: RouteIntentData) {
-      if (value || signal?.aborted) {
+      if (value || signal.aborted) {
         return;
       }
       value = intent;
       resolve(JSON.stringify(intent));
-      forward?.(intent);
     },
   };
 };
@@ -45,26 +41,6 @@ export const getRouteIntent = () => {
     throw new Error('Route intent is not available.');
   }
   return (store.intent ??= createRouteIntent(store.req.signal));
-};
-
-export const captureRouteIntent = async <T>(fn: () => Promise<T>) => {
-  const store = routerStorage.getStore();
-  if (!store) {
-    return { result: await fn(), intent: undefined };
-  }
-  const parent = getRouteIntent();
-  let active = true;
-  const intent = createRouteIntent(undefined, (value) => {
-    if (active) {
-      parent.record(value);
-    }
-  });
-  try {
-    const result = await runWithRouterStore({ ...store, intent }, fn);
-    return { result, intent: intent.value };
-  } finally {
-    active = false;
-  }
 };
 
 export const runWithRouterStore = <T>(store: RouterStore, fn: () => T): T =>
