@@ -158,6 +158,8 @@ export const getConfig = async () => {
 
 If a `/404` page exists, Waku uses it for unmatched routes and `requestNotFound()` intents. If it does not exist, Waku falls back to a minimal not-found response.
 
+A form POST without JavaScript to an unresolved route renders the custom 404 page, when configured, or the generic fallback without executing the submitted action.
+
 A client-side navigation to a missing route is answered the same way: the server sends the 404 page in the response, so the client does not need a second request. That response carries status 200, because it carries a page rather than an error. A direct page load of the same URL is still a 404. Where no Waku server answers, such as a static export, the request 404s and the client fetches the 404 page itself.
 
 ## Status and Streaming Notes

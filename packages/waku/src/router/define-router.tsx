@@ -79,7 +79,11 @@ export function requestNotFound(): void {
   getRouteIntent().record({ status: 404 });
 }
 
-/** @deprecated Use `requestNotFound()` and `cancelRender()` to control termination. */
+/**
+ * @deprecated Use `requestNotFound()` and `cancelRender()` to control termination.
+ * In handler interceptors, use `requestNotFound()` and return `next()`.
+ * An uncaught cancellation there returns HTTP 204 or an empty RSC payload.
+ */
 export function notFound(): never {
   requestNotFound();
   cancelRender();
@@ -139,7 +143,11 @@ export function requestRedirect(
   }
 }
 
-/** @deprecated Use `requestRedirect()` and `cancelRender()` to control termination. */
+/**
+ * @deprecated Use `requestRedirect()` and `cancelRender()` to control termination.
+ * In handler interceptors, use `requestRedirect()` and return `next()`.
+ * An uncaught cancellation there returns HTTP 204 or an empty RSC payload.
+ */
 export function redirect(
   to: NavigationHref | `http://${string}` | `https://${string}` | URL,
   status: 303 | 307 | 308 = 307,

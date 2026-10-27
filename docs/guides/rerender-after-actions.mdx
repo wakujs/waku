@@ -80,7 +80,11 @@ The page has to render dynamically for the rerender to read the new data. If the
 action requests a redirect or not-found view, Waku skips its scheduled rerenders
 and returns the action's value with that intent.
 
+Use `unstable_rerenderRoute()` to update the route the action was called from, or `requestRedirect()` to navigate. Do not combine rerender requests with `requestRedirect()` or `requestNotFound()` in the same action: the client can discard an origin rerender response, including its intent, while navigation is pending.
+
 If the user moves to another page or a navigation is pending when the action returns, Waku drops the origin rerender. This includes a reload of the same route. The action still returns its value.
+
+Overlapping actions that request origin rerenders can also have a rerender dropped while another is waiting to commit. Do not rely on every concurrent action's result appearing on screen.
 
 ## Render a Specific Route
 

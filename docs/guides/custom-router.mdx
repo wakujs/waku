@@ -77,7 +77,9 @@ Each source uses Minimal's `Unstable_ElementSource`:
 
 An immutable slot must have the same content for its lifetime. The `root` ID is shared across routes, while `route` is mapped internally to a path-specific slot. Additional IDs are shared wherever they appear, so use distinct IDs for different content.
 
-The server caches immutable named elements. It reuses immutable `route` content from build output, but does not cache new route content by requested pathname at runtime. Give a route source a `cacheKey` to share its cached content across pathnames, such as a reusable route shell. Sources with the same key must render the same content; use a bounded set of keys rather than arbitrary requested URLs. The cache reuses the serialized outcome, including any nested cancellation. Use dynamic sources for request-dependent or retryable rendering.
+The server caches immutable named elements. It reuses immutable `route` content from build output, but does not cache new route content by requested pathname at runtime. Give a route source a `cacheKey` to share its cached content across pathnames, such as a reusable route shell. Sources with the same key must render the same content; use a bounded set of keys rather than arbitrary requested URLs. The cache reuses the serialized outcome, including any nested cancellation.
+
+If a source factory throws, including calling `unstable_cancelRender()`, its result and recorded intent are not cached. Concurrent requests sharing that render may therefore miss its intent. A factory cancellation during a build fails the build. Use dynamic sources for request-dependent or retryable rendering.
 
 Additional IDs must not start with `_`, a capital letter, or `route:`; these names are reserved for Minimal and Router metadata.
 

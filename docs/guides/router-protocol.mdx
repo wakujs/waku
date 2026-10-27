@@ -185,9 +185,11 @@ an interceptor does not make a prerendered page private.
 
 Handler interceptors record routing intents before calling `next()`. Use
 `requestRedirect()` or `requestNotFound()`, then return `next()` to let Router
-produce the response. The handler renders any fallback within that call, so the
-interceptor's async context remains active. Throwing cancellation outside `next()`
-escapes to Minimal's no-op handling.
+produce the response. This skips the requested API handler or server function.
+A skipped server function's response carries the intent without a return value;
+the function's caller receives `undefined`. The handler renders any fallback within
+that call, so the interceptor's async context remains active. Throwing cancellation
+outside `next()` escapes to Minimal's no-op handling.
 
 Once `next()` returns a response, the interceptor owns modifications, replacement,
 and cleanup of any body it discards. Recording an intent afterward does not rewrite
