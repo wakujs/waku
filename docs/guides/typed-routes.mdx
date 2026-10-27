@@ -283,7 +283,7 @@ The schema validates inbound queries and outbound values independently. Query-st
 
 The typed-navigation API changes are breaking, including for unstable exports.
 
-1. Replace structured `to` targets with a local factory call. Pass its string result to `Link`, `push`, `replace`, `prefetch`, or `unstable_redirect`:
+1. Replace structured `to` targets with a local factory call. Pass its string result to `Link`, `push`, `replace`, `prefetch`, or `requestRedirect`:
 
    ```tsx
    import { unstable_createRouteHref as createRouteHref } from 'waku/router';

@@ -119,9 +119,10 @@ export async function deleteInvoice(id: string) {
 
 This is the boundary, and it has to be, because of how a route renders. Waku
 renders a route's layouts and its page as independent slots of one response. A
-`redirect()` thrown in a layout redirects the layout; it does not stop the page
-beneath it from rendering. With a check in the layout only, an unauthenticated
-request still gets the page's data:
+`requestRedirect()` in a layout does not stop the page beneath it from rendering.
+Calling `unstable_cancelRender()` in that layout only stops its own render.
+With a check in the layout only, an unauthenticated request still gets the
+page's data:
 
 ```
 GET /dashboard                     -> 307  Location: /login?callbackUrl=%2Fdashboard
@@ -263,8 +264,6 @@ export const queueSetCookie = (value: string) => {
   jar.setCookies.push(value);
 };
 
-// A cookie queued earlier in this same request, so a render that follows the
-// write sees it. See "The read-through" below for why this matters.
 export const readPendingCookie = (name: string): string | undefined => {
   const queued = storage.getStore()?.setCookies ?? [];
   for (let i = queued.length - 1; i >= 0; i -= 1) {
@@ -340,7 +339,7 @@ export const signIn = async (userId: string) => {
 // ./src/lib/actions.ts
 'use server';
 
-import { unstable_redirect as redirect } from 'waku/router/server';
+import { requestRedirect } from 'waku/router/server';
 import { signIn } from './session';
 import { verifyPassword } from './users';
 
@@ -356,21 +355,15 @@ export async function authenticate(
     return 'Invalid credentials.';
   }
   await signIn(user.id);
-  // 303, so that a browser following the redirect without JavaScript requests
-  // the destination with GET. The default 307 re-sends the form POST — with the
-  // action encoded in it — to the destination.
-  redirect(dashboardPath(String(formData.get('redirectTo') ?? '')), 303);
+  requestRedirect(dashboardPath(String(formData.get('redirectTo') ?? '')));
+  return;
 }
 
-// Anyone can write a callbackUrl into the login page's query string, so follow
-// it only to a same-origin path under /dashboard, which is all the middleware
-// sends. The cast is needed because redirect() is typed against the app's
-// routes.
 const dashboardPath = (url: string) => {
   try {
     const { origin, pathname, search } = new URL(url, 'http://localhost');
     if (origin === 'http://localhost' && /^\/dashboard(\/|$)/.test(pathname)) {
-      return `${pathname}${search}` as Parameters<typeof redirect>[0];
+      return `${pathname}${search}` as Parameters<typeof requestRedirect>[0];
     }
   } catch {
     // Not a URL at all.
@@ -379,13 +372,21 @@ const dashboardPath = (url: string) => {
 };
 ```
 
-The login form reads `callbackUrl` from `useRouter().query` and posts it back in a hidden `redirectTo` field.
+The login form reads `callbackUrl` from `useRouter().query` and posts it back in a
+hidden `redirectTo` field. Anyone can change that value, so `dashboardPath`
+validates it against same-origin paths under `/dashboard` before asserting its
+route type.
 
-### The read-through
+The browser applies the response's cookie and follows the redirect in a new
+request. Without JavaScript, the form POST receives HTTP `303`, so the destination
+is requested with `GET` and the new cookie.
 
-`redirect()` resolves on the server: the destination renders inside the same request that ran the action. At that point `getRequest().headers` still reports the cookies the browser sent, which do not include the one just queued, so a protected destination would render as signed out. The cookie is set, the login worked, and it looks like it did not.
+### Reading a queued cookie in the same request
 
-That is what `readPendingCookie` is for. Make `auth()` prefer a cookie queued in this request over the one from the headers:
+If an action reads the session after changing it, or rerenders the current route
+in the same request, `getRequest().headers` contains the incoming cookies. For
+those cases, `readPendingCookie` lets `auth()` prefer a cookie queued in the
+request over the one from the headers:
 
 ```ts
 import { readPendingCookie } from './cookie-jar';
@@ -408,7 +409,8 @@ Hono's `c.header()` cannot be used from server code to set the cookie, even with
 
 ## Signing out
 
-Queue an expired cookie and redirect. Because `auth()` reads through the jar, the redirect destination already renders signed out:
+Queue an expired cookie and request a redirect. The browser clears the cookie
+before requesting the destination:
 
 ```ts
 export const signOut = () => {
@@ -430,7 +432,8 @@ export const signOut = () => {
   action={async () => {
     'use server';
     signOut();
-    redirect('/', 303);
+    requestRedirect('/');
+    return;
   }}
 >
   <button>Sign out</button>

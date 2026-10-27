@@ -64,13 +64,19 @@ export default async function AccountPage() {
 export const getConfig = async () => ({ render: 'dynamic' }) as const;
 ```
 
-`requestRedirect(location, status?)` accepts a pathname and one of these status codes:
+`requestRedirect(location, status?)` accepts an app-relative href, an absolute
+HTTP(S) URL string, or a `URL` object. An absolute URL navigates the whole document,
+even when it points to the same origin. Validate destinations derived from user
+input against an application allowlist.
+
+The supported status codes are:
 
 - `303`
 - `307`
 - `308`
 
-The default is `307`.
+The default is `307`. A document response to a form POST uses `303` regardless
+of the requested status, so the browser follows it with a `GET`.
 
 Use a local href factory for typed params and search, then pass its string result to `requestRedirect`:
 
@@ -87,7 +93,7 @@ The factory can bind a search codec directly; no server or browser registry is r
 
 ## Redirect After a Server Action
 
-For form submissions and mutations, use `303` when the next page should be loaded with a `GET` request:
+Record the redirect after the mutation completes, then return:
 
 ```tsx
 // src/pages/posts/new.tsx
@@ -107,7 +113,8 @@ export default function NewPostPage() {
           title: String(formData.get('title') || ''),
         });
 
-        requestRedirect(postHref({ params: { slug: post.slug } }), 303);
+        requestRedirect(postHref({ params: { slug: post.slug } }));
+        return;
       }}
     >
       <input name="title" />

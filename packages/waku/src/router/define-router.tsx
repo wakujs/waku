@@ -191,9 +191,10 @@ type RouterOptions = {
  * Only `slice:<id>` IDs are supported for standalone requests.
  * Unresolved or mutable build IDs fail the build.
  * An immutable source's optional `cacheKey` shares its cached content across
- * slot IDs. Whole-route client reuse requires every source to be immutable
- * and cached, with request-independent metadata. Unkeyed route content can
- * qualify after a production build preloads it; development has no build cache.
+ * slot IDs. A route with only immutable sources and request-independent
+ * metadata can be reused without a request, including in development.
+ * Handler interceptors can be bypassed by static reuse; checks that must run
+ * on each request require a dynamic route.
  * `createPages` and `fsRouter` supply route cache keys automatically.
  * Raw routers must supply `getHas404` to enable their custom 404 page.
  * The callback is queried when route metadata or a fallback needs availability;
