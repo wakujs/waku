@@ -21,9 +21,10 @@ import { parseRoute } from '../client-core-utils/route-url.js';
 import {
   INTENT_ID,
   getRouteFromElements,
+  isStaticFromElements,
 } from '../isomorphic-utils/router-protocol.js';
-import { RouterContext } from './router-context.js';
-import { getRouterState } from './router-state.js';
+import { RouterContext, dispatchChangeRoute } from './router-context.js';
+import { getRouterState, getSettledRoute } from './router-state.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
@@ -124,6 +125,25 @@ export const RouteIntent = ({
     },
   );
 
+  const adoptRoute = useEffectEvent(async (responseElements: Elements) => {
+    if (!router || !getElements || !mounted.current) {
+      return;
+    }
+    const route = getRouteFromElements(responseElements)!;
+    const source = getElements();
+    const current = getSettledRoute(source, router.route);
+    const sameRoute =
+      current.path === route.path &&
+      (isStaticFromElements(responseElements) || current.query === route.query);
+    const is404 = route.path === '/404';
+    await dispatchChangeRoute(router.changeRoute, sameRoute ? current : route, {
+      adopt: Promise.resolve(responseElements),
+      shouldScroll: false,
+      history: sameRoute || is404 ? null : 'push',
+      ...(is404 ? { url: new URL(window.location.href) } : {}),
+    }).catch((error: unknown) => onError(error, source));
+  });
+
   useEffect(() => {
     const pending = elements[INTENT_ID] as
       PromiseLike<string | undefined> | undefined;
@@ -141,13 +161,17 @@ export const RouteIntent = ({
     }
     const unregister = cache.connectRouteIntentObserver((type, signal) => {
       const scope = getRouterState(getElements());
-      return (responseElements) => {
+      return async (responseElements) => {
         const pending = responseElements[INTENT_ID] as
           PromiseLike<string | undefined> | undefined;
-        if (
-          !pending ||
-          (type !== 'call' && getRouteFromElements(responseElements))
-        ) {
+        if (!pending) {
+          return responseElements;
+        }
+        if (getRouteFromElements(responseElements)) {
+          if (type === 'call') {
+            await adoptRoute(responseElements);
+            return {};
+          }
           return responseElements;
         }
         observeRouteIntent(pending, (outcome) => {

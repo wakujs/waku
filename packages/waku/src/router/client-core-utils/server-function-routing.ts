@@ -83,11 +83,23 @@ export const createServerFunctionRouting = (): ServerFunctionRouting => {
           return options.fetch(input, { ...init, headers });
         },
       });
-      const elements = applyIntent?.(response.elements) ?? response.elements;
-      const result =
-        elements === response.elements ? response : { ...response, elements };
       const { cache, getSettledRoute, getPendingRoute, onRouteChange } =
         connection;
+      let responseElements = response.elements;
+      if (IS_ORIGIN_ID in responseElements) {
+        const pendingRoute = getPendingRoute();
+        // React holds a navigation back until a pending action settles
+        if (pendingRoute || !isSameRscRoute(getSettledRoute(), origin)) {
+          return { ...response, elements: {} };
+        }
+        responseElements = combineElements({}, responseElements, {
+          filter: (key) => key !== IS_ORIGIN_ID,
+        });
+      }
+      const elements = await (applyIntent?.(responseElements) ??
+        responseElements);
+      const result =
+        elements === response.elements ? response : { ...response, elements };
       const handleServerFunctionElements = (
         nextElements: Record<string, unknown>,
       ) => {
@@ -106,25 +118,10 @@ export const createServerFunctionRouting = (): ServerFunctionRouting => {
         }
         onRouteChange(route);
       };
-      if (!(IS_ORIGIN_ID in result.elements)) {
-        if (Reflect.ownKeys(result.elements).length) {
-          handleServerFunctionElements(result.elements);
-        }
-        return result;
+      if (Reflect.ownKeys(result.elements).length) {
+        handleServerFunctionElements(result.elements);
       }
-      const pendingRoute = getPendingRoute();
-      // React holds a navigation back until a pending action settles
-      if (
-        (pendingRoute && !isSameRscRoute(pendingRoute, origin)) ||
-        !isSameRscRoute(getSettledRoute(), origin)
-      ) {
-        return { ...result, elements: {} };
-      }
-      const originElements = combineElements({}, result.elements, {
-        filter: (key) => key !== IS_ORIGIN_ID,
-      });
-      handleServerFunctionElements(originElements);
-      return { ...result, elements: originElements };
+      return result;
     },
   };
 };
@@ -132,8 +129,8 @@ export const createServerFunctionRouting = (): ServerFunctionRouting => {
 /**
  * Connects a declaratively installed server-function-routing controller to this Root.
  * Each server function call reports `getSettledRoute()` as its origin. Origin
- * rerenders are dropped, retaining the return value, if the settled or pending
- * route changes.
+ * rerenders are dropped, retaining the return value, if the settled route changes
+ * or any navigation request is pending.
  * `getPendingRoute` returns the uncommitted destination or `undefined`.
  * `onRouteChange` commits a different response route without fetching: Minimal
  * merges its elements after the enhancer chain resolves. Callback updates take

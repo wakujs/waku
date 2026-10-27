@@ -1,13 +1,10 @@
 import {
-  unstable_combineElements as combineElements,
   unstable_isImmutableElement as isImmutableElement,
   useFetchRsc_UNSTABLE as useFetchRsc,
 } from 'waku/minimal/client';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
   INTENT_ID,
-  IS_STATIC_ID,
-  ROUTE_ID,
   encodeRoutePath,
   getRouteFromElements,
   getRouteSlotId,
@@ -27,7 +24,7 @@ type Elements = Readonly<Record<string | symbol, unknown>>;
 type RouteIntentObserver = (
   type: 'rsc' | 'call',
   signal: AbortSignal | undefined,
-) => (elements: Elements) => Elements;
+) => (elements: Elements) => Elements | Promise<Elements>;
 
 type CachedLoadOptions = LoadOptions & {
   /** `false` reuses the initial attempt without fetching. */
@@ -132,40 +129,29 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
     getStaticRouteIntent: (route: RouteProps) =>
       intentPromisesByRoutePath.get(route.path),
     /**
-     * Loads with static reuse, an optional initial response, prefetch, or the
-     * network, in that order, using `unstable_load`'s follow and cancellation rules.
+     * Loads an optional initial response before static reuse, prefetch, or the
+     * network, using `unstable_load`'s follow and cancellation rules.
      * Network results are response patches; cached prefetches return stored
      * maps. Combine patches with the retained base when reading a full snapshot.
-     * Retains immutable elements from followed responses without committing
-     * their routes. Cached synchronous commits belong to the binding.
+     * Cached synchronous commits belong to the binding.
      */
     load: async (
       requested: RouteProps,
       opts: CachedLoadOptions,
     ): Promise<LoadOutcome> => {
       const initialFollows = opts.follows ?? 0;
-      let previousElements: Elements | undefined;
-      let retainedElements: Elements = {};
       let unsubscribe: (() => void) | undefined;
       try {
-        const outcome = await load(
+        return await load(
           async (attempt, signal) => {
-            if (previousElements) {
-              const previous = previousElements;
-              retainedElements = combineElements(retainedElements, previous, {
-                filter: (key) =>
-                  typeof key === 'string' && isImmutableElement(previous, key),
-              });
-              learnStaticFromElements(previous);
-              previousElements = undefined;
-            }
             const unsubscribePrevious = unsubscribe;
             unsubscribe = undefined;
             try {
               const first = attempt.follows === initialFollows;
               if (
-                canReuseStaticRoute(attempt.route, opts.base) ||
-                (first && opts.refetch === false)
+                !(first && opts.adopt !== undefined) &&
+                (canReuseStaticRoute(attempt.route, opts.base) ||
+                  (first && opts.refetch === false))
               ) {
                 return;
               }
@@ -183,7 +169,7 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
                 first && opts.adopt !== undefined
                   ? opts.adopt
                   : cached?.promise;
-              previousElements = await (pending ??
+              return await (pending ??
                 fetchRouteElements(
                   encodeRoutePath(attempt.route.path),
                   createRscParams(attempt.route.query),
@@ -198,7 +184,6 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
                     unstable_base: opts.base,
                   },
                 ));
-              return previousElements;
             } finally {
               unsubscribePrevious?.();
             }
@@ -206,27 +191,6 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
           requested,
           opts,
         );
-        if (Object.keys(retainedElements).length === 0) {
-          return outcome;
-        }
-        if (outcome.type === 'loaded') {
-          return {
-            ...outcome,
-            elements: combineElements(retainedElements, outcome.elements),
-          };
-        }
-        if (outcome.type === 'reused') {
-          return {
-            ...outcome,
-            type: 'loaded',
-            elements: combineElements(retainedElements, {
-              [ROUTE_ID]: [outcome.route.path, outcome.route.query],
-              [IS_STATIC_ID]: true,
-              [INTENT_ID]: intentPromisesByRoutePath.get(outcome.route.path),
-            }),
-          };
-        }
-        return outcome;
       } finally {
         unsubscribe?.();
       }

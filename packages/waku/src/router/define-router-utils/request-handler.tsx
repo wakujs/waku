@@ -1,5 +1,4 @@
 import {
-  unstable_cancelRender as cancelRender,
   unstable_cancelRenderStream as cancelRenderStream,
   unstable_hasRenderCancellationDigest as hasRenderCancellationDigest,
   unstable_isRenderCancellation as isRenderCancellation,
@@ -40,54 +39,6 @@ type RouteEntries = {
 };
 
 type HandlerInput = Parameters<HandleRequest>[0];
-
-const REPLACED_RESPONSE_HEADERS = [
-  'accept-ranges',
-  'content-digest',
-  'content-disposition',
-  'content-encoding',
-  'content-language',
-  'content-length',
-  'content-location',
-  'content-md5',
-  'content-range',
-  'content-type',
-  'digest',
-  'etag',
-  'expires',
-  'last-modified',
-  'location',
-  'repr-digest',
-];
-
-const replaceHttpResponse = async <T,>(
-  response: Response | undefined,
-  createResponse: () => T,
-): Promise<Response | Awaited<T>> => {
-  void cancelRenderStream(response?.body ?? null)?.catch(() => {});
-  const replacement = await createResponse();
-  if (!response || !(replacement instanceof Response)) {
-    return replacement;
-  }
-  const headers = new Headers(response.headers);
-  for (const name of REPLACED_RESPONSE_HEADERS) {
-    headers.delete(name);
-  }
-  headers.set('cache-control', 'private, no-store');
-  for (const [name, value] of replacement.headers) {
-    if (name !== 'set-cookie') {
-      headers.set(name, value);
-    }
-  }
-  for (const cookie of replacement.headers.getSetCookie()) {
-    headers.append('set-cookie', cookie);
-  }
-  return new Response(replacement.body, {
-    status: replacement.status,
-    statusText: replacement.statusText,
-    headers,
-  });
-};
 
 const createNotFoundResponse = () =>
   new Response(
@@ -133,7 +84,7 @@ const parseServerFunctionOrigin = (req: Request) => {
   }
 };
 
-export const createRequestHandler = ({
+export function createRequestHandler({
   resolve,
   routeEntries,
   runHandled,
@@ -141,14 +92,9 @@ export const createRequestHandler = ({
 }: {
   resolve: Resolve;
   routeEntries: ReturnType<typeof createRouteEntries>;
-  runHandled: <T>(
-    req: Request,
-    fn: () => Promise<T>,
-    onCancel?: () => Promise<T>,
-    onResponse?: (response: T) => Promise<T>,
-  ) => Promise<T>;
+  runHandled: <T>(req: Request, fn: () => Promise<T>) => Promise<T>;
   hasInterceptors?: () => boolean;
-}): HandleRequest => {
+}): HandleRequest {
   const requestElementCache = createElementCache();
   let requestElementCacheInit: Promise<void> | undefined;
   let cachedModuleIdsByPrefetchRegExp: Record<string, string[]> | undefined;
@@ -179,14 +125,8 @@ export const createRequestHandler = ({
         },
       });
     };
-    const renderCancelledRequest = async (): ReturnType<HandleRequest> => {
+    const renderIntentRsc = async (): ReturnType<HandleRequest> => {
       const intent = getRouteIntent();
-      if (!intent.value) {
-        cancelRender();
-      }
-      if (input.type === 'http') {
-        return redirectResponse() ?? handleRequest(true);
-      }
       if (input.type === 'rsc' && decodeSliceId(input.rscPath) === null) {
         const pathname = decodeRoutePath(input.rscPath);
         const slotId = getRouteSlotId(pathname);
@@ -205,33 +145,7 @@ export const createRequestHandler = ({
       }
       return renderRsc({ [INTENT_ID]: intent.promise });
     };
-    const settleHttpResponse = async (
-      response: Awaited<ReturnType<HandleRequest>>,
-    ) => {
-      const httpResponse = response instanceof Response ? response : undefined;
-      const redirect = redirectResponse();
-      if (
-        !redirect &&
-        (getRouteIntent().value?.status !== 404 || httpResponse?.status === 404)
-      ) {
-        return response;
-      }
-      if (
-        redirect &&
-        httpResponse?.status === redirect.status &&
-        httpResponse.headers.get('location') ===
-          redirect.headers.get('location')
-      ) {
-        return response;
-      }
-      return replaceHttpResponse(
-        httpResponse,
-        () => redirect ?? renderCancelledRequest(),
-      );
-    };
-    const handleRequest = async (
-      cancelled = false,
-    ): ReturnType<HandleRequest> => {
+    const handleRequest = async (): ReturnType<HandleRequest> => {
       const intent = getRouteIntent();
       const renderRscWithIntent: RenderRsc = (elements, options) =>
         renderRsc(
@@ -277,16 +191,9 @@ export const createRequestHandler = ({
         getOrigin: () =>
           readonly [rscPath: string, rscParams: unknown] | undefined,
       ) => {
-        let entriesPromise: Promise<RouteEntries> = Promise.resolve({
-          elements: {},
-          etags: {},
-        });
-        let rendered = false;
+        const rerenders: { rscPath: string; rscParams: unknown }[] = [];
         let isOrigin = false;
-        const rerender = (rscPath?: string, rscParams?: unknown) => {
-          if (rendered) {
-            throw new Error('already rendered');
-          }
+        setRerender((rscPath, rscParams) => {
           if (rscPath === undefined) {
             const origin = getOrigin();
             if (!origin) {
@@ -299,32 +206,35 @@ export const createRequestHandler = ({
           } else {
             isOrigin = false;
           }
-          entriesPromise = Promise.all([
-            entriesPromise,
-            routeEntries.getEntriesForRoute(
-              rscPath,
-              rscParams,
-              clientEtags,
-              requestElementCache,
-            ),
-          ]).then(([oldEntries, newEntries]) => {
-            if (newEntries === null) {
-              console.warn('getEntries returned null');
-              return oldEntries;
-            }
-            return {
-              elements: { ...oldEntries.elements, ...newEntries.elements },
-              etags: { ...oldEntries.etags, ...newEntries.etags },
-            };
-          });
-        };
-        setRerender(rerender);
+          rerenders.push({ rscPath, rscParams });
+        });
+        let value: T;
         try {
-          const value = await fn();
-          return { value, entries: await entriesPromise, isOrigin };
+          value = await fn();
         } finally {
-          rendered = true;
+          setRerender(undefined);
         }
+        const entries: RouteEntries = { elements: {}, etags: {} };
+        if (!intent.value) {
+          for (const result of await Promise.all(
+            rerenders.map(({ rscPath, rscParams }) =>
+              routeEntries.getEntriesForRoute(
+                rscPath,
+                rscParams,
+                clientEtags,
+                requestElementCache,
+              ),
+            ),
+          )) {
+            if (!result) {
+              console.warn('getEntries returned null');
+              continue;
+            }
+            Object.assign(entries.elements, result.elements);
+            Object.assign(entries.etags, result.etags);
+          }
+        }
+        return { value, entries, isOrigin };
       };
 
       const handleRscRequest = async ({
@@ -338,26 +248,18 @@ export const createRequestHandler = ({
             requestElementCache,
           );
           if (!entries) {
-            return intent.value ? renderCancelledRequest() : null;
+            return intent.value ? renderIntentRsc() : null;
           }
           return renderRscWithIntent(entries.elements, {
             etags: entries.etags,
           });
         }
-        let entries: RouteEntries | null = null;
-        try {
-          entries = await routeEntries.getEntriesForRoute(
-            rscPath,
-            rscParams,
-            clientEtags,
-            requestElementCache,
-          );
-        } catch (e) {
-          if (isRenderCancellation(e)) {
-            return renderCancelledRequest();
-          }
-          throw e;
-        }
+        let entries = await routeEntries.getEntriesForRoute(
+          rscPath,
+          rscParams,
+          clientEtags,
+          requestElementCache,
+        );
         if (!entries && (await routeEntries.has404())) {
           entries = await routeEntries.getEntriesForRoute(
             encodeRoutePath('/404'),
@@ -367,7 +269,7 @@ export const createRequestHandler = ({
           );
         }
         if (!entries) {
-          return intent.value ? renderCancelledRequest() : null;
+          return intent.value ? renderIntentRsc() : null;
         }
         return renderRscWithIntent(entries.elements, {
           etags: entries.etags,
@@ -394,51 +296,17 @@ export const createRequestHandler = ({
         pathname,
         req,
         tryAction,
-      }: Extract<HandlerInput, { type: 'http' }>) => {
-        let actionResult: ReturnType<NonNullable<typeof tryAction>> | undefined;
+      }: Extract<
+        HandlerInput,
+        { type: 'http' }
+      >): ReturnType<HandleRequest> => {
         const query = new URL(req.url).searchParams.toString();
-        let resolved;
-        try {
-          resolved = cancelled
-            ? null
-            : await resolve(pathnameToRoutePath(pathname), query);
-        } catch (error) {
-          if (!isRenderCancellation(error)) {
-            throw error;
-          }
-          return renderCancelledRequest();
-        }
-        const beforeRenderRedirect = redirectResponse();
-        if (beforeRenderRedirect) {
-          return beforeRenderRedirect;
-        }
-        if (typeof resolved === 'function') {
-          const url = new URL(req.url);
-          url.pathname = pathname;
-          const apiReq = new Request(url, req);
-          let response;
-          try {
-            response = await resolved(apiReq);
-          } catch (error) {
-            if (!isRenderCancellation(error)) {
-              throw error;
-            }
-            return renderCancelledRequest();
-          }
-          const redirect = redirectResponse();
-          if (redirect || intent.value?.status === 404) {
-            return replaceHttpResponse(
-              response,
-              () => redirect ?? new Response('Not Found', { status: 404 }),
-            );
-          }
-          return response;
-        }
+        let formState: unknown;
         const renderPage = async (
           pathname: string,
-          query: string,
-          status = 200,
+          status: number,
           routerDefinition?: RouterDefinition,
+          action?: NonNullable<typeof tryAction>,
         ): Promise<Response | null> => {
           const routePath = pathnameToRoutePath(pathname);
           const rscPath = encodeRoutePath(routePath);
@@ -451,15 +319,11 @@ export const createRequestHandler = ({
             routerDefinition,
           );
           if (!entries) {
-            return null;
+            return redirectResponse() ?? null;
           }
-          const route = { path: routePath, query, hash: '' };
-          const nonce = getNonce();
-          const html = <INTERNAL_ServerRouter route={route} />;
-          let formState: unknown;
-          if (tryAction && !cancelled && (!intent.value || actionResult)) {
+          if (action && !intent.value) {
             const { value, entries: rerendered } = await withRerender(
-              () => (actionResult ??= tryAction()),
+              action,
               () => [rscPath, rscParams] as const,
             );
             formState = value?.action ? value.formState : undefined;
@@ -468,11 +332,21 @@ export const createRequestHandler = ({
               etags: { ...entries.etags, ...rerendered.etags },
             };
           }
+          const requestedRedirect = redirectResponse();
+          if (requestedRedirect) {
+            return requestedRedirect;
+          }
+          if (getRouteIntent().value?.status === 404 && pathname !== '/404') {
+            return renderNotFoundPage();
+          }
+          const nonce = getNonce();
           const response = await renderHtml(
             await renderRscWithIntent(entries.elements, {
               etags: entries.etags,
             }),
-            html,
+            <INTERNAL_ServerRouter
+              route={{ path: routePath, query, hash: '' }}
+            />,
             {
               rscPath,
               formState,
@@ -486,76 +360,107 @@ export const createRequestHandler = ({
           const redirect = redirectResponse();
           if (
             redirect ||
-            (intent.value?.status === 404 && pathname !== '/404')
+            (getRouteIntent().value?.status === 404 && pathname !== '/404')
           ) {
-            return replaceHttpResponse(
-              response,
-              async () =>
-                redirect ??
-                ((await routeEntries.has404())
-                  ? renderNotFoundPage()
-                  : createNotFoundResponse()),
-            );
+            void cancelRenderStream(response.body)?.catch(() => {});
+            return redirect ?? renderNotFoundPage();
+          }
+          if (status === 404 && !response.headers.has('cache-control')) {
+            response.headers.set('cache-control', 'private, no-store');
           }
           return response;
         };
-        const renderNotFoundPage = async () => {
-          try {
-            return await renderPage('/404', query, 404);
-          } catch (error) {
-            if (
-              intent.value?.status !== 404 ||
-              (!isRenderCancellation(error) &&
-                !hasRenderCancellationDigest(error))
-            ) {
-              throw error;
+        const renderNotFoundPage = async (): Promise<Response> => {
+          if (await routeEntries.has404()) {
+            try {
+              const response = await renderPage('/404', 404);
+              if (response) {
+                return response;
+              }
+            } catch (error) {
+              if (
+                (!isRenderCancellation(error) &&
+                  !hasRenderCancellationDigest(error)) ||
+                !intent.value
+              ) {
+                throw error;
+              }
+              return redirectResponse() ?? createNotFoundResponse();
             }
-            return createNotFoundResponse();
           }
+          return createNotFoundResponse();
         };
-        if (intent.value?.status === 404) {
-          return (await routeEntries.has404())
-            ? renderNotFoundPage()
-            : createNotFoundResponse();
-        }
-        if (resolved?.noSsr) {
-          const nonce = getNonce();
-          return renderHtmlFallback({
-            ...(nonce ? { nonce } : {}),
-          });
-        }
         try {
+          const requestedRedirect = redirectResponse();
+          if (requestedRedirect) {
+            return requestedRedirect;
+          }
+          if (getRouteIntent().value?.status === 404) {
+            return renderNotFoundPage();
+          }
+          const resolved = await resolve(pathnameToRoutePath(pathname), query);
+          const redirect = redirectResponse();
+          if (redirect) {
+            return redirect;
+          }
+          if (typeof resolved === 'function') {
+            if (getRouteIntent().value?.status === 404) {
+              return new Response('Not Found', {
+                status: 404,
+                headers: { 'cache-control': 'private, no-store' },
+              });
+            }
+            const url = new URL(req.url);
+            url.pathname = pathname;
+            return resolved(new Request(url, req));
+          }
+          if (getRouteIntent().value?.status === 404) {
+            return renderNotFoundPage();
+          }
+          if (resolved?.noSsr) {
+            const nonce = getNonce();
+            return renderHtmlFallback({ ...(nonce ? { nonce } : {}) });
+          }
           if (resolved) {
-            return await renderPage(pathname, query, 200, resolved);
+            return await renderPage(pathname, 200, resolved, tryAction);
           }
-        } catch (e) {
-          if (!isRenderCancellation(e) && !hasRenderCancellationDigest(e)) {
-            throw e;
+          return (await routeEntries.has404()) ? renderNotFoundPage() : null;
+        } catch (error) {
+          if (
+            (!isRenderCancellation(error) &&
+              !hasRenderCancellationDigest(error)) ||
+            !intent.value
+          ) {
+            throw error;
           }
-          return renderCancelledRequest();
-        }
-        if (await routeEntries.has404()) {
-          return renderNotFoundPage();
-        } else {
-          return null;
+          return redirectResponse() ?? renderNotFoundPage();
         }
       };
 
-      if (input.type === 'rsc') {
-        return handleRscRequest(input);
-      }
-      if (input.type === 'call') {
-        return handleCallRequest(input);
-      }
       if (input.type === 'http') {
         return handleHttpRequest(input);
       }
+      try {
+        if (intent.value) {
+          return renderIntentRsc();
+        }
+        if (input.type === 'rsc') {
+          return await handleRscRequest(input);
+        }
+        if (input.type === 'call') {
+          return await handleCallRequest(input);
+        }
+      } catch (error) {
+        if (
+          (!isRenderCancellation(error) &&
+            !hasRenderCancellationDigest(error)) ||
+          !intent.value
+        ) {
+          throw error;
+        }
+        return renderIntentRsc();
+      }
     };
-    return runHandled(
-      input.req,
-      handleRequest,
-      renderCancelledRequest,
-      input.type === 'http' ? settleHttpResponse : undefined,
-    );
+    return runHandled(input.req, handleRequest);
   };
-};
+}

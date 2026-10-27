@@ -341,36 +341,19 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
 });
 
 describe('unstable_buildElements', () => {
-  it('cancelled renders omit new validators and clear previously cached validators', async () => {
-    const render = () => cancelRender();
-    const getEtag = async () => 'new';
-    const { elements, etags } = await buildElements(
-      { cached: 'old' },
-      {
-        fresh: { getEtag, render },
-        cached: { getEtag, render },
-        immutable: { immutable: true, render },
-      },
-    );
-
-    expect(etags).toEqual({ cached: '' });
-    for (const element of Object.values(elements)) {
-      await expect(element).rejects.toSatisfy(isRenderCancellation);
-    }
+  it('propagates source cancellation without producing an elements record', async () => {
+    await expect(
+      buildElements(
+        { cached: 'old' },
+        {
+          cached: { getEtag: async () => 'new', render: cancelRender },
+          sibling: { render: () => 'sibling' },
+        },
+      ),
+    ).rejects.toSatisfy(isRenderCancellation);
   });
 
-  it('cancelled factories carry cancellation while siblings still render', async () => {
-    const result = await buildElements(
-      {},
-      {
-        cancelled: { render: async () => cancelRender() },
-        sibling: { render: () => 'sibling' },
-      },
-    );
-    expect(result.elements.sibling).toBe('sibling');
-    await expect(result.elements.cancelled).rejects.toSatisfy(
-      isRenderCancellation,
-    );
+  it('propagates application errors from source factories', async () => {
     const failure = new Error('application failure');
     await expect(
       buildElements(

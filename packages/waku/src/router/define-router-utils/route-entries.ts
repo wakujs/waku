@@ -1,7 +1,4 @@
-import {
-  unstable_buildElements as buildElements,
-  unstable_isRenderCancellation as isRenderCancellation,
-} from 'waku/minimal/server';
+import { unstable_buildElements as buildElements } from 'waku/minimal/server';
 import type {
   Unstable_ElementSource as ElementSource,
   Unstable_Etags as Etags,
@@ -16,12 +13,7 @@ import {
 import type { RouteData } from '../isomorphic-utils/router-protocol.js';
 import { cacheElementSource, getElementCacheId } from './element-cache.js';
 import type { ElementCache } from './element-cache.js';
-import {
-  getRequest,
-  runWithRouterStore,
-  setRscParams,
-  setRscPath,
-} from './request-store.js';
+import { setRscParams, setRscPath } from './request-store.js';
 
 export type RouterDefinition = {
   elements: Record<string, ElementSource & { cacheKey?: string }> & {
@@ -64,24 +56,7 @@ export const createRouteEntries = (
   resolveElement: ResolveElement | undefined,
   getHas404?: () => Promise<boolean>,
 ) => {
-  let cachedHas404: Promise<boolean> | undefined;
-  const has404 = () =>
-    (cachedHas404 ??= (
-      getHas404
-        ? getHas404()
-        : runWithRouterStore({ req: getRequest() }, () =>
-            resolve('/404', ''),
-          ).then((result) => result !== null && typeof result !== 'function')
-    ).catch((error) => {
-      if (error instanceof Response && error.status === 404) {
-        return false;
-      }
-      cachedHas404 = undefined;
-      if (isRenderCancellation(error)) {
-        return false;
-      }
-      throw error;
-    }));
+  const has404 = getHas404 ?? (async () => false);
 
   const getRouteMetadata = async (pathname: string, query: string) => ({
     [ROUTE_ID]: [pathname, query] satisfies RouteData,

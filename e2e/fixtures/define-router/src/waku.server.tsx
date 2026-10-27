@@ -337,34 +337,30 @@ const interceptedRouter = defineRouter({
             route.path === '/interceptor-missing'
           ) {
             requestNotFound();
-            cancelRender();
           }
           const gate =
             route?.type === 'route' && route.path === '/interceptor-cache'
               ? request.headers.get('x-waku-test-gate')
               : undefined;
-          if (gate === 'before') {
+          if (gate === 'deny') {
             requestRedirect('/foo');
           }
+          if (gate === 'missing') {
+            requestNotFound();
+          }
           const result = await next();
-          if (gate === 'after' || gate === 'after-not-found') {
-            if (result instanceof Response) {
-              result.headers.append(
-                'set-cookie',
-                'session=interceptor; HttpOnly; Path=/',
-              );
-              result.headers.append(
-                'set-cookie',
-                'preferences=compact; Path=/',
-              );
-              result.headers.set('x-waku-test-interceptor', 'kept');
-              result.headers.set('cache-control', 'public, max-age=600');
-            }
-            if (gate === 'after') {
-              requestRedirect('/foo');
-            } else {
-              requestNotFound();
-            }
+          if (gate && result instanceof Response) {
+            result.headers.append(
+              'set-cookie',
+              'session=interceptor; HttpOnly; Path=/',
+            );
+            result.headers.append('set-cookie', 'preferences=compact; Path=/');
+            result.headers.set('x-waku-test-interceptor', 'kept');
+          }
+          if (gate === 'after') {
+            requestRedirect('/foo');
+          } else if (gate === 'after-not-found') {
+            requestNotFound();
           }
           return result;
         },

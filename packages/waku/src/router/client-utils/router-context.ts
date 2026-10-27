@@ -4,6 +4,7 @@ import type { RouteProps } from '../isomorphic-utils/route-path.js';
 
 export type ChangeRouteOptions = {
   shouldScroll: boolean;
+  adopt?: Promise<Readonly<Record<string | symbol, unknown>>> | undefined;
   refetch?: boolean; // true: force refetch, false: don't refetch, undefined: auto-decide based on route change
   history: 'push' | 'replace' | null;
   url?: URL | undefined;

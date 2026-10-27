@@ -1,6 +1,8 @@
 /** @vitest-environment happy-dom */
 import { createRequire } from 'node:module';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ETAGS_ID } from '../src/lib/utils-isomorphic/etags.js';
+import { adoptElements } from '../src/minimal/client-utils/element-etags.js';
 import type { FetchRsc } from '../src/minimal/client-utils/root-store.js';
 import { getRouterCacheForTest } from '../src/router/client-core-utils/caches.js';
 import {
@@ -205,6 +207,42 @@ describe('load', () => {
       location: new URL('https://other.example/done'),
     });
     expect(fetchRsc).toHaveBeenCalledOnce();
+  });
+
+  it('redirect follows use the retained base and return only the destination response', async () => {
+    const base = adoptElements({ root: 'root', [ETAGS_ID]: { root: 1 } });
+    const gate = adoptElements({
+      [getRouteSlotId('/gate')]: 'skipped',
+      [ETAGS_ID]: { [getRouteSlotId('/gate')]: 1 },
+      [ROUTE_ID]: ['/gate', ''],
+      [IS_STATIC_ID]: true,
+      [INTENT_ID]: Promise.resolve(
+        JSON.stringify({ status: 307, location: '/done' }),
+      ),
+    });
+    const destination = {
+      [getRouteSlotId('/done')]: 'destination',
+      [ROUTE_ID]: ['/done', ''],
+    };
+    fetchRsc.mockResolvedValueOnce(gate).mockResolvedValueOnce(destination);
+    const options = baseOpts({
+      base,
+      url: new URL('/gate', window.location.href),
+    });
+    const outcome = await cache.load(route('/gate'), options);
+
+    expect(fetchRsc).toHaveBeenNthCalledWith(
+      2,
+      encodeRoutePath('/done'),
+      new URLSearchParams({ query: '' }),
+      { signal: options.signal, unstable_base: base },
+    );
+    expect(outcome).toMatchObject({ type: 'loaded', route: route('/done') });
+    if (outcome.type !== 'loaded') {
+      throw new Error('Expected the redirect destination to load');
+    }
+    expect(outcome.elements).toBe(destination);
+    expect(cache.canReuseStaticRoute(route('/gate'), gate)).toBe(false);
   });
 
   it('loads a custom 404 that requests not-found without following it again', async () => {
@@ -443,6 +481,24 @@ describe('load', () => {
       elements,
       follows: 0,
     });
+  });
+
+  it('adopts fresh elements even when the route is reusable from cache', async () => {
+    const base = {
+      [ROUTE_ID]: ['/next', ''],
+      [IS_STATIC_ID]: true,
+      [getRouteSlotId('/next')]: 'cached',
+    };
+    cache.learnStaticFromElements(base);
+    const elements = { ...base, [getRouteSlotId('/next')]: 'updated' };
+
+    const outcome = await cache.load(
+      route('/next'),
+      baseOpts({ base, adopt: Promise.resolve(elements) }),
+    );
+
+    expect(outcome).toMatchObject({ type: 'loaded', elements });
+    expect(fetchRsc).not.toHaveBeenCalled();
   });
 
   it('an aborted adopt is aborted, not failed', async () => {

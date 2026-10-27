@@ -1,9 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  unstable_cancelRender as cancelRender,
   unstable_hasRenderCancellationDigest as hasRenderCancellationDigest,
   unstable_isRenderCancellation as isRenderCancellation,
 } from '../src/minimal/server.js';
-import { createElementCache } from '../src/router/define-router-utils/element-cache.js';
+import {
+  cacheElementSource,
+  createElementCache,
+} from '../src/router/define-router-utils/element-cache.js';
 import {
   getRouteIntent,
   runWithRouterStore,
@@ -52,12 +56,17 @@ const expectPending = async (promise: PromiseLike<unknown>) => {
 };
 
 describe('intent metadata', () => {
-  it('cancels an interceptor before resolution while preserving its redirect intent', async () => {
+  it('honors an interceptor intent before resolving the route', async () => {
     const resolve = vi.fn(async () => null);
     const router = unstable_defineRouter({
       resolve,
       getHas404: async () => false,
-      unstable_interceptors: [async () => unstable_redirect('/login')],
+      unstable_interceptors: [
+        async (next) => {
+          requestRedirect('/login');
+          return next();
+        },
+      ],
     });
     const utils = {
       renderRsc: vi.fn(
@@ -95,18 +104,18 @@ describe('intent metadata', () => {
     expect(resolve).not.toHaveBeenCalled();
   });
 
-  it('does not inherit the 404 probe cancellation on a normal page', async () => {
-    const router = unstable_defineRouter({
-      resolve: async (path) =>
-        path === '/404'
-          ? unstable_notFound()
-          : {
-              elements: {
-                root: { render: () => 'root' },
-                route: { render: () => 'page' },
-              },
+  it('does not probe the resolver for custom 404 availability', async () => {
+    const resolve = vi.fn(async (path: string) =>
+      path === '/404'
+        ? unstable_notFound()
+        : {
+            elements: {
+              root: { render: () => 'root' },
+              route: { render: () => 'page' },
             },
-    });
+          },
+    );
+    const router = unstable_defineRouter({ resolve });
     const renderRsc = vi.fn(async (elements) => {
       await expectPending(elements.INTENT);
       return new ReadableStream({
@@ -131,6 +140,7 @@ describe('intent metadata', () => {
       },
     );
     expect(renderRsc).toHaveBeenCalledOnce();
+    expect(resolve).toHaveBeenCalledExactlyOnceWith('/page', '');
   });
 
   it.each([
@@ -221,26 +231,91 @@ describe('intent metadata', () => {
     expect((response as Response).headers.get('location')).toBe('/next');
   });
 
-  it('replays an immutable factory intent after its render was cancelled', async () => {
+  it('retains a throwing factory intent without caching a serialized result', async () => {
     const saved = vi.fn();
     const cache = createElementCache(saved);
-    await withinRequest(() =>
-      cache.set('slot/cancelled', () => unstable_notFound()),
-    );
-    const restored = createElementCache();
-    restored.preload(
-      ...(saved.mock.calls[0] as [
-        string,
-        Parameters<typeof restored.preload>[1],
-      ]),
-    );
     await withinRequest(async () => {
-      await expect(restored.get('slot/cancelled')).rejects.toSatisfy(
-        hasRenderCancellationDigest,
-      );
+      await expect(
+        cache.set('slot/cancelled', () => unstable_notFound()),
+      ).rejects.toSatisfy(isRenderCancellation);
       expect(getRouteIntent().value).toEqual({ status: 404 });
+      expect(cache.has('slot/cancelled')).toBe(false);
+      expect(saved).not.toHaveBeenCalled();
     });
   });
+
+  it('reuses a preloaded serialized failure without retrying its immutable source', async () => {
+    const cache = createElementCache();
+    cache.preload('slot/cancelled', {
+      data: btoa(JSON.stringify({ cancelled: true })),
+    });
+    const render = vi.fn(() => 'recovered');
+    const source = cacheElementSource(
+      { immutable: true, render },
+      'slot/cancelled',
+      cache,
+    );
+    await withinRequest(async () => {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        await expect(source.render()).rejects.toSatisfy(
+          hasRenderCancellationDigest,
+        );
+      }
+      expect(cache.has('slot/cancelled')).toBe(true);
+      expect(render).not.toHaveBeenCalled();
+    });
+  });
+
+  it.each(['root', 'route'] as const)(
+    'retries a throwing immutable %s factory before producing a payload',
+    async (slot) => {
+      let renders = 0;
+      const guarded = {
+        immutable: true,
+        cacheKey: 'guarded',
+        render: () => {
+          if (++renders === 1) {
+            cancelRender();
+          }
+          return 'recovered';
+        },
+      };
+      const router = unstable_defineRouter({
+        resolve: async () => ({
+          elements: {
+            root: { immutable: true, render: () => 'root' },
+            route: { immutable: true, cacheKey: 'page', render: () => 'page' },
+            [slot]: guarded,
+          },
+        }),
+        getHas404: async () => false,
+      });
+      const utils = {
+        renderRsc: vi.fn(
+          async (_elements: Record<string, unknown>) => new ReadableStream(),
+        ),
+        renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
+        loadBuildMetadata: vi.fn(),
+      };
+      const input = {
+        type: 'rsc' as const,
+        pathname: '/RSC/R/page',
+        rscPath: 'R/page',
+        rscParams: undefined,
+        req: new Request('http://localhost/RSC/R/page'),
+      };
+      const id = slot === 'route' ? 'route:/page' : slot;
+      await expect(router.handleRequest(input, utils)).rejects.toSatisfy(
+        isRenderCancellation,
+      );
+      expect(utils.renderRsc).not.toHaveBeenCalled();
+
+      await router.handleRequest(input, utils);
+      expect(utils.renderRsc.mock.calls[0]![0][id]).toBe('recovered');
+      expect(renders).toBe(2);
+    },
+  );
 
   it('encodes Unicode destinations and preserves existing escapes in HTTP headers', async () => {
     const router = unstable_defineRouter({

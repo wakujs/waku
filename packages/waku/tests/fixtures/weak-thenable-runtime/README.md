@@ -18,11 +18,12 @@ route data at the Router boundary. An unused decoded promise may remain pending
 or resolve undefined. Consumers must treat both as absence of an intent and
 must not depend on observing unused completion through the promise alone.
 
-The experimental reference needs only the thenable factory: React serializes
-its native weak references and closes without unresolved weak work. The separate stable
-compatibility branch adds `weak-promise-stream.ts` and uses a server-side filter and finishes unused references
-with undefined. Both use React's client decoder directly. No extra completion
-helper is part of the weak-promise API.
+This branch uses experimental React's native weak references and needs only the
+thenable factory. React closes the stream without waiting for unused weak work.
+The separate stable compatibility branch adds `weak-promise-stream.ts` around
+`renderRsc`, publishing resolved strings at Flight record boundaries and
+completing unused references with undefined. Both implementations use React's
+client decoder directly; the weak-promise API has no extra completion helper.
 
 `pnpm test` includes these development and production probes. To run them alone
 from the repository root:
@@ -33,10 +34,18 @@ pnpm -F waku test:weak-promise
 
 The RSC probe checks native streaming, early and late intents, first resolution,
 ordinary async dependencies, streams/iterators, binary fragmentation, aliases,
-request isolation, cancellation, and transport failure. Its expected absence
-behavior follows the pinned runtime. The experimental reference retains a
-pending weak promise on EOF or failure; the stable fallback returns undefined
-on successful unused completion and rejects an unpublished reference on failure.
+shared producers, request isolation, cancellation, and transport failure. Its
+expected absence behavior follows the pinned runtime. The experimental reference
+retains a pending weak promise on EOF or failure; the stable fallback returns
+undefined on ordinary stream completion and rejects an unpublished reference on
+transport failure. Production-path probes use `createRenderUtils` to verify EOF
+and transport cancellation. The renderer-level request-abort probe supplies an
+AbortSignal; `renderRsc` itself has no signal option.
+
+Router cache probes use `serializeRsc` and the matched Flight decoder to check
+immutable serialized outcomes (including nested cancellation), dynamic retry,
+intent replay, and cancellation-like text and binary data. A factory that throws
+produces no serialized result and leaves no cache entry.
 
 The SSR probe runs the RSC renderer in a separate process with the `react-server`
 condition. The parent uses the matched React DOM server and Flight decoder with

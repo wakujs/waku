@@ -72,6 +72,10 @@ An immutable route composition is a reusable shell, not proof that every slot it
 renders is immutable. A shell can contain a mutable page. The client cache therefore
 distinguishes `hasCachedShell` from `canReuseStaticRoute`.
 
+Responses skipped by a ready redirect do not populate the retained-route cache.
+Revisiting a skipped route can require another request. During ordinary navigation,
+the current page stays visible until the redirect destination is ready to commit.
+
 ## Partial Responses
 
 Minimal can send the etags of a supplied `unstable_base` with a fetch. The server
@@ -100,7 +104,9 @@ when the requesting component stops with `cancelRender()`. Do not await an
 unused intent to decide whether a route has loaded. HTTP document requests use
 redirect statuses or render the 404 page when the shell has not been sent.
 Router does not start a form action if an intent has already been recorded.
-An action that has already run retains its form state for the not-found view.
+An action that has already run retains its form state when the handler renders
+the not-found view. A source factory that throws stops element construction;
+Router handles its recorded intent before starting an action or producing a response.
 
 The first recorded intent wins. Its promise can settle and reach the browser
 before other components finish, so a later intent cannot replace it. Concurrent
@@ -170,22 +176,38 @@ keyed sources can retain whole-route reuse. A cached static redirect replayed in
 a runtime response disables whole-route reuse too; prerendered files keep their
 build-time static metadata.
 
+The element cache stores serialized outcomes without inspecting nested React
+errors. A successfully serialized immutable subtree is reusable even if it contains
+a cancellation. Use a dynamic source for results that should retry or vary by
+request. A source factory or serialization operation that throws creates no cached
+entry. Recorded routing intents are cached alongside successful serialization and
+replayed when its element is reused.
+
 Prerendered files can be served and reused without running runtime interceptors.
 Routes requiring authorization or another check on every request must be dynamic;
-an interceptor does not make a prerendered page private. For document requests,
-intents recorded before the interceptor chain returns determine the HTTP response,
-including intents recorded after `await next()`. For RSC requests, record an
-intent before calling `next()` when it must take effect: after `await next()`,
-Flight may have already closed its stream, and a later intent cannot reach the
-browser.
+an interceptor does not make a prerendered page private.
 
-Replacing an HTTP response starts cancellation of its body without waiting for
-stream cleanup, which may depend on another tee or clone consumer. Applicable
-headers, including each `Set-Cookie` value, are preserved. The replacement
-supplies the status, `Location`, and body metadata; its own headers take
-precedence. Its cache policy defaults to `private, no-store` unless the replacement
-explicitly sets one.
-Validators and metadata for the discarded body are not inherited.
+Handler interceptors record routing intents before calling `next()`. Use
+`requestRedirect()` or `requestNotFound()`, then return `next()` to let Router
+produce the response. This skips the requested API handler or server function.
+A skipped server function's response carries the intent without a return value;
+the function's caller receives `undefined`. The handler renders any fallback within
+that call, so the interceptor's async context remains active. Throwing cancellation
+outside `next()` escapes to Minimal's no-op handling.
+
+Once `next()` returns a response, the interceptor owns modifications, replacement,
+and cleanup of any body it discards. Recording an intent afterward does not rewrite
+the HTTP response. On an open Flight stream it may still reach the client, but this
+is not guaranteed after `next()` returns.
+
+API handlers own their returned HTTP responses. Router does not apply intents
+recorded inside them. Use native responses for API redirects and not-found results.
+
+When a render-time intent replaces a document, Router starts cancellation of its
+body without waiting for stream cleanup, which may depend on another tee or clone
+consumer. The replacement supplies the entire response. Add cookies and other
+application headers in an interceptor after `next()` returns the final response.
+Redirects and not-found documents default to `Cache-Control: private, no-store`.
 
 On failure, retained elements can describe an earlier route. The attempted URL
 and error state belong to the client binding, not the server metadata.
@@ -405,6 +427,21 @@ accepted but suspended navigation from being replaced by the previous page.
 
 ## Server Function Intent
 
+`rerenderRoute()` records render work to perform after the server function
+finishes. Multiple requests merge in declaration order. If the function records a
+redirect or not-found intent, Router skips that work and returns the function's
+value with its intent. A render failure after the function finishes follows normal
+request error or cancellation handling.
+
+The built-in Router passes route-bearing function responses to the navigation
+loader as the initial response. Ready intents are followed before that route is
+committed; the current page stays visible while the destination loads. Pending
+intents remain attached to the committed route and use its normal observer.
+The function call stays pending while the loader follows a ready intent and
+retains its return value if navigation fails. A ready not-found intent without a
+custom page fails navigation like an HTTP 404, without committing the response's
+route content.
+
 A controller from `unstable_createServerFunctionRouting` sends the settled route at server function request time in
 `X-Waku-Action-Location`. This header is client-to-server information.
 After a failed navigation, the call's origin follows the retained elements'
@@ -412,8 +449,9 @@ route metadata, which can be ahead of the request's cache baseline after an
 instant paint. The failed destination's URL remains in history.
 
 - `rerenderRoute()` refreshes that origin and marks the response `IS_ORIGIN`.
-  If the user has navigated away or a conflicting navigation is pending, the client
-  discards its elements but retains the server function's return value.
+  If the user has navigated away or any navigation is pending, including a reload
+  or hash change on the same route, the client discards its elements but retains
+  the server function's return value.
 - `rerenderRoute(destination)` and server function redirects express navigation intent.
   Their destination must not be discarded merely because the user left the origin.
 

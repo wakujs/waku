@@ -68,6 +68,16 @@ describe('element cache', () => {
     expect(render).toHaveBeenCalledTimes(2);
   });
 
+  it('retries serialization after it fails without retaining partial output', async () => {
+    const failure = new Error('serialization failed');
+    vi.mocked(serializeRsc).mockRejectedValueOnce(failure);
+    const cache = createElementCache();
+    await expect(cache.set('slot/retry', () => 'value')).rejects.toBe(failure);
+    expect(cache.has('slot/retry')).toBe(false);
+    await cache.set('slot/retry', () => 'value');
+    expect(await cache.get('slot/retry')).toBe('value');
+  });
+
   it('get returns undefined for an unknown cache id', () => {
     const cache = createElementCache();
     expect(cache.get('slot/missing')).toBeUndefined();

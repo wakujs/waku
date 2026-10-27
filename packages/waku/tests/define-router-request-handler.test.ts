@@ -201,6 +201,49 @@ describe('request dispatch', () => {
   });
 
   it.each([
+    { method: 'GET', fromSource: false },
+    { method: 'GET', fromSource: true },
+    { method: 'POST', fromSource: false },
+    { method: 'POST', fromSource: true },
+  ])(
+    'honors a custom 404 redirect on $method (source: $fromSource)',
+    async ({ method, fromSource }) => {
+      const router = unstable_defineRouter({
+        resolve: async (pathname) => {
+          if (pathname !== '/404') {
+            return null;
+          }
+          if (!fromSource) {
+            unstable_redirect('/login');
+          }
+          return {
+            elements: {
+              root: { render: () => 'root' },
+              route: { render: () => unstable_redirect('/login') },
+            },
+          };
+        },
+        getHas404: async () => true,
+      });
+      const utils = makeUtils();
+      const tryAction = vi.fn();
+      const response = (await router.handleRequest(
+        {
+          type: 'http',
+          pathname: '/missing',
+          req: new Request('http://localhost/base/missing', { method }),
+          tryAction,
+        },
+        utils,
+      )) as Response;
+      expect(response.status).toBe(method === 'POST' ? 303 : 307);
+      expect(response.headers.get('location')).toBe('/base/login');
+      expect(tryAction).not.toHaveBeenCalled();
+      expect(utils.renderHtml).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
     { status: 303, record: () => unstable_redirect('/login'), has404: false },
     { status: 404, record: unstable_notFound, has404: false },
     { status: 404, record: unstable_notFound, has404: true },
@@ -251,11 +294,18 @@ describe('request dispatch', () => {
     );
     const clone = original.clone();
     const cancel = vi.spyOn(clone.body!, 'cancel');
+    const utils = makeUtils();
+    utils.renderHtml.mockImplementation(async () => {
+      requestRedirect('/login');
+      return clone;
+    });
     const router = unstable_defineRouter({
-      resolve: async () => async () => {
-        requestRedirect('/login');
-        return clone;
-      },
+      resolve: async () => ({
+        elements: {
+          root: { render: () => 'root' },
+          route: { render: () => 'page' },
+        },
+      }),
       getHas404: async () => false,
     });
     let response: Response | undefined;
@@ -263,10 +313,10 @@ describe('request dispatch', () => {
       .handleRequest(
         {
           type: 'http',
-          pathname: '/api',
-          req: new Request('http://localhost/api'),
+          pathname: '/account',
+          req: new Request('http://localhost/account'),
         },
-        makeUtils(),
+        utils,
       )
       .then((value) => {
         response = value as Response;
@@ -283,14 +333,15 @@ describe('request dispatch', () => {
     }
   });
 
-  it('returns a late 404 even when discarding the original body rejects', async () => {
+  it('returns a render-time 404 even when discarding the original body rejects', async () => {
     const cancel = vi.fn(async () => {
       throw new Error('cleanup failed');
     });
     const utils = makeUtils();
-    utils.renderHtml.mockResolvedValue(
-      new Response(new ReadableStream({ cancel })),
-    );
+    utils.renderHtml.mockImplementation(async () => {
+      requestNotFound();
+      return new Response(new ReadableStream({ cancel }));
+    });
     const router = unstable_defineRouter({
       resolve: async () => ({
         elements: {
@@ -299,13 +350,6 @@ describe('request dispatch', () => {
         },
       }),
       getHas404: async () => false,
-      unstable_interceptors: [
-        async (next) => {
-          const response = await next();
-          requestNotFound();
-          return response;
-        },
-      ],
     });
     const response = (await router.handleRequest(
       {
@@ -322,7 +366,7 @@ describe('request dispatch', () => {
   });
 
   it.each(['GET', 'POST'])(
-    'honors a redirect recorded after an interceptor awaits a document %s',
+    'honors a redirect recorded before an interceptor awaits a document %s',
     async (method) => {
       const cancel = vi.fn();
       const utils = makeUtils();
@@ -339,9 +383,8 @@ describe('request dispatch', () => {
         getHas404: async () => false,
         unstable_interceptors: [
           async (next) => {
-            const response = await next();
             requestRedirect('/login');
-            return response;
+            return next();
           },
         ],
       });
@@ -358,26 +401,23 @@ describe('request dispatch', () => {
       expect(response.status).toBe(method === 'POST' ? 303 : 307);
       expect(response.headers.get('location')).toBe('/base/login');
       expect(response.headers.get('cache-control')).toBe('private, no-store');
-      expect(cancel).toHaveBeenCalledOnce();
-      expect(cancel.mock.calls[0]![0]).toSatisfy(isRenderCancellation);
+      expect(cancel).not.toHaveBeenCalled();
+      expect(utils.renderHtml).not.toHaveBeenCalled();
     },
   );
 
-  it('renders a late interceptor 404 in its ALS context without repeating the form action', async () => {
+  it('renders an interceptor 404 in its ALS context before the form action', async () => {
     const context = new AsyncLocalStorage<string>();
     const renderNotFound = vi.fn(() => context.getStore());
-    const cancel = vi.fn();
     const tryAction = vi.fn(async () => ({
       action: true as const,
       formState: null,
     }));
     const utils = makeUtils();
-    utils.renderHtml
-      .mockResolvedValueOnce(new Response(new ReadableStream({ cancel })))
-      .mockImplementationOnce(
-        async (_stream, _html, { status }) =>
-          new Response('custom 404', { status: status ?? 200 }),
-      );
+    utils.renderHtml.mockImplementationOnce(
+      async (_stream, _html, { status }) =>
+        new Response('custom 404', { status: status ?? 200 }),
+    );
     const router = unstable_defineRouter({
       resolve: async (path) => ({
         elements: {
@@ -389,9 +429,8 @@ describe('request dispatch', () => {
       unstable_interceptors: [
         (next) =>
           context.run('tenant', async () => {
-            const response = await next();
             requestNotFound();
-            return response;
+            return next();
           }),
       ],
     });
@@ -410,14 +449,13 @@ describe('request dispatch', () => {
     expect(await response.text()).toBe('custom 404');
     expect(renderNotFound).toHaveReturnedWith('tenant');
     expect(renderNotFound).toHaveBeenCalledOnce();
-    expect(tryAction).toHaveBeenCalledOnce();
-    expect(cancel).toHaveBeenCalledOnce();
-    expect(utils.renderHtml.mock.calls[1]![2]).toMatchObject({
+    expect(tryAction).not.toHaveBeenCalled();
+    expect(utils.renderHtml.mock.calls[0]![2]).toMatchObject({
       status: 404,
       rscPath: encodeRoutePath('/404'),
       formState: undefined,
     });
-    expect(utils.renderRsc.mock.calls[1]![0][ROUTE_ID]).toEqual([
+    expect(utils.renderRsc.mock.calls[0]![0][ROUTE_ID]).toEqual([
       '/404',
       'q=one',
     ]);
@@ -460,18 +498,16 @@ describe('request dispatch', () => {
       location: '/dashboard',
       cacheControl: 'private, no-store',
       contentType: null,
-      cookies: [],
     },
     {
       status: 404,
       record: requestNotFound,
       location: null,
-      cacheControl: 'private, max-age=0',
+      cacheControl: 'private, no-store',
       contentType: 'text/html; charset=utf-8',
-      cookies: ['notice=missing; Path=/'],
     },
   ])(
-    'preserves headers when a late $status replaces the document',
+    'lets interceptors add headers to a render-time $status response',
     async (expected) => {
       const cookies = [
         'session=active; HttpOnly; Path=/',
@@ -480,14 +516,17 @@ describe('request dispatch', () => {
       const cancel = vi.fn();
       const utils = makeUtils();
       utils.renderHtml
-        .mockResolvedValueOnce(new Response(new ReadableStream({ cancel })))
+        .mockImplementationOnce(async () => {
+          expected.record();
+          return new Response(new ReadableStream({ cancel }), {
+            headers: { 'content-type': 'text/html; charset=utf-8' },
+          });
+        })
         .mockResolvedValueOnce(
           new Response('custom 404', {
             status: 404,
             headers: {
               'content-type': 'text/html; charset=utf-8',
-              'cache-control': 'private, max-age=0',
-              'set-cookie': 'notice=missing; Path=/',
             },
           }),
         );
@@ -502,30 +541,15 @@ describe('request dispatch', () => {
         unstable_interceptors: [
           async (next) => {
             const response = await next();
-            if (!(response instanceof Response)) {
-              throw new Error('Expected a document response');
+            if (response instanceof Response) {
+              for (const cookie of cookies) {
+                response.headers.append('set-cookie', cookie);
+              }
+              response.headers.set(
+                'content-security-policy',
+                "default-src 'self'",
+              );
             }
-            for (const cookie of cookies) {
-              response.headers.append('set-cookie', cookie);
-            }
-            for (const [name, value] of Object.entries({
-              'x-request-id': 'request-one',
-              'content-security-policy': "default-src 'self'",
-              vary: 'accept-language',
-              'cache-control': 'public, max-age=600',
-              location: '/stale',
-              'content-type': 'application/json',
-              'content-disposition': 'attachment; filename="old.json"',
-              'content-length': '999',
-              'content-encoding': 'gzip',
-              'content-range': 'bytes 0-9/999',
-              'content-digest': 'old-digest',
-              etag: 'old-etag',
-              'last-modified': 'Wed, 21 Oct 2015 07:28:00 GMT',
-            })) {
-              response.headers.set(name, value);
-            }
-            expected.record();
             return response;
           },
         ],
@@ -541,26 +565,15 @@ describe('request dispatch', () => {
       )) as Response;
 
       expect(response.status).toBe(expected.status);
-      expect(response.headers.getSetCookie()).toEqual([
-        ...cookies,
-        ...expected.cookies,
-      ]);
-      expect(response.headers.get('x-request-id')).toBe('request-one');
+      expect(response.headers.getSetCookie()).toEqual(cookies);
       expect(response.headers.get('content-security-policy')).toBe(
         "default-src 'self'",
       );
-      expect(response.headers.get('vary')).toBe('accept-language');
       expect(response.headers.get('cache-control')).toBe(expected.cacheControl);
       expect(response.headers.get('location')).toBe(expected.location);
       expect(response.headers.get('content-type')).toBe(expected.contentType);
-      expect(response.headers.get('content-disposition')).toBeNull();
-      expect(response.headers.get('content-length')).toBeNull();
-      expect(response.headers.get('content-encoding')).toBeNull();
-      expect(response.headers.get('content-range')).toBeNull();
-      expect(response.headers.get('content-digest')).toBeNull();
-      expect(response.headers.get('etag')).toBeNull();
-      expect(response.headers.get('last-modified')).toBeNull();
       expect(cancel).toHaveBeenCalledOnce();
+      expect(cancel.mock.calls[0]![0]).toSatisfy(isRenderCancellation);
     },
   );
 
@@ -569,8 +582,16 @@ describe('request dispatch', () => {
     async (has404) => {
       const utils = makeUtils();
       utils.renderHtml.mockImplementation(
-        async (_stream, _html, { status }) =>
-          new Response('custom 404', { status: status ?? 200 }),
+        async (_stream, _html, { status }) => {
+          const response = new Response('custom 404', {
+            status: status ?? 200,
+          });
+          if (status !== 404) {
+            response.headers.set('cache-control', 'public, max-age=600');
+            requestNotFound();
+          }
+          return response;
+        },
       );
       const router = unstable_defineRouter({
         resolve: async () => ({
@@ -580,16 +601,6 @@ describe('request dispatch', () => {
           },
         }),
         getHas404: async () => has404,
-        unstable_interceptors: [
-          async (next) => {
-            const response = await next();
-            if (response instanceof Response) {
-              response.headers.set('cache-control', 'public, max-age=600');
-            }
-            requestNotFound();
-            return response;
-          },
-        ],
       });
 
       const response = (await router.handleRequest(
@@ -652,24 +663,149 @@ describe('request dispatch', () => {
 
     expect(response.status).toBe(404);
     expect(seenStatuses).toEqual([404]);
-    expect(utils.renderHtml.mock.calls[1]![2].formState).toBe(formState);
+    expect(utils.renderHtml.mock.calls[0]![2].formState).toBe(formState);
     expect(tryAction).toHaveBeenCalledOnce();
+    expect(utils.renderHtml).toHaveBeenCalledOnce();
   });
 
-  it('keeps API not-found cookies and the plain response without rendering the custom document', async () => {
+  it.each([
+    { status: 307, record: requestNotFound },
+    { status: 404, record: () => requestRedirect('/login') },
+  ])(
+    'returns the API handler response unchanged despite a recorded render intent ($status)',
+    async ({ status, record }) => {
+      const original = new Response('api body', {
+        status,
+        headers: {
+          location: '/api-destination',
+          'set-cookie': 'session=api; HttpOnly',
+          'cache-control': 'private, max-age=30',
+        },
+      });
+      const utils = makeUtils();
+      const router = unstable_defineRouter({
+        resolve: async () => async () => {
+          record();
+          return original;
+        },
+        getHas404: async () => true,
+      });
+      const response = await router.handleRequest(
+        {
+          type: 'http',
+          pathname: '/api',
+          req: new Request('http://localhost/api'),
+        },
+        utils,
+      );
+
+      expect(response).toBe(original);
+      expect(await original.text()).toBe('api body');
+      expect(original.status).toBe(status);
+      expect(original.headers.get('location')).toBe('/api-destination');
+      expect(original.headers.getSetCookie()).toEqual([
+        'session=api; HttpOnly',
+      ]);
+      expect(original.headers.get('cache-control')).toBe('private, max-age=30');
+      expect(utils.renderHtml).not.toHaveBeenCalled();
+    },
+  );
+
+  it('propagates API cancellation without rendering its recorded intent', async () => {
     const utils = makeUtils();
     const router = unstable_defineRouter({
-      resolve: async () => async () => {
-        requestNotFound();
-        return new Response('api body', {
-          headers: {
-            'set-cookie': 'session=api; HttpOnly',
-            'cache-control': 'public, max-age=600',
-          },
-        });
-      },
+      resolve: async () => async () => unstable_redirect('/login'),
       getHas404: async () => true,
     });
+
+    await expect(
+      router.handleRequest(
+        {
+          type: 'http',
+          pathname: '/api',
+          req: new Request('http://localhost/api'),
+        },
+        utils,
+      ),
+    ).rejects.toSatisfy(isRenderCancellation);
+    expect(utils.renderHtml).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, 'private, max-age=30'])(
+    'defaults an early custom not-found intent to private caching (policy: %s)',
+    async (cacheControl) => {
+      const router = unstable_defineRouter({
+        resolve: async (path) => {
+          if (path !== '/404') {
+            requestNotFound();
+          }
+          return {
+            elements: {
+              root: { render: () => 'root' },
+              route: { render: () => path },
+            },
+          };
+        },
+        getHas404: async () => true,
+      });
+      const utils = makeUtils();
+      utils.renderHtml.mockImplementation(
+        async (_stream, _html, { status }) =>
+          new Response('custom 404', {
+            status: status ?? 200,
+            headers: {
+              'content-type': 'text/html',
+              ...(cacheControl ? { 'cache-control': cacheControl } : {}),
+            },
+          }),
+      );
+      const response = (await router.handleRequest(
+        {
+          type: 'http',
+          pathname: '/account',
+          req: new Request('http://localhost/account'),
+        },
+        utils,
+      )) as Response;
+
+      expect(response.status).toBe(404);
+      expect(response.headers.get('cache-control')).toBe(
+        cacheControl ?? 'private, no-store',
+      );
+    },
+  );
+
+  it('leaves a returned API response owned by its interceptor', async () => {
+    const router = unstable_defineRouter({
+      resolve: async (path) =>
+        path === '/api'
+          ? async () =>
+              new Response('api output', {
+                headers: { 'set-cookie': 'session=api; HttpOnly' },
+              })
+          : {
+              elements: {
+                root: { render: () => 'root' },
+                route: { render: () => 'custom 404' },
+              },
+            },
+      getHas404: async () => true,
+      unstable_interceptors: [
+        async (next) => {
+          const response = await next();
+          requestNotFound();
+          return response;
+        },
+      ],
+    });
+    const utils = makeUtils();
+    utils.renderHtml.mockImplementation(
+      async (_stream, _html, { status }) =>
+        new Response('custom 404', {
+          status: status ?? 200,
+          headers: { 'content-type': 'text/html' },
+        }),
+    );
     const response = (await router.handleRequest(
       {
         type: 'http',
@@ -679,15 +815,54 @@ describe('request dispatch', () => {
       utils,
     )) as Response;
 
-    expect(response.status).toBe(404);
-    expect(await response.text()).toBe('Not Found');
-    expect(response.headers.get('content-type')).toBe(
-      'text/plain;charset=UTF-8',
-    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('text/plain');
+    expect(response.headers.get('cache-control')).toBeNull();
     expect(response.headers.getSetCookie()).toEqual(['session=api; HttpOnly']);
-    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(await response.text()).toBe('api output');
     expect(utils.renderHtml).not.toHaveBeenCalled();
   });
+
+  it.each([requestNotFound, () => requestRedirect('/login')])(
+    'leaves a returned document owned by its interceptor',
+    async (record) => {
+      const cancel = vi.fn();
+      const original = new Response(new ReadableStream({ cancel }));
+      const utils = makeUtils();
+      utils.renderHtml.mockResolvedValue(original);
+      const router = unstable_defineRouter({
+        resolve: async () => ({
+          elements: {
+            root: { render: () => 'root' },
+            route: { render: () => 'page' },
+          },
+        }),
+        getHas404: async () => true,
+        unstable_interceptors: [
+          async (next) => {
+            const result = await next();
+            record();
+            if (result instanceof Response) {
+              result.headers.append('set-cookie', 'session=active');
+            }
+            return result;
+          },
+        ],
+      });
+      const response = (await router.handleRequest(
+        {
+          type: 'http',
+          pathname: '/account',
+          req: new Request('http://localhost/account'),
+        },
+        utils,
+      )) as Response;
+      expect(response).toBe(original);
+      expect(response.status).toBe(200);
+      expect(response.headers.getSetCookie()).toEqual(['session=active']);
+      expect(cancel).not.toHaveBeenCalled();
+    },
+  );
 
   it('accounts for interceptors registered during createPages initialization', async () => {
     const router = createPages(async ({ createPage, createInterceptor }) => {
@@ -761,7 +936,93 @@ describe('request dispatch', () => {
     expect(utils.renderRsc.mock.calls[0]![0][IS_STATIC_ID]).toBe(false);
   });
 
-  it('does not cache a redirect recorded after an action rerenders static elements', async () => {
+  it('runs scheduled renders after the server function finishes', async () => {
+    const started = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    let message = 'before';
+    const render = vi.fn(() => message);
+    const router = unstable_defineRouter({
+      resolve: async () => ({
+        elements: {
+          root: { render: () => 'root' },
+          route: { render },
+        },
+      }),
+      getHas404: async () => false,
+    });
+    const utils = makeUtils();
+    const request = router.handleRequest(
+      callInput(async () => {
+        unstable_rerenderRoute('/saved');
+        started.resolve();
+        await release.promise;
+        message = 'after';
+        return 'saved';
+      }),
+      utils,
+    );
+    await started.promise;
+    expect(render).not.toHaveBeenCalled();
+    release.resolve();
+    await request;
+    expect(render).toHaveReturnedWith('after');
+    expect(utils.renderRsc.mock.calls[0]![1]?.value).toBe('saved');
+  });
+
+  it('does not start scheduled renders when the server function fails', async () => {
+    const render = vi.fn(() => {
+      throw new Error('render failed');
+    });
+    const router = unstable_defineRouter({
+      resolve: async () => ({
+        elements: {
+          root: { render: () => 'root' },
+          route: { render },
+        },
+      }),
+      getHas404: async () => false,
+    });
+    await expect(
+      router.handleRequest(
+        callInput(async () => {
+          unstable_rerenderRoute('/unused');
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          throw new Error('function failed');
+        }),
+        makeUtils(),
+      ),
+    ).rejects.toThrow('function failed');
+    expect(render).not.toHaveBeenCalled();
+  });
+
+  it('merges multiple scheduled rerenders in declaration order', async () => {
+    const router = unstable_defineRouter({
+      resolve: async (path) => ({
+        elements: {
+          root: { render: () => path },
+          route: { render: () => path },
+        },
+      }),
+      getHas404: async () => false,
+    });
+    const utils = makeUtils();
+    await router.handleRequest(
+      callInput(async () => {
+        unstable_rerenderRoute('/first');
+        unstable_rerenderRoute('/second');
+        return 'saved';
+      }),
+      utils,
+    );
+    expect(utils.renderRsc.mock.calls[0]![0]).toMatchObject({
+      [ROUTE_ID]: ['/second', ''],
+      root: '/second',
+      'route:/first': '/first',
+      'route:/second': '/second',
+    });
+  });
+
+  it('skips a scheduled rerender when the server function records a redirect', async () => {
     const { handleRequest } = createConfiguredRouter({
       getConfigs: async () => [staticRoute('/cached')],
     });
@@ -778,8 +1039,10 @@ describe('request dispatch', () => {
     );
 
     const [elements, options] = utils.renderRsc.mock.calls[0]!;
-    expect(elements[ROUTE_ID]).toEqual(['/cached', '']);
-    expect(elements[IS_STATIC_ID]).toBe(false);
+    expect(elements[ROUTE_ID]).toBeUndefined();
+    await expect(elements[INTENT_ID]).resolves.toBe(
+      JSON.stringify({ status: 307, location: '/login' }),
+    );
     expect(options?.value).toBe('action-result');
   });
 

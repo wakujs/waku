@@ -112,7 +112,7 @@ describe('defineRouter route resolver', () => {
       ),
     );
     expect(resolve.mock.calls.map(([path]) => path)).toEqual(['/one', '/two']);
-    expect(getHas404).toHaveBeenCalledOnce();
+    expect(getHas404).toHaveBeenCalledTimes(2);
     for (const [elements] of utils.renderRsc.mock.calls) {
       expect(elements).not.toHaveProperty(HAS404_ID);
     }
@@ -134,23 +134,26 @@ describe('defineRouter route resolver', () => {
     const router = defineRouter({
       resolve: async (path) =>
         path === '/redirect'
-          ? async () => redirect(href)
+          ? {
+              elements: {
+                root: { render: () => 'root' },
+                route: { render: () => redirect(href) },
+              },
+            }
           : createRouterDefinition('content'),
       getHas404: async () => false,
     });
     const utils = makeUtils();
-    const error = await router
-      .handleRequest(
-        {
-          type: 'http',
-          pathname: '/redirect',
-          req: new Request('http://localhost/redirect'),
-        },
-        utils,
-      )
-      .catch((error: unknown) => error);
-    expect((error as Response).headers.get('location')).toBe(href);
-    expect((error as Response).status).toBe(307);
+    const response = (await router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/redirect',
+        req: new Request('http://localhost/redirect'),
+      },
+      utils,
+    )) as Response;
+    expect(response.headers.get('location')).toBe(href);
+    expect(response.status).toBe(307);
     expect(codec.serialize).toHaveBeenCalledExactlyOnceWith({ tag: 'a b' });
     expect(codec.parse).not.toHaveBeenCalled();
     expect(utils.renderHtml).not.toHaveBeenCalled();
@@ -236,7 +239,7 @@ describe('defineRouter route resolver', () => {
   });
 
   it.each([false, true])(
-    'probes 404 availability once across concurrent requests (exists: %s)',
+    'uses declared 404 availability across requests without probing (exists: %s)',
     async (exists) => {
       const resolve = vi.fn<RouterOptions['resolve']>(async (path, query) =>
         path === '/404'
@@ -245,7 +248,7 @@ describe('defineRouter route resolver', () => {
             : null
           : createRouterDefinition(query),
       );
-      const router = defineRouter({ resolve });
+      const router = defineRouter({ resolve, getHas404: async () => exists });
       const utils = makeUtils();
       await Promise.all([
         router.handleRequest(rscInput('/one'), utils),
@@ -261,7 +264,10 @@ describe('defineRouter route resolver', () => {
       );
       expect(
         resolve.mock.calls.filter(([path]) => path === '/404'),
-      ).toHaveLength(1);
+      ).toHaveLength(0);
+      for (const [elements] of utils.renderRsc.mock.calls) {
+        expect(elements[HAS404_ID]).toBe(exists || undefined);
+      }
       expect(utils.renderRsc).toHaveBeenLastCalledWith(
         expect.objectContaining({ 'route:/three': 'q=latest' }),
         expect.anything(),
@@ -269,15 +275,14 @@ describe('defineRouter route resolver', () => {
     },
   );
 
-  it('retries a failed 404 probe and resolves the 404 content for each visit', async () => {
-    let attempts = 0;
-    const resolve = vi.fn<RouterOptions['resolve']>(async (path, query) => {
-      if (path === '/404' && ++attempts === 1) {
-        throw new Error('CMS unavailable');
-      }
-      return createRouterDefinition(query);
-    });
-    const router = defineRouter({ resolve });
+  it('propagates an availability error without retaining it across requests', async () => {
+    const getHas404 = vi
+      .fn(async () => true)
+      .mockRejectedValueOnce(new Error('CMS unavailable'));
+    const resolve = vi.fn<RouterOptions['resolve']>(async (_path, query) =>
+      createRouterDefinition(query),
+    );
+    const router = defineRouter({ resolve, getHas404 });
     const utils = makeUtils();
     await expect(router.handleRequest(rscInput('/'), utils)).rejects.toThrow(
       'CMS unavailable',
@@ -285,19 +290,21 @@ describe('defineRouter route resolver', () => {
     await router.handleRequest(rscInput('/'), utils);
     await router.handleRequest(rscInput('/404', 'q=first'), utils);
     await router.handleRequest(rscInput('/404', 'q=second'), utils);
-    expect(attempts).toBe(4);
+    expect(resolve.mock.calls.filter(([path]) => path === '/404')).toHaveLength(
+      2,
+    );
     expect(utils.renderRsc).toHaveBeenLastCalledWith(
       expect.objectContaining({ 'route:/404': 'q=second', [HAS404_ID]: true }),
       expect.anything(),
     );
   });
 
-  it('renders a valid document and caches absence when the 404 probe throws an HTTP 404 Response', async () => {
-    let probes = 0;
+  it('does not resolve an undeclared 404 while rendering a valid document', async () => {
+    let missingRouteCalls = 0;
     const router = defineRouter({
       resolve: async (path) => {
         if (path === '/404') {
-          probes++;
+          missingRouteCalls++;
           throw new Response('Not Found', { status: 404 });
         }
         return createRouterDefinition('home');
@@ -320,28 +327,7 @@ describe('defineRouter route resolver', () => {
     );
     expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(HAS404_ID);
     await router.handleRequest(rscInput('/another'), utils);
-    expect(probes).toBe(1);
-  });
-
-  it('retries a cancelled 404 probe on the next request', async () => {
-    let probes = 0;
-    const router = defineRouter({
-      resolve: async (path) => {
-        if (path === '/404' && ++probes === 1) {
-          cancelRender();
-        }
-        return createRouterDefinition('page');
-      },
-    });
-    const utils = makeUtils();
-    await router.handleRequest(rscInput('/one'), utils);
-    expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(HAS404_ID);
-    await router.handleRequest(rscInput('/two'), utils);
-    expect(probes).toBe(2);
-    expect(utils.renderRsc.mock.calls.at(-1)![0]).toHaveProperty(
-      HAS404_ID,
-      true,
-    );
+    expect(missingRouteCalls).toBe(0);
   });
 
   it('reuses build-preloaded route content without retaining unbuilt routes', async () => {
@@ -457,7 +443,7 @@ describe('defineRouter route resolver', () => {
     ).rejects.toThrow('Build path must be a pathname');
     expect(generateFile).not.toHaveBeenCalled();
   });
-  it('treats a not-found thrown by the 404 probe as no custom 404', async () => {
+  it('records not-found for an unresolved route without a custom 404', async () => {
     const router = defineRouter({
       resolve: async (path) =>
         path === '/' ? createRouterDefinition('home') : notFound(),
@@ -650,6 +636,7 @@ describe('defineRouter route resolver', () => {
         path === '/404'
           ? createRouterDefinition('not found:' + query)
           : notFound(),
+      getHas404: async () => true,
     });
     const utils = makeUtils();
     const response = await router.handleRequest(
@@ -676,7 +663,7 @@ describe('defineRouter route resolver', () => {
     );
   });
 
-  it('returns a route intent and cancels the source slot for a redirect', async () => {
+  it('returns an intent-only route response when its source factory redirects', async () => {
     const router = defineRouter({
       resolve: async (path, query) =>
         path === '/old'
@@ -695,9 +682,9 @@ describe('defineRouter route resolver', () => {
     expect(utils.renderRsc).toHaveBeenCalledWith(
       expect.objectContaining({
         [ROUTE_ID]: ['/old', ''],
-        'route:/old': expect.any(Promise),
+        'route:/old': null,
       }),
-      expect.anything(),
+      { etags: { 'route:/old': '' } },
     );
     const elements = utils.renderRsc.mock.calls[0]![0];
     expect(JSON.parse(await (elements[INTENT_ID] as Promise<string>))).toEqual({
@@ -1369,16 +1356,17 @@ it('replays build-preloaded intent metadata when an etag omits the slot', async 
   expect(render).not.toHaveBeenCalled();
 });
 
-it('uses the custom 404 after interceptor cancellation without running the gated action', async () => {
+it('uses the declared custom 404 after an interceptor intent without running the gated action', async () => {
   const router = defineRouter({
     resolve: async (path, query) =>
       path === '/404'
         ? createRouterDefinition('missing:' + query)
         : createRouterDefinition('protected'),
+    getHas404: async () => true,
     unstable_interceptors: [
-      async () => {
+      async (next) => {
         requestNotFound();
-        cancelRender();
+        return next();
       },
     ],
   });

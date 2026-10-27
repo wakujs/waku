@@ -290,6 +290,7 @@ test('a custom 404 reports its rendered route and enables following not-found in
     defineRouter({
       resolve: async (path, query) =>
         path === '/404' ? route('not found: ' + query) : null,
+      getHas404: async () => true,
     }),
     '/missing',
     'q=one',
