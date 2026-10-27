@@ -142,25 +142,6 @@ describe('load', () => {
     expect(fetchRsc).toHaveBeenCalledTimes(2);
   });
 
-  it('reuses static fragment redirects with a client-owned query', async () => {
-    fetchRsc.mockResolvedValue({
-      [ROUTE_ID]: ['/next', ''],
-      [IS_STATIC_ID]: true,
-      [INTENT_ID]: Promise.resolve(
-        JSON.stringify({ status: 307, location: '/next?q=one#comments' }),
-      ),
-    });
-    const outcome = await cache.load(
-      route('/next', 'q=one'),
-      baseOpts({ url: new URL('/next?q=one', window.location.href) }),
-    );
-    expect(outcome).toMatchObject({
-      type: 'loaded',
-      route: route('/next', 'q=one', '#comments'),
-    });
-    expect(fetchRsc).toHaveBeenCalledOnce();
-  });
-
   it('retains loop detection for an identical fragment redirect', async () => {
     fetchRsc.mockResolvedValue({
       [ROUTE_ID]: ['/next', ''],
@@ -215,7 +196,6 @@ describe('load', () => {
       [getRouteSlotId('/gate')]: 'skipped',
       [ETAGS_ID]: { [getRouteSlotId('/gate')]: 1 },
       [ROUTE_ID]: ['/gate', ''],
-      [IS_STATIC_ID]: true,
       [INTENT_ID]: Promise.resolve(
         JSON.stringify({ status: 307, location: '/done' }),
       ),
@@ -305,6 +285,48 @@ describe('load', () => {
     expect(outcome.type).toBe('reused');
     expect(fetchRsc).not.toHaveBeenCalled();
   });
+
+  it.each([
+    { intent: { status: 307, location: '/done' }, destination: '/done' },
+    { intent: { status: 404 }, destination: '/404' },
+  ])(
+    'follows a redirect through a prefetched $intent intent',
+    async ({ intent, destination }) => {
+      fetchRsc.mockResolvedValueOnce({
+        [ROUTE_ID]: ['/gate', ''],
+        [INTENT_ID]: Promise.resolve(JSON.stringify(intent)),
+      });
+      cache.prefetchRoute(route('/gate'));
+      const elements = { [ROUTE_ID]: [destination, ''] };
+      fetchRsc
+        .mockResolvedValueOnce({
+          [ROUTE_ID]: ['/next', ''],
+          [INTENT_ID]: Promise.resolve(
+            JSON.stringify({ status: 307, location: '/gate' }),
+          ),
+        })
+        .mockResolvedValueOnce(elements);
+      const outcome = await cache.load(
+        route('/next'),
+        baseOpts({
+          has404: true,
+          url: new URL('/next', window.location.href),
+          base: { [getRouteSlotId('/gate')]: 'Cached gate' },
+        }),
+      );
+      expect(outcome).toMatchObject({
+        type: 'loaded',
+        route: route(destination),
+        follows: 2,
+        elements,
+      });
+      expect(fetchRsc.mock.calls.map(([path]) => path)).toEqual([
+        encodeRoutePath('/gate'),
+        encodeRoutePath('/next'),
+        encodeRoutePath(destination),
+      ]);
+    },
+  );
 
   it('fetches by encoded rscPath and returns the loaded attempt', async () => {
     const elements = { [ROUTE_ID]: ['/next', ''] };

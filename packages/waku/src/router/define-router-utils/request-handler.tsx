@@ -24,7 +24,6 @@ import {
 import { ROUTER_METADATA } from './build-metadata.js';
 import { getRouterPrefetchCode } from './client-code.js';
 import { createElementCache } from './element-cache.js';
-import type { SerializedElement } from './element-cache.js';
 import { getNonce, getRouteIntent, setRerender } from './request-store.js';
 import type {
   Resolve,
@@ -88,12 +87,10 @@ export function createRequestHandler({
   resolve,
   routeEntries,
   runHandled,
-  hasInterceptors = () => false,
 }: {
   resolve: Resolve;
   routeEntries: ReturnType<typeof createRouteEntries>;
   runHandled: <T>(req: Request, fn: () => Promise<T>) => Promise<T>;
-  hasInterceptors?: () => boolean;
 }): HandleRequest {
   const requestElementCache = createElementCache();
   let requestElementCacheInit: Promise<void> | undefined;
@@ -151,7 +148,7 @@ export function createRequestHandler({
         renderRsc(
           {
             ...elements,
-            ...((hasInterceptors() || intent.value) && ROUTE_ID in elements
+            ...(intent.value && ROUTE_ID in elements
               ? { [IS_STATIC_ID]: false }
               : {}),
             [INTENT_ID]: intent.promise,
@@ -165,7 +162,7 @@ export function createRequestHandler({
         if (cachedElementsMetadata) {
           const cachedElements = JSON.parse(cachedElementsMetadata) as Record<
             string,
-            SerializedElement
+            string
           >;
           for (const [cacheId, entry] of Object.entries(cachedElements)) {
             requestElementCache.preload(cacheId, entry);

@@ -10,10 +10,6 @@ import {
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
 import { createPages } from '../src/router/create-pages.js';
 import {
-  captureRouteIntent,
-  getRouteIntent,
-} from '../src/router/define-router-utils/request-store.js';
-import {
   type HandlerInterceptor,
   getRequest,
   requestNotFound,
@@ -153,31 +149,6 @@ describe('define-router handler interceptors', () => {
 
     await callHandleRequest(router);
 
-    expect(seen).toBe('from-interceptor');
-    expect(als.getStore()).toBeUndefined();
-  });
-
-  it('keeps the request store when an element capture records the first intent', async () => {
-    const als = new AsyncLocalStorage<string>();
-    let original: ReturnType<typeof getRouteIntent> | undefined;
-    let recovered: ReturnType<typeof getRouteIntent> | undefined;
-    let seen: string | undefined;
-    const router = make404Router(() => {
-      recovered = getRouteIntent();
-      seen = als.getStore();
-      return 'not found';
-    }, [
-      (next) =>
-        als.run('from-interceptor', async () => {
-          original = getRouteIntent();
-          await captureRouteIntent(async () => requestNotFound());
-          return next();
-        }),
-    ]);
-
-    await callHandleRequest(router);
-
-    expect(recovered).toBe(original);
     expect(seen).toBe('from-interceptor');
     expect(als.getStore()).toBeUndefined();
   });

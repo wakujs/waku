@@ -74,7 +74,10 @@ export function rerenderRoute(pathname?: string, query?: string) {
  * The first intent recorded for a request wins, including concurrent renders.
  * A server function keeps its normal return value; a form submitted without
  * JavaScript responds with 404.
- * API handlers return their own HTTP responses and cannot use this helper.
+ * Use in dynamic renders, server functions, or handler interceptors before
+ * `next()`. Immutable and prerendered sources must not record route intents.
+ * API handlers return their own HTTP responses. Router does not apply intents
+ * recorded inside them.
  */
 export function requestNotFound(): void {
   getRouteIntent().record({ status: 404 });
@@ -129,11 +132,13 @@ const getRedirectLocation = (
  * destinations derived from user input against your own allowlist. Before a
  * dynamic document response is returned this produces an HTTP redirect
  * (303 for a form POST).
- * After the shell, and for prerendered pages, the browser follows the intent
- * using JavaScript.
+ * After the shell, the browser follows the intent using JavaScript.
  * An absolute URL navigates the document even when it names this origin.
  * The first intent recorded for a request wins, including concurrent renders.
- * API handlers return their own HTTP responses and cannot use this helper.
+ * Use in dynamic renders, server functions, or handler interceptors before
+ * `next()`. Immutable and prerendered sources must not record route intents.
+ * API handlers return their own HTTP responses. Router does not apply intents
+ * recorded inside them.
  */
 export function requestRedirect(
   to: NavigationHref | `http://${string}` | `https://${string}` | URL,
@@ -186,9 +191,10 @@ type RouterOptions = {
  * Only `slice:<id>` IDs are supported for standalone requests.
  * Unresolved or mutable build IDs fail the build.
  * An immutable source's optional `cacheKey` shares its cached content across
- * slot IDs. Whole-route client reuse requires every source to be immutable
- * and cached, with request-independent metadata. Unkeyed route content can
- * qualify after a production build preloads it; development has no build cache.
+ * slot IDs. A route with only immutable sources and request-independent
+ * metadata can be reused without a request, including in development.
+ * Handler interceptors can be bypassed by static reuse; checks that must run
+ * on each request require a dynamic route.
  * `createPages` and `fsRouter` supply route cache keys automatically.
  * Raw routers must supply `getHas404` to enable their custom 404 page.
  * The callback is queried when route metadata or a fallback needs availability;
@@ -214,7 +220,6 @@ export function defineRouter(fns: RouterOptions): Handlers {
       resolve: fns.resolve,
       routeEntries,
       runHandled,
-      hasInterceptors: () => !!fns.unstable_interceptors?.length,
     }),
     handleBuild: createBuildHandler({
       resolve: fns.resolve,

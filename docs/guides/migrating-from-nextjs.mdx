@@ -172,9 +172,18 @@ emitted as written rather than replaced; and `charset` and `viewport` belong in
 | `useRouter()` from `next/navigation`          | `useRouter()` from `waku`                                                                                                                                                                                                                                                                                                                                                                   |
 | `usePathname()`                               | `useRouter().path`                                                                                                                                                                                                                                                                                                                                                                          |
 | `useSearchParams()`                           | `new URLSearchParams(useRouter().query)`                                                                                                                                                                                                                                                                                                                                                    |
-| `redirect()`                                  | `unstable_redirect()` from `waku/router/server`; pass `303` from a server action so a no-JavaScript form POST is not re-sent to the destination                                                                                                                                                                                                                                             |
-| `notFound()`                                  | `unstable_notFound()` from `waku/router/server`                                                                                                                                                                                                                                                                                                                                             |
+| `redirect()`                                  | `requestRedirect()` from `waku/router/server`, then return from the component or server function                                                                                                                                                                                                                                                                                            |
+| `notFound()`                                  | `requestNotFound()` from `waku/router/server`, then return from the component or server function                                                                                                                                                                                                                                                                                            |
 | `revalidatePath()`                            | from a server action, `unstable_rerenderRoute()` for the route the action came from, or `unstable_rerenderRoute(path, query)` for another one; on the client, `useRouter().reload()`; from a route handler there is no equivalent — `unstable_rerenderRoute` throws `Rerender is not available.` outside an action — see [Rerendering After Server Actions](/guides/rerender-after-actions) |
+
+Waku's `requestRedirect()` and `requestNotFound()` record intent without throwing.
+Components that call them during rendering must be dynamic; static rendering
+produces content only. Server functions can record intents when they run.
+Return explicitly after calling them, or combine them with
+`unstable_cancelRender()` from `waku/minimal/server` for a terminating wrapper;
+see [Redirects and Not Found](/guides/redirects-and-not-found).
+The deprecated `unstable_redirect()` and `unstable_notFound()` retain their
+terminating behavior. A no-JavaScript form POST redirect uses HTTP `303`.
 
 `useSearchParams()` in Next.js opts a page into client rendering and is usually
 wrapped in `<Suspense>`; Waku's `useRouter()` carries no such requirement, so
@@ -246,7 +255,8 @@ flow. Either way, removing the call should not turn "fresh within a minute" into
 Two exceptions:
 
 - An action that stays on the page and expects the screen to update needs
-  `unstable_rerenderRoute()` — an action that ends in `redirect()` does not.
+  `unstable_rerenderRoute()` — an action that calls `requestRedirect()` and
+  returns does not.
   Called with no arguments it renders the route the action came from, query
   included, which is also what stops a `useOptimistic` value from snapping back
   when the action settles; pass `(pathname, query)` only to render a different
@@ -274,9 +284,10 @@ loudly:
   mutations, and the redirect in the layout.
 - **There is no `cookies().set()`.** Server code reads request headers; only
   middleware owns the response. A sign-in action writes its cookie through a
-  request-scoped jar that middleware empties onto the response — and that jar
-  must be readable too, because `redirect()` renders the destination inside the
-  same request, where the just-set cookie is otherwise invisible.
+  request-scoped jar that middleware empties onto the response. The browser
+  applies it before following the redirect in a new request. Reads or rerenders
+  within the action's own request need to read the jar too, because the incoming
+  request headers do not include queued cookies.
 
 Both are worked through, with the code, in the
 [Authentication](/guides/authentication) guide. `next-auth` v5 specifically is

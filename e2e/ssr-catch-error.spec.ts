@@ -31,26 +31,15 @@ test.describe(`ssr-catch-error`, () => {
     );
   });
 
-  test('a static element that throws does not take the server down', async ({
+  test('a static element that cancels does not take the server down', async ({
     request,
   }) => {
-    await request.get(`http://localhost:${port}/redirect-static`, {
+    await request.get(`http://localhost:${port}/cancel-static`, {
       maxRedirects: 0,
     });
 
     const res = await request.get(`http://localhost:${port}/no-error`);
     expect(res.status()).toBe(200);
-  });
-
-  test('a redirect from a cached static element is followed', async ({
-    request,
-  }) => {
-    const res = await request.get(`http://localhost:${port}/redirect-static`, {
-      maxRedirects: 0,
-    });
-
-    expect(res.status()).toBe(307);
-    expect(res.headers()['location']).toBe('/no-error');
   });
 
   test('error inside Suspense inside ErrorBoundary', async ({ page }) => {

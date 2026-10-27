@@ -195,6 +195,31 @@ describe('getEntriesForRoute', () => {
     expect('main' in skipped.elements).toBe(false);
   });
 
+  it('reuses immutable client content without a server cache entry', async () => {
+    const render = vi.fn(() => 'static content');
+    const routeEntries = createRouteEntries(
+      async () => ({
+        elements: {
+          root: { immutable: true, render },
+          route: { immutable: true, render },
+        },
+      }),
+      undefined,
+    );
+    const entries = await routeEntries.getEntriesForRoute(
+      encodeRoutePath('/static'),
+      undefined,
+      { root: 1, 'route:/static': 1 },
+      createElementCache(),
+    );
+
+    expect(entries?.elements).toEqual({
+      [ROUTE_ID]: ['/static', ''],
+      [IS_STATIC_ID]: true,
+    });
+    expect(render).not.toHaveBeenCalled();
+  });
+
   it('caches a static element (renderer runs once) but re-renders a dynamic one', async () => {
     const staticRenderer = vi.fn(() => 'static-el');
     const dynamicRenderer = vi.fn(() => 'dynamic-el');

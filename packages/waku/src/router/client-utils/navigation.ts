@@ -324,7 +324,7 @@ export const useNavigation = (
           [ROUTE_ID]: [nextRoute.path, nextRoute.query],
           [INTENT_ID]: isSameRscRoute(nextRoute, settledRoute)
             ? getElements()[INTENT_ID]
-            : cache.getStaticRouteIntent(nextRoute),
+            : null,
           ...(canReuseStatic ? { [IS_STATIC_ID]: true } : {}),
         };
         request.queuedState = initialState;
@@ -429,7 +429,7 @@ export const useNavigation = (
           outcome.type === 'reused'
             ? {
                 [ROUTE_ID]: [outcome.route.path, outcome.route.query],
-                [INTENT_ID]: cache.getStaticRouteIntent(outcome.route),
+                [INTENT_ID]: null,
                 [IS_STATIC_ID]:
                   cache.canReuseStaticRoute(outcome.route, base) ||
                   isStaticFromElements(base),

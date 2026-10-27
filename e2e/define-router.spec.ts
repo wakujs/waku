@@ -191,6 +191,15 @@ test.describe(`define-router`, () => {
     );
     expect(requests).toHaveLength(2);
     expect(page.url()).toBe(`http://localhost:${port}/interceptor-cache`);
+
+    await page.setExtraHTTPHeaders({ 'x-waku-test-gate': 'deny' });
+    await page.locator('a[href="/"]').click({ noWaitAfter: true });
+    await expect(page.getByTestId('home-title')).toHaveText('Home');
+    await page
+      .locator('a[href="/interceptor-cache"]')
+      .click({ noWaitAfter: true });
+    await expect(page.getByTestId('foo-title')).toHaveText('Foo');
+    expect(requests).toHaveLength(3);
   });
 
   test('an interceptor can add cookies to the chosen redirect response', async ({
@@ -275,7 +284,6 @@ test.describe(`define-router`, () => {
   test('a static action redirect does not become the next visit intent', async ({
     page,
   }) => {
-    const readResponseBody = await createFetchResponseReader(page);
     const requests: string[] = [];
     page.on('request', (request) => {
       if (request.url().includes('/RSC/R/action-static')) {
@@ -288,17 +296,15 @@ test.describe(`define-router`, () => {
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
     await page.locator('a[href="/"]').click({ noWaitAfter: true });
     await expect(page.getByTestId('home-title')).toHaveText('Home');
-    const response = page.waitForResponse('**/RSC/R/action-static*');
     await page.locator('a[href="/action-static"]').click({ noWaitAfter: true });
-    await readResponseBody((await response).url());
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       'Static action page',
     );
-    expect(requests).toHaveLength(1);
+    expect(requests).toHaveLength(0);
     expect(page.url()).toBe(`http://localhost:${port}/action-static`);
   });
 
-  test('an async component intent does not make an uncached runtime route reusable', async ({
+  test('an async dynamic page checks access again on the next visit', async ({
     page,
   }) => {
     const readResponseBody = await createFetchResponseReader(page);

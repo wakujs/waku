@@ -407,7 +407,8 @@ same cancellation signal. It returns the stream's cancellation promise, or
 stream can wait for its other consumer.
 
 Routers can transport navigation data independently from cancellation. Waku
-Router provides `requestRedirect` and `requestNotFound` for this; see
+Router provides `requestRedirect` and `requestNotFound` for dynamic rendering,
+server functions, and runtime handler interceptors before `next()`; see
 [Redirects and Not Found](/guides/redirects-and-not-found).
 
 #### Weak Promises

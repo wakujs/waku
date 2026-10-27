@@ -14,8 +14,6 @@ import {
 import { ROUTER_METADATA } from './build-metadata.js';
 import { getRouterPrefetchCode } from './client-code.js';
 import { createElementCache, getElementCacheId } from './element-cache.js';
-import type { SerializedElement } from './element-cache.js';
-import { getRouteIntent } from './request-store.js';
 import { validateRouteElementIds } from './route-entries.js';
 import type {
   Resolve,
@@ -74,7 +72,7 @@ export const createBuildHandler =
     runHandled: <T>(req: Request, fn: () => Promise<T>) => Promise<T>;
   }): HandleBuild =>
   async (utils) => {
-    const cachedElements: Record<string, SerializedElement> = {};
+    const cachedElements: Record<string, string> = {};
     const cache = createElementCache((id, entry) => {
       cachedElements[id] = entry;
     });
@@ -150,10 +148,7 @@ export const createBuildHandler =
           }
           const moduleIds = new Set<string>();
           const stream = await utils.renderRsc(
-            {
-              ...entries.elements,
-              [INTENT_ID]: getRouteIntent().promise,
-            },
+            { ...entries.elements, [INTENT_ID]: null },
             {
               etags: entries.etags,
               unstable_clientModuleCallback: (ids) =>
@@ -221,15 +216,9 @@ export const createBuildHandler =
           if (entries.etags[id] !== 1) {
             throw new Error('Build element must be immutable: ' + id);
           }
-          const stream = await utils.renderRsc(
-            {
-              ...entries.elements,
-              [INTENT_ID]: getRouteIntent().promise,
-            },
-            {
-              etags: entries.etags,
-            },
-          );
+          const stream = await utils.renderRsc(entries.elements, {
+            etags: entries.etags,
+          });
           await utils.generateFile(fileName, stream);
         });
       });

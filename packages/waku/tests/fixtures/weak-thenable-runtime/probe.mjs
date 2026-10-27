@@ -791,29 +791,42 @@ try {
   );
 
   await scenario(
-    'Router replays an intent from a nested cancelled render',
+    'Router records an intent from a dynamic nested render',
     async () => {
-      const saved = new Map();
-      const cache = createElementCache((id, entry) => saved.set(id, entry));
+      const cache = createElementCache();
       async function AsyncGuard() {
         await tick();
         getRouteIntent().record({ status: 404 });
         cancelRender();
       }
+      const entries = createRouteEntries(
+        async () => ({
+          elements: {
+            root: { immutable: true, render: () => 'root' },
+            route: {
+              render: () =>
+                React.createElement(
+                  'section',
+                  null,
+                  React.createElement(AsyncGuard),
+                ),
+            },
+          },
+        }),
+        undefined,
+        async () => false,
+      );
       await inRequest(async () => {
-        await cache.set('slot/page', () =>
-          React.createElement('section', null, React.createElement(AsyncGuard)),
+        const entry = await entries.getEntriesForRoute(
+          'R/page',
+          undefined,
+          {},
+          cache,
         );
-      });
-      const restored = createElementCache();
-      restored.preload('slot/page', saved.get('slot/page'));
-      await inRequest(async () => {
-        const page = await restored.get('slot/page');
-        assert.equal(page.type, 'section');
+        assert.equal(entry.elements.IS_STATIC, false);
+        const bytes = await serializeRsc(entry.elements['route:/page']);
         assert.deepEqual(getRouteIntent().value, { status: 404 });
-        const bytes = await serializeRsc(page);
         assert.match(new TextDecoder().decode(bytes), /WAKU_CANCEL_RENDER/);
-        assert.equal(restored.has('slot/page'), true);
       });
     },
   );
@@ -884,23 +897,30 @@ try {
     },
   );
   await scenario(
-    'Router retains request intent when an element factory throws',
+    'Router retains request intent when a dynamic element factory cancels',
     async () => {
-      let saved = false;
-      const cache = createElementCache(() => {
-        saved = true;
-      });
+      const cache = createElementCache();
+      const entries = createRouteEntries(
+        async () => ({
+          elements: {
+            root: { immutable: true, render: () => 'root' },
+            route: {
+              render: () => {
+                getRouteIntent().record({ status: 404 });
+                cancelRender();
+              },
+            },
+          },
+        }),
+        undefined,
+        async () => false,
+      );
       await inRequest(async () => {
         await assert.rejects(
-          cache.set('slot/page', () => {
-            getRouteIntent().record({ status: 404 });
-            cancelRender();
-          }),
+          entries.getEntriesForRoute('R/page', undefined, {}, cache),
           isRenderCancellation,
         );
         assert.deepEqual(getRouteIntent().value, { status: 404 });
-        assert.equal(cache.has('slot/page'), false);
-        assert.equal(saved, false);
       });
     },
   );

@@ -28,7 +28,7 @@ beforeEach(() => {
 describe('element cache', () => {
   it('preload then get returns the deserialized value', async () => {
     const cache = createElementCache();
-    cache.preload('slot/x', { data: btoa(JSON.stringify('hello')) });
+    cache.preload('slot/x', btoa(JSON.stringify('hello')));
     expect(await cache.get('slot/x')).toBe('hello');
   });
 

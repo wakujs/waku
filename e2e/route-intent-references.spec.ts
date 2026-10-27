@@ -25,41 +25,26 @@ test.describe('router route intent reference preservation', () => {
     await expect(page.getByText('Original object received')).toBeVisible();
   });
 
-  test('replays a cached static redirect on a second visit', async ({
+  test('refetches a dynamic page redirect under a static layout', async ({
     page,
   }) => {
-    await page.goto(`http://localhost:${port}/`);
-    await waitForHydration(page);
-    await page.getByRole('link', { name: 'Intent Static Redirect' }).click();
-    await expect(page).toHaveURL(`http://localhost:${port}/destination`);
-    await page.goBack();
-    await expect(
-      page.getByRole('heading', { name: 'Home Page' }),
-    ).toBeVisible();
-    await page.getByRole('link', { name: 'Intent Static Redirect' }).click();
-    await expect(page).toHaveURL(`http://localhost:${port}/destination`);
-  });
-
-  test('refetches a skipped static page under a dynamic layout without retaining its etag', async ({
-    page,
-  }) => {
-    const etags: string[] = [];
+    let requestCount = 0;
     page.on('request', (request) => {
       if (request.url().includes('/RSC/R/mixed/gate')) {
-        etags.push(request.headers()['x-waku-etags'] ?? '{}');
+        requestCount++;
       }
     });
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
-    await page.getByRole('link', { name: 'Mixed Static Redirect' }).click();
+    await page.getByRole('link', { name: 'Mixed Redirect' }).click();
     await expect(page).toHaveURL(`http://localhost:${port}/destination`);
     await page.goBack();
     await expect(
       page.getByRole('heading', { name: 'Home Page' }),
     ).toBeVisible();
-    await page.getByRole('link', { name: 'Mixed Static Redirect' }).click();
+    const previousRequestCount = requestCount;
+    await page.getByRole('link', { name: 'Mixed Redirect' }).click();
     await expect(page).toHaveURL(`http://localhost:${port}/destination`);
-    expect(etags.length).toBeGreaterThanOrEqual(2);
-    expect(JSON.parse(etags.at(-1)!)).not.toHaveProperty('page:/mixed/gate');
+    expect(requestCount).toBeGreaterThan(previousRequestCount);
   });
 });

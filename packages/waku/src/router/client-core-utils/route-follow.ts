@@ -6,7 +6,6 @@ import type { RouteIntentData } from '../isomorphic-utils/router-protocol.js';
 import {
   getRouteFromElements,
   has404FromElements,
-  isStaticFromElements,
 } from '../isomorphic-utils/router-protocol.js';
 import type { RouteIntentOutcome } from './observe-route-intent.js';
 import {
@@ -43,10 +42,7 @@ export function canReuseForHashRedirect(
     isSameRscRoute(decision.target, requested.route) &&
     decision.url.pathname === requested.url.pathname &&
     decision.url.search === requested.url.search &&
-    (!rendered ||
-      (rendered.path === decision.target.path &&
-        (isStaticFromElements(elements) ||
-          rendered.query === decision.target.query)))
+    (!rendered || isSameRscRoute(rendered, decision.target))
   );
 }
 

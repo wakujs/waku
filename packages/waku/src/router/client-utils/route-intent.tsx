@@ -146,7 +146,7 @@ export const RouteIntent = ({
 
   useEffect(() => {
     const pending = elements[INTENT_ID] as
-      PromiseLike<string | undefined> | undefined;
+      PromiseLike<string | undefined> | null | undefined;
     if (!pending) {
       return;
     }
@@ -163,7 +163,7 @@ export const RouteIntent = ({
       const scope = getRouterState(getElements());
       return async (responseElements) => {
         const pending = responseElements[INTENT_ID] as
-          PromiseLike<string | undefined> | undefined;
+          PromiseLike<string | undefined> | null | undefined;
         if (!pending) {
           return responseElements;
         }

@@ -83,21 +83,8 @@ export const createRouteEntries = (
     const { route, ...sources } = resolved.elements;
     const routeId = getRouteSlotId(pathname);
     sources[routeId] = route;
-    const etags = { ...clientEtags };
-    await Promise.all(
-      Object.entries(sources).map(async ([id, source]) => {
-        if (source.immutable && etags[id] === 1) {
-          const cacheId = getElementCacheId(id, source);
-          if (cache.has(cacheId)) {
-            await cache.replayIntent(cacheId);
-          } else {
-            delete etags[id];
-          }
-        }
-      }),
-    );
     const entries = await buildElements(
-      etags,
+      clientEtags,
       Object.fromEntries(
         Object.entries(sources).map(([id, source]) => [
           id,
@@ -113,9 +100,8 @@ export const createRouteEntries = (
       ),
     );
     Object.assign(entries.elements, await getRouteMetadata(pathname, query));
-    entries.elements[IS_STATIC_ID] = Object.entries(sources).every(
-      ([id, source]) =>
-        source.immutable && cache.has(getElementCacheId(id, source)),
+    entries.elements[IS_STATIC_ID] = Object.values(sources).every(
+      (source) => source.immutable,
     );
     return entries;
   };

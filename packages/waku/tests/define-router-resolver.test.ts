@@ -191,7 +191,7 @@ describe('defineRouter route resolver', () => {
     expect(serializeRsc).toHaveBeenCalledTimes(1);
   });
 
-  it('does not cache an intent recorded while Flight renders an uncached immutable route', async () => {
+  it('does not cache an intent recorded while Flight renders a dynamic route', async () => {
     const Page = async () => {
       await Promise.resolve();
       requestRedirect('/login');
@@ -201,7 +201,7 @@ describe('defineRouter route resolver', () => {
       resolve: async () => ({
         elements: {
           root: { immutable: true, render: () => 'root' },
-          route: { immutable: true, render: () => createElement(Page) },
+          route: { render: () => createElement(Page) },
         },
       }),
       getHas404: async () => false,
@@ -221,22 +221,29 @@ describe('defineRouter route resolver', () => {
     await router.handleRequest(rscInput('/private'), utils);
   });
 
-  it('keeps whole-route reuse for explicitly cached immutable sources', async () => {
-    const router = defineRouter({
-      resolve: async () => ({
-        elements: {
-          root: { immutable: true, render: () => 'root' },
-          route: { immutable: true, cacheKey: 'page', render: () => 'page' },
-        },
-      }),
-      getHas404: async () => false,
-    });
-    const utils = makeUtils();
+  it.each([undefined, 'page'])(
+    'keeps whole-route reuse for immutable sources (key: %s)',
+    async (cacheKey) => {
+      const router = defineRouter({
+        resolve: async () => ({
+          elements: {
+            root: { immutable: true, render: () => 'root' },
+            route: {
+              immutable: true,
+              ...(cacheKey ? { cacheKey } : {}),
+              render: () => 'page',
+            },
+          },
+        }),
+        getHas404: async () => false,
+      });
+      const utils = makeUtils();
 
-    await router.handleRequest(rscInput('/cached'), utils);
+      await router.handleRequest(rscInput('/cached'), utils);
 
-    expect(utils.renderRsc.mock.calls[0]![0][IS_STATIC_ID]).toBe(true);
-  });
+      expect(utils.renderRsc.mock.calls[0]![0][IS_STATIC_ID]).toBe(true);
+    },
+  );
 
   it.each([false, true])(
     'uses declared 404 availability across requests without probing (exists: %s)',
@@ -812,17 +819,15 @@ describe('defineRouter route resolver', () => {
   });
 
   it.each([undefined, 'shared-route'])(
-    'builds immutable route cache key %s in source order with route metadata and separate intents',
+    'builds immutable route cache key %s in source order without route intents',
     async (cacheKey) => {
       const rendered: [string, string | undefined][] = [];
       const rootRender = vi.fn(() => {
         rendered.push(['root', getRscPath()]);
-        requestRedirect('/root-intent');
         return 'root';
       });
       const routeRender = vi.fn(() => {
         rendered.push(['route', getRscPath()]);
-        requestRedirect('/route-intent');
         return 'route';
       });
       const router = defineRouter({
@@ -858,16 +863,11 @@ describe('defineRouter route resolver', () => {
         ['route', encodeRoutePath('/built')],
       ]);
       const elements = utils.renderRsc.mock.calls[0]![0];
-      expect(JSON.parse((await elements[INTENT_ID]) as string)).toEqual({
-        status: 307,
-        location: '/root-intent',
-      });
+      expect(elements).toHaveProperty(INTENT_ID, null);
+      expect(elements[IS_STATIC_ID]).toBe(true);
       const cached = JSON.parse(metadata.get('defineRouter:cachedElements')!);
       const routeCacheId = cacheKey ? 'key/' + cacheKey : 'slot/route:/built';
-      expect(cached[routeCacheId]).toEqual({
-        data: btoa(JSON.stringify('route')),
-        intent: { status: 307, location: '/route-intent' },
-      });
+      expect(cached[routeCacheId]).toBe(btoa(JSON.stringify('route')));
     },
   );
 
@@ -885,12 +885,8 @@ describe('defineRouter route resolver', () => {
     const metadata = new Map<string, string>();
     const utils = makeUtils();
     utils.renderRsc.mockImplementation(async (elements, options) => {
-      const payload = { ...elements };
-      const intent = payload[INTENT_ID] as { value?: string } | undefined;
-      payload[INTENT_ID] = intent?.value;
-      return new Response(
-        JSON.stringify({ elements: payload, etags: options?.etags }),
-      ).body!;
+      return new Response(JSON.stringify({ elements, etags: options?.etags }))
+        .body!;
     });
     await router.handleBuild({
       ...utils,
@@ -904,6 +900,7 @@ describe('defineRouter route resolver', () => {
       },
       unstable_registerPrunableFile: vi.fn(),
     });
+    expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(INTENT_ID);
     expect(files.size).toBe(1);
     expect(
       JSON.parse(files.get('payload/' + encodeSliceId('folder/fragment'))!),
@@ -1240,7 +1237,6 @@ describe('defineRouter route resolver', () => {
     expect(utils.renderRsc).toHaveBeenCalledWith(
       {
         'slice:summary': 'static summary',
-        [INTENT_ID]: intentPromise,
       },
       { etags: { 'slice:summary': 1 } },
     );
@@ -1284,76 +1280,6 @@ describe('defineRouter route resolver', () => {
     sandbox.__WAKU_ROUTER_PREFETCH__!('/posts/two', (id) => modules.push(id));
     expect(modules).toEqual(['post-module']);
   });
-});
-
-it.each([undefined, 'shared'] as const)(
-  'replays an immutable route intent on an etag hit (key: %s)',
-  async (cacheKey) => {
-    const render = vi.fn(() => {
-      requestRedirect('/done');
-      return 'gate';
-    });
-    const router = defineRouter({
-      resolve: async () => ({
-        elements: {
-          root: { render: () => 'dynamic root' },
-          route: { immutable: true, ...(cacheKey ? { cacheKey } : {}), render },
-        },
-      }),
-      getHas404: async () => false,
-    });
-    const utils = makeUtils();
-    await router.handleRequest(rscInput('/gate'), utils);
-    await router.handleRequest(
-      { ...rscInput('/gate'), etags: { 'route:/gate': 1 } },
-      utils,
-    );
-    const elements = utils.renderRsc.mock.calls.at(-1)![0];
-    expect(
-      JSON.parse(await (elements[INTENT_ID] as PromiseLike<string>)),
-    ).toEqual({ status: 307, location: '/done' });
-    expect(render).toHaveBeenCalledTimes(cacheKey ? 1 : 2);
-    if (cacheKey) {
-      expect(elements).not.toHaveProperty('route:/gate');
-    }
-  },
-);
-
-it('replays build-preloaded intent metadata when an etag omits the slot', async () => {
-  const render = vi.fn(() => 'unused');
-  const router = defineRouter({
-    resolve: async () => ({
-      elements: {
-        root: { render: () => 'root' },
-        route: { immutable: true, render },
-      },
-    }),
-    getHas404: async () => false,
-  });
-  const utils = makeUtils();
-  // Use the actual metadata key rather than depending on its spelling.
-  const { ROUTER_METADATA } =
-    await import('../src/router/define-router-utils/build-metadata.js');
-  utils.loadBuildMetadata.mockImplementation(async (name) =>
-    name === ROUTER_METADATA.cachedElements
-      ? JSON.stringify({
-          'slot/route:/gate': {
-            data: btoa(JSON.stringify('gate')),
-            intent: { status: 307, location: '/done' },
-          },
-        })
-      : undefined,
-  );
-  await router.handleRequest(
-    { ...rscInput('/gate'), etags: { 'route:/gate': 1 } },
-    utils,
-  );
-  const elements = utils.renderRsc.mock.calls[0]![0];
-  expect(elements).not.toHaveProperty('route:/gate');
-  expect(
-    JSON.parse(await (elements[INTENT_ID] as PromiseLike<string>)),
-  ).toEqual({ status: 307, location: '/done' });
-  expect(render).not.toHaveBeenCalled();
 });
 
 it('uses the declared custom 404 after an interceptor intent without running the gated action', async () => {

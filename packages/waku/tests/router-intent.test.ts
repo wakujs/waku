@@ -231,24 +231,9 @@ describe('intent metadata', () => {
     expect((response as Response).headers.get('location')).toBe('/next');
   });
 
-  it('retains a throwing factory intent without caching a serialized result', async () => {
-    const saved = vi.fn();
-    const cache = createElementCache(saved);
-    await withinRequest(async () => {
-      await expect(
-        cache.set('slot/cancelled', () => unstable_notFound()),
-      ).rejects.toSatisfy(isRenderCancellation);
-      expect(getRouteIntent().value).toEqual({ status: 404 });
-      expect(cache.has('slot/cancelled')).toBe(false);
-      expect(saved).not.toHaveBeenCalled();
-    });
-  });
-
   it('reuses a preloaded serialized failure without retrying its immutable source', async () => {
     const cache = createElementCache();
-    cache.preload('slot/cancelled', {
-      data: btoa(JSON.stringify({ cancelled: true })),
-    });
+    cache.preload('slot/cancelled', btoa(JSON.stringify({ cancelled: true })));
     const render = vi.fn(() => 'recovered');
     const source = cacheElementSource(
       { immutable: true, render },
@@ -571,96 +556,5 @@ describe('intent metadata', () => {
       location: '/first',
     });
     expect(JSON.parse((await second)!)).toEqual({ status: 404 });
-  });
-
-  it('persists a cached slot intent and replays it in a new request', async () => {
-    const saved = vi.fn();
-    const cache = createElementCache(saved);
-    await withinRequest(async () => {
-      await cache.set('slot/route', () => {
-        requestRedirect('/cached');
-        return 'cached element';
-      });
-      expect(getRouteIntent().value).toEqual({
-        status: 307,
-        location: '/cached',
-      });
-    });
-    const [id, entry] = saved.mock.calls[0]!;
-    expect(entry.intent).toEqual({ status: 307, location: '/cached' });
-    const restored = createElementCache();
-    restored.preload(id, entry);
-    await withinRequest(async () => {
-      expect(await restored.get(id)).toBe('cached element');
-      expect(JSON.parse((await getRouteIntent().promise)!)).toEqual(
-        entry.intent,
-      );
-    });
-  });
-
-  it('forwards a cached slot intent before the source finishes', async () => {
-    const gate = Promise.withResolvers<void>();
-    await withinRequest(async () => {
-      const cache = createElementCache();
-      const first = cache.set('first', async () => {
-        requestRedirect('/first');
-        await gate.promise;
-        return 'first slot';
-      });
-      await cache.set('second', () => {
-        requestRedirect('/second');
-        return 'second slot';
-      });
-      expect(getRouteIntent().value).toEqual({
-        status: 307,
-        location: '/first',
-      });
-      gate.resolve();
-      await first;
-      await cache.get('first');
-    });
-  });
-
-  it('does not forward callbacks from a completed cache capture', async () => {
-    const gate = Promise.withResolvers<void>();
-    const saved = vi.fn();
-    const cache = createElementCache(saved);
-    await withinRequest(async () => {
-      let detached!: Promise<void>;
-      await cache.set('slot', () => {
-        detached = gate.promise.then(() => requestRedirect('/detached'));
-        return 'cached element';
-      });
-      gate.resolve();
-      await detached;
-      expect(getRouteIntent().value).toBeUndefined();
-      expect(saved.mock.calls[0]![1].intent).toBeUndefined();
-      expect(await cache.get('slot')).toBe('cached element');
-      expect(getRouteIntent().value).toBeUndefined();
-    });
-  });
-
-  it('preserves a cached intent when its first requesting client aborts', async () => {
-    const controller = new AbortController();
-    const gate = Promise.withResolvers<void>();
-    const cache = createElementCache(vi.fn());
-    await withinRequest(async () => {
-      const pending = cache.set('slot', async () => {
-        await gate.promise;
-        requestRedirect('/cached');
-        return 'cached element';
-      });
-      controller.abort();
-      gate.resolve();
-      await pending;
-      expect(getRouteIntent().value).toBeUndefined();
-    }, controller.signal);
-    await withinRequest(async () => {
-      expect(await cache.get('slot')).toBe('cached element');
-      expect(getRouteIntent().value).toEqual({
-        status: 307,
-        location: '/cached',
-      });
-    });
   });
 });

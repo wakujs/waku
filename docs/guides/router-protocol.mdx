@@ -53,7 +53,7 @@ to render with `Slot`.
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ROUTE`     | `[pathname, query]` of the route the server rendered, not necessarily the requested route.                                                                                       |
 | `IS_STATIC` | The whole route can be reused without a request: its sources are immutable and its metadata is request-independent. It does not mean HTML was emitted at build time.             |
-| `INTENT`    | Weak promise for a JSON string with `{ status: 404 }` or `{ status, location }`. An unused intent may remain pending or resolve to `undefined`.                                  |
+| `INTENT`    | Weak promise for a JSON string with `{ status: 404 }` or `{ status, location }`, or `null` to clear the intent. An unused promise may remain pending or resolve to `undefined`.  |
 | `HAS404`    | A custom `/404` route is available. Present when true.                                                                                                                           |
 | `IS_ORIGIN` | A server function call used the no-argument `rerenderRoute()` form to refresh its request-time origin. The server function routing enhancer consumes this marker before merging. |
 
@@ -107,6 +107,15 @@ Router does not start a form action if an intent has already been recorded.
 An action that has already run retains its form state when the handler renders
 the not-found view. A source factory that throws stops element construction;
 Router handles its recorded intent before starting an action or producing a response.
+
+Route intents are runtime decisions from dynamic rendering, server functions,
+or handler interceptors before `next()`. Immutable, cached, and prerendered
+sources produce content only. Their factories and nested server components must
+not call `requestRedirect()` or `requestNotFound()`. Prerendered route payloads
+clear `INTENT` with `null`, without recording navigation. Standalone static slice
+payloads omit `INTENT` to preserve the active route's intent. Static-only
+deployments use host redirects and omit invalid build paths or render fallback
+content.
 
 The first recorded intent wins. Its promise can settle and reach the browser
 before other components finish, so a later intent cannot replace it. Concurrent
@@ -163,29 +172,24 @@ returned elements.
 Once a static route is cached, navigation can reuse it without a request. Redirect
 rules that must run for each query change require a dynamic route.
 
-Runtime responses that pass through handler interceptors, or already have a
-recorded intent, do not enable whole-route reuse. Their immutable elements still
-use etags and the server element cache. This keeps request-specific redirects,
-including action redirects, out of the static route cache.
-
-Whole-route reuse also requires every immutable source to have completed its
-element-cache render, including sources omitted on an etag hit. An uncached
-runtime route can still record an intent while Flight renders its components,
-so it requires a request on later visits. Build-preloaded routes and explicitly
-keyed sources can retain whole-route reuse. A cached static redirect replayed in
-a runtime response disables whole-route reuse too; prerendered files keep their
-build-time static metadata.
+A route with only immutable sources is eligible for whole-route reuse without
+requiring those sources to be in the server element cache. A runtime response
+with an already-recorded intent disables that reuse; its immutable content can
+still use etags and the element cache. Handler interceptor presence does not
+change the route's static classification.
 
 The element cache stores serialized outcomes without inspecting nested React
 errors. A successfully serialized immutable subtree is reusable even if it contains
 a cancellation. Use a dynamic source for results that should retry or vary by
 request. A source factory or serialization operation that throws creates no cached
-entry. Recorded routing intents are cached alongside successful serialization and
-replayed when its element is reused.
+entry. The cache stores content bytes, without capturing or replaying routing
+intents.
 
-Prerendered files can be served and reused without running runtime interceptors.
-Routes requiring authorization or another check on every request must be dynamic;
-an interceptor does not make a prerendered page private.
+Prerendered files and cached static routes can be served or reused without running
+runtime handler interceptors. Routes requiring authorization or another check on
+every visit must be dynamic; registering an interceptor does not make static
+content private. This concerns server handler interceptors, not client
+`unstable_routeInterceptor` or the browser Navigation API.
 
 Handler interceptors record routing intents before calling `next()`. Use
 `requestRedirect()` or `requestNotFound()`, then return `next()` to let Router
