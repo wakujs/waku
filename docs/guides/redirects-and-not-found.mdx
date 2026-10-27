@@ -33,7 +33,7 @@ export function notFound(): never {
 
 ## Redirect from Server Code
 
-Use `requestRedirect` from `waku/router/server` in server-only code, then return:
+Use `requestRedirect` from `waku/router/server` in server components or server functions, then return. API handlers own their HTTP responses: return `Response.redirect()` or a response with status `404` there.
 
 ```tsx
 // src/pages/account.tsx

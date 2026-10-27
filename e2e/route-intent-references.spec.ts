@@ -40,7 +40,7 @@ test.describe('router route intent reference preservation', () => {
     await expect(page).toHaveURL(`http://localhost:${port}/destination`);
   });
 
-  test('replays a static page intent under a dynamic layout on an etag hit', async ({
+  test('refetches a skipped static page under a dynamic layout without retaining its etag', async ({
     page,
   }) => {
     const etags: string[] = [];
@@ -60,6 +60,6 @@ test.describe('router route intent reference preservation', () => {
     await page.getByRole('link', { name: 'Mixed Static Redirect' }).click();
     await expect(page).toHaveURL(`http://localhost:${port}/destination`);
     expect(etags.length).toBeGreaterThanOrEqual(2);
-    expect(JSON.parse(etags.at(-1)!)).toHaveProperty('page:/mixed/gate', 1);
+    expect(JSON.parse(etags.at(-1)!)).not.toHaveProperty('page:/mixed/gate');
   });
 });

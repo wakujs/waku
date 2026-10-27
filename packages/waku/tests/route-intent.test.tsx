@@ -686,7 +686,7 @@ test('an action redirect yields to a navigation that is already in flight', asyn
   expect(window.location.pathname).toBe('/two');
 });
 
-test('a cached static intent is followed again on a new route activation', async () => {
+test('a skipped static redirect is fetched again while its destination is reused', async () => {
   mocks.queue.push(payload('/one'));
   const view = await mount();
   const intent: RouteIntentData = { status: 307, location: '/done' };
@@ -699,14 +699,19 @@ test('a cached static intent is followed again on a new route activation', async
     await flush();
   });
   expect(window.location.pathname).toBe('/done');
+  expect(controls.elements).not.toHaveProperty(getRouteSlotId('/gate'));
   const requests = vi.mocked(fetch).mock.calls.length;
+  mocks.queue.push(
+    payload('/gate', Promise.resolve(JSON.stringify(intent)), true),
+  );
   await act(async () => {
     await controls.router.push('/gate');
     await flush();
   });
   expect(window.location.pathname).toBe('/done');
   expect(view.textContent).toContain('Page /done');
-  expect(vi.mocked(fetch).mock.calls).toHaveLength(requests);
+  expect(controls.elements).not.toHaveProperty(getRouteSlotId('/gate'));
+  expect(vi.mocked(fetch).mock.calls).toHaveLength(requests + 1);
 });
 
 test.each([

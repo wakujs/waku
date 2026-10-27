@@ -113,6 +113,12 @@ if ((globalThis as any).__WAKU_HYDRATE__) {
 
 Return an async function from `resolve` for an API endpoint. The function receives the real request, including its method, headers, and body, with the pathname relative to Waku's base path. It runs only for HTTP requests, not when the client tries to fetch a route payload.
 
+The handler owns its returned `Response`, including its status and headers. Return
+`Response.redirect()` for a redirect or a response with status `404` for missing
+data. `requestRedirect()` and `requestNotFound()` are not supported inside API
+handlers; they serve React rendering and server function calls. An interceptor
+can record an intent before `next()` to skip the handler.
+
 Route params are caller-owned: match and capture them in `resolve`, then close over them in the handler or element source. Use `getRequest` from `waku/router/server` to inspect the request during resolution or rendering.
 
 The request body can be read only once. If resolution needs to inspect it before returning an HTTP handler, read `getRequest().clone()` so the handler can still read the original body.

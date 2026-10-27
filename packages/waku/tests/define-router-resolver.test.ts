@@ -134,23 +134,26 @@ describe('defineRouter route resolver', () => {
     const router = defineRouter({
       resolve: async (path) =>
         path === '/redirect'
-          ? async () => redirect(href)
+          ? {
+              elements: {
+                root: { render: () => 'root' },
+                route: { render: () => redirect(href) },
+              },
+            }
           : createRouterDefinition('content'),
       getHas404: async () => false,
     });
     const utils = makeUtils();
-    const error = await router
-      .handleRequest(
-        {
-          type: 'http',
-          pathname: '/redirect',
-          req: new Request('http://localhost/redirect'),
-        },
-        utils,
-      )
-      .catch((error: unknown) => error);
-    expect((error as Response).headers.get('location')).toBe(href);
-    expect((error as Response).status).toBe(307);
+    const response = (await router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/redirect',
+        req: new Request('http://localhost/redirect'),
+      },
+      utils,
+    )) as Response;
+    expect(response.headers.get('location')).toBe(href);
+    expect(response.status).toBe(307);
     expect(codec.serialize).toHaveBeenCalledExactlyOnceWith({ tag: 'a b' });
     expect(codec.parse).not.toHaveBeenCalled();
     expect(utils.renderHtml).not.toHaveBeenCalled();

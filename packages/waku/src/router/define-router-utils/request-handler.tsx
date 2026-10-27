@@ -40,51 +40,6 @@ type RouteEntries = {
 
 type HandlerInput = Parameters<HandleRequest>[0];
 
-const REPLACED_RESPONSE_HEADERS = [
-  'accept-ranges',
-  'content-digest',
-  'content-disposition',
-  'content-encoding',
-  'content-language',
-  'content-length',
-  'content-location',
-  'content-md5',
-  'content-range',
-  'content-type',
-  'digest',
-  'etag',
-  'expires',
-  'last-modified',
-  'location',
-  'repr-digest',
-];
-
-const replaceHttpResponse = async (
-  response: Response,
-  createResponse: () => Response | Promise<Response>,
-): Promise<Response> => {
-  void cancelRenderStream(response.body)?.catch(() => {});
-  const replacement = await createResponse();
-  const headers = new Headers(response.headers);
-  for (const name of REPLACED_RESPONSE_HEADERS) {
-    headers.delete(name);
-  }
-  headers.set('cache-control', 'private, no-store');
-  for (const [name, value] of replacement.headers) {
-    if (name !== 'set-cookie') {
-      headers.set(name, value);
-    }
-  }
-  for (const cookie of replacement.headers.getSetCookie()) {
-    headers.append('set-cookie', cookie);
-  }
-  return new Response(replacement.body, {
-    status: replacement.status,
-    statusText: replacement.statusText,
-    headers,
-  });
-};
-
 const createNotFoundResponse = () =>
   new Response(
     '<!doctype html><html><head><title>Not Found</title></head><body><h1>Not Found</h1></body></html>',
@@ -407,10 +362,8 @@ export function createRequestHandler({
             redirect ||
             (getRouteIntent().value?.status === 404 && pathname !== '/404')
           ) {
-            return replaceHttpResponse(
-              response,
-              () => redirect ?? renderNotFoundPage(),
-            );
+            void cancelRenderStream(response.body)?.catch(() => {});
+            return redirect ?? renderNotFoundPage();
           }
           if (status === 404 && !response.headers.has('cache-control')) {
             response.headers.set('cache-control', 'private, no-store');
@@ -459,38 +412,7 @@ export function createRequestHandler({
             }
             const url = new URL(req.url);
             url.pathname = pathname;
-            let response: Response;
-            try {
-              response = await resolved(new Request(url, req));
-            } catch (error) {
-              if (
-                (!isRenderCancellation(error) &&
-                  !hasRenderCancellationDigest(error)) ||
-                !intent.value
-              ) {
-                throw error;
-              }
-              return (
-                redirectResponse() ??
-                new Response('Not Found', {
-                  status: 404,
-                  headers: { 'cache-control': 'private, no-store' },
-                })
-              );
-            }
-            const redirect = redirectResponse();
-            if (redirect || getRouteIntent().value?.status === 404) {
-              return replaceHttpResponse(
-                response,
-                () =>
-                  redirect ??
-                  new Response('Not Found', {
-                    status: 404,
-                    headers: { 'cache-control': 'private, no-store' },
-                  }),
-              );
-            }
-            return response;
+            return resolved(new Request(url, req));
           }
           if (getRouteIntent().value?.status === 404) {
             return renderNotFoundPage();

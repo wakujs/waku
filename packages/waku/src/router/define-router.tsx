@@ -74,6 +74,7 @@ export function rerenderRoute(pathname?: string, query?: string) {
  * The first intent recorded for a request wins, including concurrent renders.
  * A server function keeps its normal return value; a form submitted without
  * JavaScript responds with 404.
+ * API handlers return their own HTTP responses and cannot use this helper.
  */
 export function requestNotFound(): void {
   getRouteIntent().record({ status: 404 });
@@ -132,6 +133,7 @@ const getRedirectLocation = (
  * using JavaScript.
  * An absolute URL navigates the document even when it names this origin.
  * The first intent recorded for a request wins, including concurrent renders.
+ * API handlers return their own HTTP responses and cannot use this helper.
  */
 export function requestRedirect(
   to: NavigationHref | `http://${string}` | `https://${string}` | URL,

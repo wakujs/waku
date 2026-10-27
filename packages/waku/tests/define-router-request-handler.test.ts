@@ -294,11 +294,18 @@ describe('request dispatch', () => {
     );
     const clone = original.clone();
     const cancel = vi.spyOn(clone.body!, 'cancel');
+    const utils = makeUtils();
+    utils.renderHtml.mockImplementation(async () => {
+      requestRedirect('/login');
+      return clone;
+    });
     const router = unstable_defineRouter({
-      resolve: async () => async () => {
-        requestRedirect('/login');
-        return clone;
-      },
+      resolve: async () => ({
+        elements: {
+          root: { render: () => 'root' },
+          route: { render: () => 'page' },
+        },
+      }),
       getHas404: async () => false,
     });
     let response: Response | undefined;
@@ -306,10 +313,10 @@ describe('request dispatch', () => {
       .handleRequest(
         {
           type: 'http',
-          pathname: '/api',
-          req: new Request('http://localhost/api'),
+          pathname: '/account',
+          req: new Request('http://localhost/account'),
         },
-        makeUtils(),
+        utils,
       )
       .then((value) => {
         response = value as Response;
@@ -491,18 +498,16 @@ describe('request dispatch', () => {
       location: '/dashboard',
       cacheControl: 'private, no-store',
       contentType: null,
-      cookies: [],
     },
     {
       status: 404,
       record: requestNotFound,
       location: null,
-      cacheControl: 'private, max-age=0',
+      cacheControl: 'private, no-store',
       contentType: 'text/html; charset=utf-8',
-      cookies: ['notice=missing; Path=/'],
     },
   ])(
-    'preserves headers when a render-time $status replaces the document',
+    'lets interceptors add headers to a render-time $status response',
     async (expected) => {
       const cookies = [
         'session=active; HttpOnly; Path=/',
@@ -512,37 +517,16 @@ describe('request dispatch', () => {
       const utils = makeUtils();
       utils.renderHtml
         .mockImplementationOnce(async () => {
-          const response = new Response(new ReadableStream({ cancel }));
-          for (const cookie of cookies) {
-            response.headers.append('set-cookie', cookie);
-          }
-          for (const [name, value] of Object.entries({
-            'x-request-id': 'request-one',
-            'content-security-policy': "default-src 'self'",
-            vary: 'accept-language',
-            'cache-control': 'public, max-age=600',
-            location: '/stale',
-            'content-type': 'application/json',
-            'content-disposition': 'attachment; filename="old.json"',
-            'content-length': '999',
-            'content-encoding': 'gzip',
-            'content-range': 'bytes 0-9/999',
-            'content-digest': 'old-digest',
-            etag: 'old-etag',
-            'last-modified': 'Wed, 21 Oct 2015 07:28:00 GMT',
-          })) {
-            response.headers.set(name, value);
-          }
           expected.record();
-          return response;
+          return new Response(new ReadableStream({ cancel }), {
+            headers: { 'content-type': 'text/html; charset=utf-8' },
+          });
         })
         .mockResolvedValueOnce(
           new Response('custom 404', {
             status: 404,
             headers: {
               'content-type': 'text/html; charset=utf-8',
-              'cache-control': 'private, max-age=0',
-              'set-cookie': 'notice=missing; Path=/',
             },
           }),
         );
@@ -554,6 +538,21 @@ describe('request dispatch', () => {
           },
         }),
         getHas404: async () => true,
+        unstable_interceptors: [
+          async (next) => {
+            const response = await next();
+            if (response instanceof Response) {
+              for (const cookie of cookies) {
+                response.headers.append('set-cookie', cookie);
+              }
+              response.headers.set(
+                'content-security-policy',
+                "default-src 'self'",
+              );
+            }
+            return response;
+          },
+        ],
       });
 
       const response = (await router.handleRequest(
@@ -566,26 +565,15 @@ describe('request dispatch', () => {
       )) as Response;
 
       expect(response.status).toBe(expected.status);
-      expect(response.headers.getSetCookie()).toEqual([
-        ...cookies,
-        ...expected.cookies,
-      ]);
-      expect(response.headers.get('x-request-id')).toBe('request-one');
+      expect(response.headers.getSetCookie()).toEqual(cookies);
       expect(response.headers.get('content-security-policy')).toBe(
         "default-src 'self'",
       );
-      expect(response.headers.get('vary')).toBe('accept-language');
       expect(response.headers.get('cache-control')).toBe(expected.cacheControl);
       expect(response.headers.get('location')).toBe(expected.location);
       expect(response.headers.get('content-type')).toBe(expected.contentType);
-      expect(response.headers.get('content-disposition')).toBeNull();
-      expect(response.headers.get('content-length')).toBeNull();
-      expect(response.headers.get('content-encoding')).toBeNull();
-      expect(response.headers.get('content-range')).toBeNull();
-      expect(response.headers.get('content-digest')).toBeNull();
-      expect(response.headers.get('etag')).toBeNull();
-      expect(response.headers.get('last-modified')).toBeNull();
       expect(cancel).toHaveBeenCalledOnce();
+      expect(cancel.mock.calls[0]![0]).toSatisfy(isRenderCancellation);
     },
   );
 
@@ -680,36 +668,66 @@ describe('request dispatch', () => {
     expect(utils.renderHtml).toHaveBeenCalledOnce();
   });
 
-  it('keeps API not-found cookies and the plain response without rendering the custom document', async () => {
+  it.each([
+    { status: 307, record: requestNotFound },
+    { status: 404, record: () => requestRedirect('/login') },
+  ])(
+    'returns the API handler response unchanged despite a recorded render intent ($status)',
+    async ({ status, record }) => {
+      const original = new Response('api body', {
+        status,
+        headers: {
+          location: '/api-destination',
+          'set-cookie': 'session=api; HttpOnly',
+          'cache-control': 'private, max-age=30',
+        },
+      });
+      const utils = makeUtils();
+      const router = unstable_defineRouter({
+        resolve: async () => async () => {
+          record();
+          return original;
+        },
+        getHas404: async () => true,
+      });
+      const response = await router.handleRequest(
+        {
+          type: 'http',
+          pathname: '/api',
+          req: new Request('http://localhost/api'),
+        },
+        utils,
+      );
+
+      expect(response).toBe(original);
+      expect(await original.text()).toBe('api body');
+      expect(original.status).toBe(status);
+      expect(original.headers.get('location')).toBe('/api-destination');
+      expect(original.headers.getSetCookie()).toEqual([
+        'session=api; HttpOnly',
+      ]);
+      expect(original.headers.get('cache-control')).toBe('private, max-age=30');
+      expect(utils.renderHtml).not.toHaveBeenCalled();
+    },
+  );
+
+  it('propagates API cancellation without rendering its recorded intent', async () => {
     const utils = makeUtils();
     const router = unstable_defineRouter({
-      resolve: async () => async () => {
-        requestNotFound();
-        return new Response('api body', {
-          headers: {
-            'set-cookie': 'session=api; HttpOnly',
-            'cache-control': 'public, max-age=600',
-          },
-        });
-      },
+      resolve: async () => async () => unstable_redirect('/login'),
       getHas404: async () => true,
     });
-    const response = (await router.handleRequest(
-      {
-        type: 'http',
-        pathname: '/api',
-        req: new Request('http://localhost/api'),
-      },
-      utils,
-    )) as Response;
 
-    expect(response.status).toBe(404);
-    expect(await response.text()).toBe('Not Found');
-    expect(response.headers.get('content-type')).toBe(
-      'text/plain;charset=UTF-8',
-    );
-    expect(response.headers.getSetCookie()).toEqual(['session=api; HttpOnly']);
-    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    await expect(
+      router.handleRequest(
+        {
+          type: 'http',
+          pathname: '/api',
+          req: new Request('http://localhost/api'),
+        },
+        utils,
+      ),
+    ).rejects.toSatisfy(isRenderCancellation);
     expect(utils.renderHtml).not.toHaveBeenCalled();
   });
 

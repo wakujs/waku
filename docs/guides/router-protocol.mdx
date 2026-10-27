@@ -72,6 +72,10 @@ An immutable route composition is a reusable shell, not proof that every slot it
 renders is immutable. A shell can contain a mutable page. The client cache therefore
 distinguishes `hasCachedShell` from `canReuseStaticRoute`.
 
+Responses skipped by a ready redirect do not populate the retained-route cache.
+Revisiting a skipped route can require another request. During ordinary navigation,
+the current page stays visible until the redirect destination is ready to commit.
+
 ## Partial Responses
 
 Minimal can send the etags of a supplied `unstable_base` with a fetch. The server
@@ -196,13 +200,14 @@ and cleanup of any body it discards. Recording an intent afterward does not rewr
 the HTTP response. On an open Flight stream it may still reach the client, but this
 is not guaranteed after `next()` returns.
 
-When the handler replaces its own HTTP response, it starts cancellation of its body without waiting for
-stream cleanup, which may depend on another tee or clone consumer. Applicable
-headers, including each `Set-Cookie` value, are preserved. The replacement
-supplies the status, `Location`, and body metadata; its own headers take
-precedence. Its cache policy defaults to `private, no-store` unless the replacement
-explicitly sets one.
-Validators and metadata for the discarded body are not inherited.
+API handlers own their returned HTTP responses. Router does not apply intents
+recorded inside them. Use native responses for API redirects and not-found results.
+
+When a render-time intent replaces a document, Router starts cancellation of its
+body without waiting for stream cleanup, which may depend on another tee or clone
+consumer. The replacement supplies the entire response. Add cookies and other
+application headers in an interceptor after `next()` returns the final response.
+Redirects and not-found documents default to `Cache-Control: private, no-store`.
 
 On failure, retained elements can describe an earlier route. The attempted URL
 and error state belong to the client binding, not the server metadata.
