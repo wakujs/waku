@@ -950,7 +950,7 @@ test('an action keeps the headers of a request an inner enhancer builds', async 
   expect(sent?.has(ETAGS_HEADER)).toBe(true);
 });
 
-test('a rerender of the route an action came from survives a navigation within that route', async () => {
+test('an origin rerender is dropped while its action holds a hash navigation pending', async () => {
   const view = await mount();
   const response = deferred<Record<string, unknown>>({});
   decode.mockReturnValueOnce(response.promise);
@@ -977,7 +977,8 @@ test('a rerender of the route an action came from survives a navigation within t
     expect(await action).toBe('returned');
   });
 
-  expect(view.container.textContent).toBe('refreshed start');
+  expect(view.container.textContent).toBe('start');
+  expect(window.location.hash).toBe('#details');
   expect(view.errors).not.toHaveBeenCalled();
 });
 

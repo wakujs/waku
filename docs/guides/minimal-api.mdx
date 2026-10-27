@@ -396,8 +396,10 @@ check both predicates. Digest creation remains internal to the renderer.
 If cancellation escapes `handleRequest`, an HTTP request receives an empty 204
 response, leaving an existing browser document in place. An RSC or server-function
 request receives an empty RSC payload, so the client keeps its elements. This is
-a no-op; data already streamed is not rolled back. A cancelled element source does
-not advertise a new etag and clears any previous client validator.
+a no-op; data already streamed is not rolled back. `unstable_buildElements` lets
+source-factory exceptions propagate, including cancellation, so that call returns
+no elements or new validators. Cancellation from a component during React rendering
+is encoded by Flight and handled by the Slot boundary.
 
 Use `unstable_cancelRenderStream(stream)` to discard a render stream with the
 same cancellation signal. It returns the stream's cancellation promise, or

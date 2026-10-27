@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import type { Unstable_ElementSource as ElementSource } from 'waku/minimal/server';
-import { unstable_isRenderCancellation as isRenderCancellation } from 'waku/minimal/server';
 import { deserializeRsc, serializeRsc } from 'waku/server';
 import type { RouteIntentData } from '../isomorphic-utils/router-protocol.js';
 import { captureRouteIntent, getRouteIntent } from './request-store.js';
@@ -34,10 +33,8 @@ export const createElementCache = (
   >();
   return {
     preload: (cacheId: CacheId, { data, intent }: SerializedElement) => {
-      cache.set(
-        cacheId,
-        Promise.resolve({ result: base64ToBytes(data), intent }),
-      );
+      const result = base64ToBytes(data);
+      cache.set(cacheId, Promise.resolve({ result, intent }));
     },
     has: (cacheId: CacheId) => cache.has(cacheId),
     replayIntent: async (cacheId: CacheId) => {
@@ -57,20 +54,9 @@ export const createElementCache = (
       if (cache.has(cacheId)) {
         return;
       }
-      const entry = captureRouteIntent(async () => {
-        let element;
-        try {
-          element = await render();
-        } catch (error) {
-          if (!isRenderCancellation(error)) {
-            throw error;
-          }
-          const cancelled = Promise.reject(error);
-          void cancelled.catch(() => {});
-          element = cancelled;
-        }
-        return serializeRsc(element);
-      }).catch((error) => {
+      const entry = captureRouteIntent(async () =>
+        serializeRsc(await render()),
+      ).catch((error) => {
         if (cache.get(cacheId) === entry) {
           cache.delete(cacheId);
         }

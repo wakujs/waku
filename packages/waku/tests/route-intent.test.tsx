@@ -19,6 +19,7 @@ import { ErrorBoundary, Router, useRouter } from '../src/router/client.js';
 import {
   HAS404_ID,
   INTENT_ID,
+  IS_ORIGIN_ID,
   IS_STATIC_ID,
   ROUTE_ID,
   encodeSliceId,
@@ -173,7 +174,7 @@ test('a ready redirect retains content until its destination loads', async () =>
         '/gate',
         Promise.resolve(JSON.stringify({ status: 307, location: '/done' })),
       ),
-      [getRouteSlotId('/gate')]: null,
+      [getRouteSlotId('/gate')]: <p>Intermediate gate screen</p>,
     },
     destination.promise,
   );
@@ -185,6 +186,7 @@ test('a ready redirect retains content until its destination loads', async () =>
   });
   expect(vi.mocked(fetch).mock.calls).toHaveLength(requests + 2);
   expect(view.textContent).toContain('Page /one');
+  expect(view.textContent).not.toContain('Intermediate gate screen');
   expect(window.location.pathname).toBe('/one');
   await act(async () => {
     destination.resolve(payload('/done'));
@@ -234,7 +236,12 @@ test.each(['redirect', 'notFound', 'notFoundWithoutPage'] as const)(
       mocks.queue.push(payload(destination));
     }
     await act(async () => {
-      await controls.router.push('/gate?q=one');
+      const navigating = controls.router.push('/gate?q=one');
+      if (kind === 'notFoundWithoutPage') {
+        await expect(navigating).rejects.toThrow('Not Found');
+      } else {
+        await navigating;
+      }
       await flush();
     });
     expect(window.location.pathname + window.location.search).toBe(
@@ -285,6 +292,28 @@ test('a not-found intent uses the outer fallback when no root is available', asy
   });
   expect(view.querySelector('h1')?.textContent).toBe('Not Found');
   expect(window.location.pathname).toBe('/one');
+});
+
+test('browser navigation recovers from not-found without a root error boundary', async () => {
+  mocks.queue.push(payload('/one'));
+  const view = await mount();
+  const intent = deferIntent();
+  mocks.queue.push(payload('/two', intent.promise));
+  await act(async () => {
+    await controls.router.push('/two');
+    await flush();
+    intent.resolve({ status: 404 });
+    await flush();
+  });
+  expect(view.textContent).toContain('Not Found');
+
+  mocks.queue.push(payload('/one'));
+  await act(async () => {
+    window.history.replaceState({}, '', '/one');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await flush();
+  });
+  expect(view.textContent).toContain('Page /one');
 });
 
 test.each([false, true])(
@@ -360,6 +389,45 @@ test.each(['slice', 'action'] as const)(
     });
     expect(window.location.pathname).toBe('/done');
     expect(view.textContent).toContain('Page /done');
+  },
+);
+
+test.each([
+  { ready: true, intent: { status: 307, location: '/login' } },
+  { ready: false, intent: { status: 307, location: '/login' } },
+  { ready: true, intent: { status: 404 } },
+  { ready: false, intent: { status: 404 } },
+] as const)(
+  'a server-function rerender owns its $intent intent (ready: $ready)',
+  async ({ ready, intent }) => {
+    mocks.queue.push(payload('/one'));
+    const view = await mount();
+    const pending = deferIntent();
+    if (ready) {
+      pending.resolve(intent);
+    }
+    mocks.queue.push({
+      ...payload('/posts/1', pending.promise),
+      _value: 'saved',
+    });
+    if (intent.status === 307) {
+      mocks.queue.push(payload('/login'));
+    }
+    await act(async () => {
+      expect(await callServerRsc('actions#save', [])).toBe('saved');
+      await flush();
+      if (!ready) {
+        pending.resolve(intent);
+        await flush();
+      }
+    });
+    if (intent.status === 307) {
+      expect(window.location.pathname).toBe('/login');
+      expect(view.textContent).toContain('Page /login');
+    } else {
+      expect(view.textContent).toContain('Not Found');
+      expect(view.textContent).not.toContain('Page /posts/1');
+    }
   },
 );
 
@@ -1410,3 +1478,110 @@ test.each(['/one', '/two'])(
     expect(view.textContent).not.toContain('Not Found');
   },
 );
+
+test.each([
+  {
+    intent: { status: 307, location: '/login' },
+    path: '/intermediate',
+    target: '/login',
+    url: '/login',
+    addedEntries: 1,
+  },
+  {
+    intent: { status: 404 },
+    path: '/intermediate',
+    target: '/404',
+    url: '/intermediate',
+    addedEntries: 1,
+  },
+  {
+    intent: { status: 307, location: '/login' },
+    path: '/one',
+    target: '/login',
+    url: '/login',
+    addedEntries: 0,
+  },
+  {
+    intent: { status: 404 },
+    path: '/one',
+    target: '/404',
+    url: '/one',
+    addedEntries: 0,
+  },
+] as const)(
+  'a ready rerender of $path with $intent follows before committing and keeps its action pending',
+  async ({ intent, path, target, url, addedEntries }) => {
+    mocks.queue.push(payload('/one'));
+    const view = await mount();
+    const destination = defer<Elements>();
+    const historyLength = window.history.length;
+    mocks.queue.push(
+      {
+        ...payload(path, Promise.resolve(JSON.stringify(intent))),
+        [getRouteSlotId(path)]: <p>Intermediate rerender screen</p>,
+        [HAS404_ID]: true,
+        _value: 'saved',
+      },
+      destination.promise,
+    );
+    let action!: Promise<unknown>;
+    let completed = false;
+    await act(async () => {
+      action = callServerRsc('actions#save', []).then((value) => {
+        completed = true;
+        return value;
+      });
+      await flush();
+    });
+    expect(view.textContent).toContain('Page /one');
+    expect(view.textContent).not.toContain('Intermediate rerender screen');
+    expect(window.location.pathname).toBe('/one');
+    expect(completed).toBe(false);
+    await act(async () => {
+      destination.resolve(payload(target));
+      expect(await action).toBe('saved');
+      await flush();
+    });
+    expect(view.textContent).toContain('Page ' + target);
+    expect(window.location.pathname).toBe(url);
+    expect(window.history.length).toBe(historyLength + addedEntries);
+  },
+);
+
+test('an origin rerender cannot replace a pending reload of the same route', async () => {
+  mocks.queue.push(payload('/one'));
+  const view = await mount();
+  const actionResponse = defer<Elements>();
+  const reloadResponse = defer<Elements>();
+  mocks.queue.push(actionResponse.promise, reloadResponse.promise);
+  let action!: Promise<unknown>;
+  let reload!: Promise<void>;
+  await act(async () => {
+    action = callServerRsc('actions#save', []);
+    await flush();
+    reload = controls.router.reload();
+    await flush();
+  });
+  await act(async () => {
+    actionResponse.resolve({
+      ...payload('/one'),
+      [IS_ORIGIN_ID]: true,
+      [getRouteSlotId('/one')]: <p>Action result</p>,
+      _value: 'saved',
+    });
+    expect(await action).toBe('saved');
+    await flush();
+  });
+  expect(view.textContent).toContain('Page /one');
+  expect(view.textContent).not.toContain('Action result');
+  await act(async () => {
+    reloadResponse.resolve({
+      ...payload('/one'),
+      [getRouteSlotId('/one')]: <p>Reload result</p>,
+    });
+    await reload;
+    await flush();
+  });
+  expect(view.textContent).toContain('Reload result');
+  expect(view.textContent).not.toContain('Action result');
+});

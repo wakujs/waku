@@ -108,10 +108,9 @@ test.each(['resolver', 'interceptor'] as const)(
     expect(response?.status).toBe(404);
     expect(response?.headers.get('cache-control')).toBe('private, no-store');
     expect(await response?.text()).toContain('<h1>Not Found</h1>');
-    expect(resolve.mock.calls.map(([pathname]) => pathname)).toEqual([
-      '/account',
-      '/404',
-    ]);
+    expect(resolve.mock.calls.map(([pathname]) => pathname)).toEqual(
+      origin === 'resolver' ? ['/account', '/404'] : ['/404'],
+    );
   },
 );
 

@@ -170,6 +170,11 @@ export const load = async (
             location: decision.url,
           };
         }
+        if (decision?.type === 'none') {
+          throw new Error('Not Found', {
+            cause: new Response(null, { status: 404 }),
+          });
+        }
         if (decision?.type === 'stop') {
           throw decision.error;
         }

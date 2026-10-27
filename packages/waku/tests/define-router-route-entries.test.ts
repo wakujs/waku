@@ -279,3 +279,29 @@ describe('getEntriesForElement', () => {
     expect(dynamicRenderer).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('custom 404 availability', () => {
+  it('does not probe the resolver when no availability callback is supplied', async () => {
+    const resolve = vi.fn(async () => null);
+    const entries = createRouteEntries(resolve, undefined);
+    expect(await entries.getRouteMetadata('/page', '')).toEqual({
+      [ROUTE_ID]: ['/page', ''],
+    });
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
+  it('lets the manifest supply availability without caching a failed lookup', async () => {
+    const getHas404 = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('manifest unavailable'))
+      .mockResolvedValue(true);
+    const resolve = vi.fn(async () => null);
+    const entries = createRouteEntries(resolve, undefined, getHas404);
+    await expect(entries.has404()).rejects.toThrow('manifest unavailable');
+    expect(await entries.getRouteMetadata('/page', '')).toEqual({
+      [ROUTE_ID]: ['/page', ''],
+      [HAS404_ID]: true,
+    });
+    expect(resolve).not.toHaveBeenCalled();
+  });
+});

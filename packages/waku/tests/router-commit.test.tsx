@@ -365,7 +365,7 @@ test.each([0, null])(
   },
 );
 
-test('an origin action cannot restore route metadata over a reload rewrite', async () => {
+test('an origin action is discarded while a reload rewrite is pending', async () => {
   const Destination = () => {
     const elements = use(useElementsPromise());
     return (
@@ -412,7 +412,7 @@ test('an origin action cannot restore route metadata over a reload rewrite', asy
     });
     expect(view.textContent).toContain('rewritten page');
     expect(view.textContent).not.toContain('origin action page');
-    expect(view.querySelector('[data-sidebar]')?.textContent).toBe('action');
+    expect(view.querySelector('[data-sidebar]')?.textContent).toBe('before');
     expect(
       view.querySelector('[data-static]')?.getAttribute('data-static'),
     ).toBe('true');
@@ -476,7 +476,7 @@ test.each(['two', 'before'])(
   },
 );
 
-test('a cached replacement keeps its route over queued origin-action metadata', async () => {
+test('a cached replacement follows a reload that discarded an origin action', async () => {
   window.history.replaceState({}, '', '/cached');
   mocks.queue.push({
     ...payload('/cached', <p>cached page</p>),
@@ -515,7 +515,7 @@ test('a cached replacement keeps its route over queued origin-action metadata', 
       await flush();
     });
     expect(view.textContent).toContain('cached page');
-    expect(view.querySelector('[data-sidebar]')?.textContent).toBe('action');
+    expect(view.querySelector('[data-sidebar]')?.textContent).toBe('');
     expect(window.location.pathname).toBe('/cached');
   } finally {
     await act(async () => {
@@ -2375,7 +2375,7 @@ test('a successful navigation clears the previously committed not-found intent',
       [getRouteSlotId('/missing')]: null,
       [INTENT_ID]: Promise.resolve(JSON.stringify({ status: 404 })),
     });
-    await failed;
+    await expect(failed).rejects.toThrow('Not Found');
     await flush();
   });
   expect(view.querySelector('h1')?.textContent).toBe('Not Found');

@@ -27,7 +27,7 @@ type Elements = Readonly<Record<string | symbol, unknown>>;
 type RouteIntentObserver = (
   type: 'rsc' | 'call',
   signal: AbortSignal | undefined,
-) => (elements: Elements) => Elements;
+) => (elements: Elements) => Elements | Promise<Elements>;
 
 type CachedLoadOptions = LoadOptions & {
   /** `false` reuses the initial attempt without fetching. */
@@ -132,8 +132,8 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
     getStaticRouteIntent: (route: RouteProps) =>
       intentPromisesByRoutePath.get(route.path),
     /**
-     * Loads with static reuse, an optional initial response, prefetch, or the
-     * network, in that order, using `unstable_load`'s follow and cancellation rules.
+     * Loads an optional initial response before static reuse, prefetch, or the
+     * network, using `unstable_load`'s follow and cancellation rules.
      * Network results are response patches; cached prefetches return stored
      * maps. Combine patches with the retained base when reading a full snapshot.
      * Retains immutable elements from followed responses without committing
@@ -164,8 +164,9 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
             try {
               const first = attempt.follows === initialFollows;
               if (
-                canReuseStaticRoute(attempt.route, opts.base) ||
-                (first && opts.refetch === false)
+                !(first && opts.adopt !== undefined) &&
+                (canReuseStaticRoute(attempt.route, opts.base) ||
+                  (first && opts.refetch === false))
               ) {
                 return;
               }

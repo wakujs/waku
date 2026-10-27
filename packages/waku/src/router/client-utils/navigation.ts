@@ -232,13 +232,16 @@ export const useNavigation = (
         (retainedElements && getRouteFromElements(retainedElements)) ??
         settledRoute;
       const shouldRefetch =
-        options.refetch ??
-        (!isSameRscRoute(nextRoute, settledRoute) ||
-          !isSameRscRoute(
-            nextRoute,
-            getRouteFromElements(base) ?? settledRoute,
-          ));
-      const canReuseStatic = cache.canReuseStaticRoute(nextRoute, base);
+        options.adopt !== undefined ||
+        (options.refetch ??
+          (!isSameRscRoute(nextRoute, settledRoute) ||
+            !isSameRscRoute(
+              nextRoute,
+              getRouteFromElements(base) ?? settledRoute,
+            )));
+      const canReuseStatic =
+        options.adopt === undefined &&
+        cache.canReuseStaticRoute(nextRoute, base);
       if (
         options.pendingTransition &&
         shouldRefetch &&
@@ -341,6 +344,7 @@ export const useNavigation = (
         ? cache.getPrefetchedElements(nextRoute)
         : undefined;
       const loadPatch = async (): Promise<Elements> => {
+        const adopt = options.adopt ?? instantResponse;
         const outcome = await cache.load(nextRoute, {
           signal: controller.signal,
           refetch: shouldRefetch,
@@ -354,7 +358,7 @@ export const useNavigation = (
               reloadWithUrl(url);
             }
           },
-          ...(instantResponse ? { adopt: instantResponse } : {}),
+          ...(adopt ? { adopt } : {}),
         });
         if (requestRef.current !== request) {
           return {};

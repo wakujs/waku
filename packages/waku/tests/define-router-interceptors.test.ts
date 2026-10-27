@@ -2,7 +2,11 @@ import type { ReactNode } from 'react';
 import { createElement } from 'react';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { describe, expect, it, vi } from 'vitest';
-import { unstable_cancelRender as cancelRender } from '../src/minimal/server.js';
+import type { RenderHtml } from '../src/lib/types.js';
+import {
+  unstable_cancelRender as cancelRender,
+  unstable_isRenderCancellation as isRenderCancellation,
+} from '../src/minimal/server.js';
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
 import { createPages } from '../src/router/create-pages.js';
 import {
@@ -59,7 +63,12 @@ const callHandleRequest = (
     },
     {
       renderRsc: vi.fn().mockResolvedValue(makeStream()),
-      renderHtml: vi.fn().mockResolvedValue(new Response('ok')),
+      renderHtml: vi
+        .fn<RenderHtml>()
+        .mockImplementation(
+          async (_stream, _html, { status }) =>
+            new Response('ok', { status: status ?? 200 }),
+        ),
       renderHtmlFallback: vi.fn(),
       loadBuildMetadata: vi.fn(),
     },
@@ -128,17 +137,17 @@ describe('define-router handler interceptors', () => {
     expect(seen).toBe('from-interceptor');
   });
 
-  it('preserves interceptor ALS when cancellation renders the custom 404', async () => {
+  it('preserves interceptor ALS when next renders the requested custom 404', async () => {
     const als = new AsyncLocalStorage<string>();
     let seen: string | undefined;
     const router = make404Router(() => {
       seen = als.getStore();
       return 'not found';
     }, [
-      () =>
+      (next) =>
         als.run('from-interceptor', async () => {
           requestNotFound();
-          cancelRender();
+          return next();
         }),
     ]);
 
@@ -148,7 +157,7 @@ describe('define-router handler interceptors', () => {
     expect(als.getStore()).toBeUndefined();
   });
 
-  it('recovers in the request store when an element capture records the first intent', async () => {
+  it('keeps the request store when an element capture records the first intent', async () => {
     const als = new AsyncLocalStorage<string>();
     let original: ReturnType<typeof getRouteIntent> | undefined;
     let recovered: ReturnType<typeof getRouteIntent> | undefined;
@@ -158,11 +167,11 @@ describe('define-router handler interceptors', () => {
       seen = als.getStore();
       return 'not found';
     }, [
-      () =>
+      (next) =>
         als.run('from-interceptor', async () => {
           original = getRouteIntent();
           await captureRouteIntent(async () => requestNotFound());
-          cancelRender();
+          return next();
         }),
     ]);
 
@@ -173,9 +182,7 @@ describe('define-router handler interceptors', () => {
     expect(als.getStore()).toBeUndefined();
   });
 
-  it('can recover when the runtime does not implement ALS snapshots', async () => {
-    const snapshot = AsyncLocalStorage.snapshot;
-    Object.defineProperty(AsyncLocalStorage, 'snapshot', { value: undefined });
+  it('lets cancellation escape when an interceptor does not call next', async () => {
     const render = vi.fn(() => 'not found');
     const router = make404Router(render, [
       async () => {
@@ -183,12 +190,10 @@ describe('define-router handler interceptors', () => {
         cancelRender();
       },
     ]);
-    try {
-      await callHandleRequest(router);
-      expect(render).toHaveBeenCalledOnce();
-    } finally {
-      Object.defineProperty(AsyncLocalStorage, 'snapshot', { value: snapshot });
-    }
+    await expect(callHandleRequest(router)).rejects.toSatisfy(
+      isRenderCancellation,
+    );
+    expect(render).not.toHaveBeenCalled();
   });
 
   it('runs createInterceptor-registered interceptors in createPages', async () => {

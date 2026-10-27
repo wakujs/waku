@@ -445,6 +445,24 @@ describe('load', () => {
     });
   });
 
+  it('adopts fresh elements even when the route is reusable from cache', async () => {
+    const base = {
+      [ROUTE_ID]: ['/next', ''],
+      [IS_STATIC_ID]: true,
+      [getRouteSlotId('/next')]: 'cached',
+    };
+    cache.learnStaticFromElements(base);
+    const elements = { ...base, [getRouteSlotId('/next')]: 'updated' };
+
+    const outcome = await cache.load(
+      route('/next'),
+      baseOpts({ base, adopt: Promise.resolve(elements) }),
+    );
+
+    expect(outcome).toMatchObject({ type: 'loaded', elements });
+    expect(fetchRsc).not.toHaveBeenCalled();
+  });
+
   it('an aborted adopt is aborted, not failed', async () => {
     const controller = new AbortController();
     const adopt = new Promise<Elements>(() => {});

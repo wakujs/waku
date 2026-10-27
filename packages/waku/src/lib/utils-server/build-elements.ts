@@ -1,10 +1,5 @@
 import { IMMUTABLE_ETAG, isValidEtag } from '../utils-isomorphic/etags.js';
 import type { Etag, Etags } from '../utils-isomorphic/etags.js';
-import {
-  hasRenderCancellationDigest,
-  isRenderCancellation,
-} from '../utils-isomorphic/render-cancellation.js';
-
 /** A slot renderer and its validator; immutable slots are reusable indefinitely. */
 export type ElementSource = {
   immutable?: boolean;
@@ -20,7 +15,8 @@ type BuiltElements = {
 /**
  * Renders sources whose validators the client does not hold, returning their
  * elements and etags for `renderRsc`. Missing or invalid validators force a
- * render; a previously advertised validator is then cleared.
+ * render; a previously advertised validator is then cleared. Source errors
+ * propagate without producing an elements record.
  */
 export const buildElements = async (
   clientEtags: Etags,
@@ -34,24 +30,11 @@ export const buildElements = async (
       const rawEtag = elementSource.immutable
         ? IMMUTABLE_ETAG
         : await elementSource.getEtag?.();
-      let etag: Etag | undefined = isValidEtag(rawEtag) ? rawEtag : undefined;
+      const etag: Etag | undefined = isValidEtag(rawEtag) ? rawEtag : undefined;
       if (etag !== undefined && etag === clientEtags[slotId]) {
         return;
       }
-      try {
-        elements[slotId] = await elementSource.render();
-      } catch (error) {
-        if (
-          !isRenderCancellation(error) &&
-          !hasRenderCancellationDigest(error)
-        ) {
-          throw error;
-        }
-        const cancelled = Promise.reject(error);
-        void cancelled.catch(() => {});
-        elements[slotId] = cancelled;
-        etag = undefined;
-      }
+      elements[slotId] = await elementSource.render();
       if (etag !== undefined) {
         etags[slotId] = etag;
       } else if (clientEtags[slotId] !== undefined) {

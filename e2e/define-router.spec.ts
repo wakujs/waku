@@ -160,48 +160,46 @@ test.describe(`define-router`, () => {
     }
   });
 
-  for (const when of ['before', 'after']) {
-    test(`an interceptor redirect recorded ${when} rendering is not replayed after access changes`, async ({
-      page,
-    }) => {
-      const readResponseBody = await createFetchResponseReader(page);
-      const requests: string[] = [];
-      page.on('request', (request) => {
-        if (request.url().includes('/RSC/R/interceptor-cache')) {
-          requests.push(request.url());
-        }
-      });
-      await page.setExtraHTTPHeaders({ 'x-waku-test-gate': when });
-      await page.goto(`http://localhost:${port}/`);
-      await waitForHydration(page);
-      await page
-        .locator('a[href="/interceptor-cache"]')
-        .click({ noWaitAfter: true });
-      await expect(page.getByTestId('foo-title')).toHaveText('Foo');
-
-      await page.setExtraHTTPHeaders({ 'x-waku-test-gate': 'allow' });
-      await page.locator('a[href="/"]').click({ noWaitAfter: true });
-      await expect(page.getByTestId('home-title')).toHaveText('Home');
-      const response = page.waitForResponse('**/RSC/R/interceptor-cache*');
-      await page
-        .locator('a[href="/interceptor-cache"]')
-        .click({ noWaitAfter: true });
-      await readResponseBody((await response).url());
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-        'Allowed page',
-      );
-      expect(requests).toHaveLength(2);
-      expect(page.url()).toBe(`http://localhost:${port}/interceptor-cache`);
+  test('an interceptor redirect is not replayed after access changes', async ({
+    page,
+  }) => {
+    const readResponseBody = await createFetchResponseReader(page);
+    const requests: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/RSC/R/interceptor-cache')) {
+        requests.push(request.url());
+      }
     });
-  }
+    await page.setExtraHTTPHeaders({ 'x-waku-test-gate': 'deny' });
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await page
+      .locator('a[href="/interceptor-cache"]')
+      .click({ noWaitAfter: true });
+    await expect(page.getByTestId('foo-title')).toHaveText('Foo');
 
-  test('a direct document request honors an interceptor redirect recorded after rendering', async ({
+    await page.setExtraHTTPHeaders({ 'x-waku-test-gate': 'allow' });
+    await page.locator('a[href="/"]').click({ noWaitAfter: true });
+    await expect(page.getByTestId('home-title')).toHaveText('Home');
+    const response = page.waitForResponse('**/RSC/R/interceptor-cache*');
+    await page
+      .locator('a[href="/interceptor-cache"]')
+      .click({ noWaitAfter: true });
+    await readResponseBody((await response).url());
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Allowed page',
+    );
+    expect(requests).toHaveLength(2);
+    expect(page.url()).toBe(`http://localhost:${port}/interceptor-cache`);
+  });
+
+  test('an interceptor can add cookies to the chosen redirect response', async ({
     request,
   }) => {
     const response = await request.get(
       `http://localhost:${port}/interceptor-cache`,
       {
-        headers: { 'x-waku-test-gate': 'after' },
+        headers: { 'x-waku-test-gate': 'deny' },
         maxRedirects: 0,
       },
     );
@@ -220,14 +218,14 @@ test.describe(`define-router`, () => {
     ]);
   });
 
-  test('a direct document request honors a late interceptor 404 in its context', async ({
+  test('an interceptor can add cookies to its custom 404 response', async ({
     browser,
   }) => {
     const context = await browser.newContext({
       javaScriptEnabled: false,
       extraHTTPHeaders: {
-        'x-waku-test-gate': 'after-not-found',
-        'x-waku-test-context': 'tenant-after',
+        'x-waku-test-gate': 'missing',
+        'x-waku-test-context': 'tenant-a',
       },
     });
     try {
@@ -249,7 +247,7 @@ test.describe(`define-router`, () => {
         ]),
       );
       await expect(
-        page.getByRole('heading', { name: 'Scoped Not Found: tenant-after' }),
+        page.getByRole('heading', { name: 'Scoped Not Found: tenant-a' }),
       ).toBeVisible();
       await expect(
         page.getByRole('heading', { name: 'Allowed page' }),
@@ -258,6 +256,21 @@ test.describe(`define-router`, () => {
       await context.close();
     }
   });
+
+  for (const gate of ['after', 'after-not-found']) {
+    test(`an intent recorded after next preserves the middleware-owned document (${gate})`, async ({
+      request,
+    }) => {
+      const response = await request.get(
+        `http://localhost:${port}/interceptor-cache`,
+        { headers: { 'x-waku-test-gate': gate }, maxRedirects: 0 },
+      );
+      expect(response.status()).toBe(200);
+      expect(response.headers().location).toBeUndefined();
+      expect(response.headers()['x-waku-test-interceptor']).toBe('kept');
+      expect(await response.text()).toContain('Allowed page');
+    });
+  }
 
   test('a static action redirect does not become the next visit intent', async ({
     page,
@@ -316,7 +329,7 @@ test.describe(`define-router`, () => {
     expect(page.url()).toBe(`http://localhost:${port}/async-cache`);
   });
 
-  test('an interceptor cancellation preserves ALS in the streamed 404 page', async ({
+  test('an interceptor intent preserves ALS in the streamed 404 page', async ({
     request,
   }) => {
     const response = await request.get(
