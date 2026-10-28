@@ -100,28 +100,6 @@ export function createRequestHandler({
     input,
     { renderRsc, renderHtml, renderHtmlFallback, loadBuildMetadata },
   ) => {
-    const redirectResponse = () => {
-      const requested = getRouteIntent().value;
-      if (!requested || !('location' in requested)) {
-        return undefined;
-      }
-      const url = new URL(input.req.url);
-      const base = url.pathname.slice(
-        0,
-        url.pathname.length - input.pathname.length,
-      );
-      const target = new URL(requested.location, input.req.url);
-      const location = requested.location.startsWith('/')
-        ? base + target.pathname + target.search + target.hash
-        : target.href;
-      return new Response(null, {
-        status: input.req.method === 'POST' ? 303 : requested.status,
-        headers: {
-          location,
-          'cache-control': 'private, no-store',
-        },
-      });
-    };
     const renderIntentRsc = async (): ReturnType<HandleRequest> => {
       const intent = getRouteIntent();
       if (input.type === 'rsc' && decodeSliceId(input.rscPath) === null) {
@@ -144,6 +122,9 @@ export function createRequestHandler({
     };
     const handleRequest = async (): ReturnType<HandleRequest> => {
       const intent = getRouteIntent();
+      const canHandleRenderCancellation = (error: unknown) =>
+        intent.value !== undefined &&
+        (isRenderCancellation(error) || hasRenderCancellationDigest(error));
       const renderRscWithIntent: RenderRsc = (elements, options) =>
         renderRsc(
           {
@@ -299,6 +280,30 @@ export function createRequestHandler({
       >): ReturnType<HandleRequest> => {
         const query = new URL(req.url).searchParams.toString();
         let formState: unknown;
+        const renderIntentResponse = (renderedPathname?: string) => {
+          const requested = intent.value;
+          if (!requested) {
+            return;
+          }
+          if (!('location' in requested)) {
+            return renderedPathname === '/404'
+              ? undefined
+              : renderNotFoundPage();
+          }
+          const url = new URL(req.url);
+          const base = url.pathname.slice(
+            0,
+            url.pathname.length - pathname.length,
+          );
+          const target = new URL(requested.location, req.url);
+          const location = requested.location.startsWith('/')
+            ? base + target.pathname + target.search + target.hash
+            : target.href;
+          return new Response(null, {
+            status: req.method === 'POST' ? 303 : requested.status,
+            headers: { location, 'cache-control': 'private, no-store' },
+          });
+        };
         const renderPage = async (
           pathname: string,
           status: number,
@@ -316,7 +321,7 @@ export function createRequestHandler({
             routerDefinition,
           );
           if (!entries) {
-            return redirectResponse() ?? null;
+            return renderIntentResponse(pathname) ?? null;
           }
           if (action && !intent.value) {
             const { value, entries: rerendered } = await withRerender(
@@ -329,12 +334,9 @@ export function createRequestHandler({
               etags: { ...entries.etags, ...rerendered.etags },
             };
           }
-          const requestedRedirect = redirectResponse();
-          if (requestedRedirect) {
-            return requestedRedirect;
-          }
-          if (getRouteIntent().value?.status === 404 && pathname !== '/404') {
-            return renderNotFoundPage();
+          const requestedResponse = renderIntentResponse(pathname);
+          if (requestedResponse) {
+            return requestedResponse;
           }
           const nonce = getNonce();
           const response = await renderHtml(
@@ -354,13 +356,10 @@ export function createRequestHandler({
               ),
             },
           );
-          const redirect = redirectResponse();
-          if (
-            redirect ||
-            (getRouteIntent().value?.status === 404 && pathname !== '/404')
-          ) {
+          const replacement = renderIntentResponse(pathname);
+          if (replacement) {
             void cancelRenderStream(response.body)?.catch(() => {});
-            return redirect ?? renderNotFoundPage();
+            return replacement;
           }
           if (status === 404 && !response.headers.has('cache-control')) {
             response.headers.set('cache-control', 'private, no-store');
@@ -375,44 +374,28 @@ export function createRequestHandler({
                 return response;
               }
             } catch (error) {
-              if (
-                (!isRenderCancellation(error) &&
-                  !hasRenderCancellationDigest(error)) ||
-                !intent.value
-              ) {
+              if (!canHandleRenderCancellation(error)) {
                 throw error;
               }
-              return redirectResponse() ?? createNotFoundResponse();
+              return renderIntentResponse('/404') ?? createNotFoundResponse();
             }
           }
           return createNotFoundResponse();
         };
         try {
-          const requestedRedirect = redirectResponse();
-          if (requestedRedirect) {
-            return requestedRedirect;
-          }
-          if (getRouteIntent().value?.status === 404) {
-            return renderNotFoundPage();
+          const requestedResponse = renderIntentResponse();
+          if (requestedResponse) {
+            return requestedResponse;
           }
           const resolved = await resolve(pathnameToRoutePath(pathname), query);
-          const redirect = redirectResponse();
-          if (redirect) {
-            return redirect;
+          const resolvedResponse = renderIntentResponse();
+          if (resolvedResponse) {
+            return resolvedResponse;
           }
           if (typeof resolved === 'function') {
-            if (getRouteIntent().value?.status === 404) {
-              return new Response('Not Found', {
-                status: 404,
-                headers: { 'cache-control': 'private, no-store' },
-              });
-            }
             const url = new URL(req.url);
             url.pathname = pathname;
             return resolved(new Request(url, req));
-          }
-          if (getRouteIntent().value?.status === 404) {
-            return renderNotFoundPage();
           }
           if (resolved?.noSsr) {
             const nonce = getNonce();
@@ -423,14 +406,10 @@ export function createRequestHandler({
           }
           return (await routeEntries.has404()) ? renderNotFoundPage() : null;
         } catch (error) {
-          if (
-            (!isRenderCancellation(error) &&
-              !hasRenderCancellationDigest(error)) ||
-            !intent.value
-          ) {
+          if (!canHandleRenderCancellation(error)) {
             throw error;
           }
-          return redirectResponse() ?? renderNotFoundPage();
+          return renderIntentResponse() ?? createNotFoundResponse();
         }
       };
 
@@ -448,11 +427,7 @@ export function createRequestHandler({
           return await handleCallRequest(input);
         }
       } catch (error) {
-        if (
-          (!isRenderCancellation(error) &&
-            !hasRenderCancellationDigest(error)) ||
-          !intent.value
-        ) {
+        if (!canHandleRenderCancellation(error)) {
           throw error;
         }
         return renderIntentRsc();
