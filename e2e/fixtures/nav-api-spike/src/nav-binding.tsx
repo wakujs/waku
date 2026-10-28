@@ -313,8 +313,12 @@ const NavBinding = ({
       outcome.url.href !== window.location.href &&
       outcome.url.href !== getRouteUrl(next).href
     ) {
+      const entry = window.navigation.currentEntry;
       void window.navigation.transition!.finished.then(
         () => {
+          if (window.navigation.currentEntry !== entry) {
+            return;
+          }
           void window.navigation.navigate(outcome.url.href, {
             history: 'replace',
             info: { fromAction: true, follows: outcome.follows },
