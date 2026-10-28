@@ -8,9 +8,6 @@ const fixtureRequire = createRequire(
   new URL('./fixtures/minimal-examples/package.json', import.meta.url),
 );
 const expectedVersion = fixtureRequire('react/package.json').version as string;
-const weakReference = expectedVersion.startsWith('0.0.0-experimental-')
-  ? /"INTENT":"\$w[0-9a-f]+"/
-  : /"\$undefined"/;
 
 test.describe('weak promises', () => {
   let port: number;
@@ -36,7 +33,7 @@ test.describe('weak promises', () => {
     expect(response.ok()).toBe(true);
     const payload = await response.text();
     expect(payload).not.toContain('waku-weak-');
-    expect(payload).toMatch(weakReference);
+    expect(payload).toContain('"$undefined"');
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(`http://localhost:${port}/weak?kind=unused`);
@@ -86,13 +83,13 @@ test.describe('weak promises', () => {
       'data-hydrated',
       'true',
     );
-    await page.getByTestId('weak-counter').click();
+    // eslint-disable-next-line playwright/no-force-option -- WebKit's stability check stalls while the document response is open.
+    await page.getByTestId('weak-counter').click({ force: true });
     await expect(page.getByTestId('weak-counter')).toHaveText('1');
-    expect(
-      (
-        await request.get(`http://localhost:${port}/weak-release?id=${id}`)
-      ).ok(),
-    ).toBe(true);
+    const release = await request.get(
+      `http://localhost:${port}/weak-release?id=${id}`,
+    );
+    await expect(release).toBeOK();
     await expect(page.getByTestId('weak-intent')).toHaveText('late intent');
     await expect(page.getByTestId('weak-body')).toHaveText('complete');
     await expect(page.getByTestId('weak-error')).toBeEmpty();

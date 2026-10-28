@@ -20,8 +20,3 @@ allowBuilds:
   sharp: false
   unrs-resolver: false
   workerd: false
-
-overrides:
-  react: "0.0.0-experimental-ab0d927f-20261020"
-  react-dom: "0.0.0-experimental-ab0d927f-20261020"
-  react-server-dom-webpack: "0.0.0-experimental-ab0d927f-20261020"
