@@ -308,16 +308,20 @@ const NavBinding = ({
       return;
     }
     setFollows(outcome.follows);
-    // The intercept committed the requested URL before the payload arrived.
     if (
       ownsNavigation &&
       outcome.url.href !== window.location.href &&
       outcome.url.href !== getRouteUrl(next).href
     ) {
-      void window.navigation.navigate(outcome.url.href, {
-        history: 'replace',
-        info: { fromAction: true, follows: outcome.follows },
-      });
+      void window.navigation.transition!.finished.then(
+        () => {
+          void window.navigation.navigate(outcome.url.href, {
+            history: 'replace',
+            info: { fromAction: true, follows: outcome.follows },
+          });
+        },
+        () => {},
+      );
     }
     if (outcome.type === 'failed') {
       setFailure({ error: outcome.error });

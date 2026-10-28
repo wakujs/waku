@@ -239,6 +239,22 @@ test.describe('nav-api-spike', () => {
     await expect(page).toHaveURL(/\/new$/);
   });
 
+  test('a redirect completes its intercepted navigation', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    const failure = await page.evaluate(async () => {
+      try {
+        await window.navigation.navigate('/old').finished;
+        return null;
+      } catch (error) {
+        return error instanceof Error ? error.name : String(error);
+      }
+    });
+    expect(failure).toBeNull();
+    await expect(page.getByTestId('redirect-new')).toHaveText('New');
+    await expect(page).toHaveURL(/\/new$/);
+  });
+
   test('a same-path query redirect renders the target', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
