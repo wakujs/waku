@@ -41,6 +41,11 @@ export function notFound(): never {
 }
 ```
 
+Return after requesting navigation. Ordinary rendering left in the response
+must eventually finish; Waku does not guarantee cancellation of
+discarded response streams. Avoid leaving permanently pending work behind a
+redirect or not-found intent.
+
 ## Redirect from Server Code
 
 Use `requestRedirect` from `waku/router/server` in dynamic server components or server functions, then return. API handlers own their HTTP responses: return `Response.redirect()` or a response with status `404` there.
@@ -68,6 +73,13 @@ export const getConfig = async () => ({ render: 'dynamic' }) as const;
 HTTP(S) URL string, or a `URL` object. An absolute URL navigates the whole document,
 even when it points to the same origin. Validate destinations derived from user
 input against an application allowlist.
+
+An app-relative redirect must change the path or query. Use client navigation for
+fragment-only changes, such as `<Link to="#comments">Comments</Link>` or
+`router.replace('#comments')`. A redirect to a different server route can include
+a fragment, such as `/posts?tab=comments#comments`.
+For conditional scrolling after a server function, return the desired section
+to the client and update the fragment there.
 
 The supported status codes are:
 
@@ -179,7 +191,7 @@ export const getConfig = async () => {
 
 If a `/404` page exists, Waku uses it for unmatched routes and `requestNotFound()` intents. If it does not exist, Waku falls back to a minimal not-found response.
 
-A form POST without JavaScript to an unresolved route renders the custom 404 page, when configured, or the generic fallback without executing the submitted action.
+A form POST without JavaScript to an unresolved route renders the custom 404 page, when configured, or the default 404 response without executing the submitted action.
 
 A client-side navigation to a missing route is answered the same way: the server sends the 404 page in the response, so the client does not need a second request. That response carries status 200, because it carries a page rather than an error. A direct page load of the same URL is still a 404. Where no Waku server answers, such as a static export, the request 404s and the client fetches the 404 page itself.
 

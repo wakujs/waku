@@ -13,10 +13,7 @@ import {
 import { useRouterCache } from '../client-core-utils/caches.js';
 import { observeRouteIntent } from '../client-core-utils/observe-route-intent.js';
 import type { RouteIntentOutcome } from '../client-core-utils/observe-route-intent.js';
-import {
-  canReuseForHashRedirect,
-  getRouteIntentDecision,
-} from '../client-core-utils/route-follow.js';
+import { getRouteIntentDecision } from '../client-core-utils/route-follow.js';
 import { parseRoute } from '../client-core-utils/route-url.js';
 import {
   INTENT_ID,
@@ -37,12 +34,7 @@ export const RouteIntent = ({
   const router = use(RouterContext);
   const cache = useRouterCache();
   const getElements = router?.getElements;
-  const followedStateByPromise = useRef(
-    new WeakMap<
-      PromiseLike<string | undefined>,
-      ReturnType<typeof getRouterState>
-    >(),
-  );
+  const handledIntents = useRef(new WeakSet<PromiseLike<string | undefined>>());
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -59,14 +51,11 @@ export const RouteIntent = ({
       if (!router?.isCurrentRoute?.(source)) {
         return;
       }
-      const state = getRouterState(source);
-      if (
-        state?.followedIntent === pending ||
-        (followedStateByPromise.current.has(pending) &&
-          followedStateByPromise.current.get(pending) === state)
-      ) {
+      if (handledIntents.current.has(pending)) {
         return;
       }
+      handledIntents.current.add(pending);
+      const state = getRouterState(source);
       try {
         const sourceRoute = getRouteFromElements(source);
         const requestedUrl = new URL(
@@ -85,26 +74,11 @@ export const RouteIntent = ({
         if (!decision) {
           return;
         }
-        followedStateByPromise.current.set(pending, state);
-        if (decision.type === 'none') {
-          onError(
-            new Error('Not Found', {
-              cause: new Response(null, { status: 404 }),
-            }),
-            source,
-          );
-          return;
-        }
-        if (decision.type === 'stop') {
-          onError(decision.error, source);
-          return;
-        }
         if (decision.type === 'leave') {
           window.location.replace(decision.url.href);
           return;
         }
         const { target, url } = decision;
-        const reuse = canReuseForHashRedirect(decision, attempt, source);
         startTransition(() => {
           router
             .changeRoute(target, {
@@ -112,8 +86,6 @@ export const RouteIntent = ({
                 ? state.scroll !== null
                 : target.path !== sourceRoute?.path,
               history: 'replace',
-              refetch: !reuse,
-              followedIntent: reuse ? pending : undefined,
               url,
               follows: (state?.follows ?? 0) + 1,
             })

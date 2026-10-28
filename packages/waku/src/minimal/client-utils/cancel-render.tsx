@@ -2,8 +2,8 @@ import { Component } from 'react';
 import type { ReactNode } from 'react';
 import { hasRenderCancellationDigest } from '../../lib/utils-isomorphic/render-cancellation.js';
 
-export class CancelRenderBoundary extends Component<
-  { children: ReactNode },
+class CancellationBoundary extends Component<
+  { children: ReactNode; retain?: boolean },
   { element: ReactNode; failure: { error: unknown } | undefined }
 > {
   private previousElement: ReactNode;
@@ -13,7 +13,7 @@ export class CancelRenderBoundary extends Component<
   }
 
   componentDidUpdate() {
-    if (!this.state.failure) {
+    if (this.props.retain && !this.state.failure) {
       this.previousElement = this.props.children;
     }
   }
@@ -38,9 +38,20 @@ export class CancelRenderBoundary extends Component<
 
   render() {
     const failure = this.state.failure;
-    if (failure && !hasRenderCancellationDigest(failure.error)) {
+    if (!failure) {
+      return this.props.children;
+    }
+    if (!hasRenderCancellationDigest(failure.error)) {
       throw failure.error;
     }
-    return failure ? (this.previousElement ?? null) : this.props.children;
+    return this.props.retain ? (this.previousElement ?? null) : null;
   }
+}
+
+export function CancelRenderBoundary({ children }: { children: ReactNode }) {
+  return (
+    <CancellationBoundary>
+      <CancellationBoundary retain>{children}</CancellationBoundary>
+    </CancellationBoundary>
+  );
 }

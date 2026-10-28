@@ -5,6 +5,7 @@ import {
   StrictMode,
   Suspense,
   act,
+  use,
   useEffect,
   useState,
 } from 'react';
@@ -169,15 +170,30 @@ describe('minimal/client fetch', () => {
     }
   });
 
-  test('a cancelled update retains the previous Slot content and accepts later updates', async () => {
+  test('a cancelled update retains Slot content and preserves subsequent edits on recovery', async () => {
     const cancellation = Object.assign(new Error('Flight error'), {
       digest: 'WAKU_CANCEL_RENDER',
     });
     const Cancelled = () => {
       throw cancellation;
     };
+    const mounted = vi.fn();
+    const Counter = ({ label }: { label: string }) => {
+      const [count, setCount] = useState(0);
+      useEffect(() => {
+        mounted();
+      }, []);
+      return (
+        <button onClick={() => setCount(count + 1)}>
+          {label}:{count}
+        </button>
+      );
+    };
     mocks.createFromFetch.mockReturnValue(
-      resolvedThenable({ main: 'original', sibling: 'sibling' }),
+      resolvedThenable({
+        main: <Counter key="content" label="original" />,
+        sibling: 'sibling',
+      }),
     );
     stubFetch();
     let merge!: ReturnType<typeof useMergeElements_UNSTABLE>;
@@ -205,15 +221,107 @@ describe('minimal/client fetch', () => {
           Promise.resolve({ main: <Cancelled />, sibling: 'updated sibling' }),
         );
       });
-      expect(container.textContent).toBe('originalupdated sibling');
+      expect(container.textContent).toBe('original:0updated sibling');
       await act(async () => {
-        await merge(Promise.resolve({ main: 'recovered' }));
+        container.querySelector('button')!.click();
       });
-      expect(container.textContent).toBe('recoveredupdated sibling');
+      expect(container.textContent).toBe('original:1updated sibling');
+      const mountCount = mounted.mock.calls.length;
+      await act(async () => {
+        await merge(
+          Promise.resolve({
+            main: <Counter key="content" label="recovered" />,
+          }),
+        );
+      });
+      expect(container.textContent).toBe('recovered:1updated sibling');
+      expect(mounted).toHaveBeenCalledTimes(mountCount);
     } finally {
       act(() => root.unmount());
     }
   });
+
+  test.each([false, true])(
+    'a late cancellation clears an unfinished Slot and permits recovery (retained: %s)',
+    async (retained) => {
+      const cancellation = Object.assign(new Error('Flight error'), {
+        digest: 'WAKU_CANCEL_RENDER',
+      });
+      const gate = Promise.withResolvers<string>();
+      const Pending = () => use(gate.promise);
+      const Cancelled = () => {
+        throw cancellation;
+      };
+      mocks.createFromFetch.mockReturnValue(
+        resolvedThenable({ main: 'original', sibling: 'sibling' }),
+      );
+      stubFetch();
+      let merge!: ReturnType<typeof useMergeElements_UNSTABLE>;
+      const Probe = () => {
+        const fn = useMergeElements_UNSTABLE();
+        useEffect(() => {
+          merge = fn;
+        }, [fn]);
+        return null;
+      };
+      class AppBoundary extends Component<
+        { children: ReactNode },
+        { failed: boolean }
+      > {
+        state = { failed: false };
+        static getDerivedStateFromError() {
+          return { failed: true };
+        }
+        render() {
+          return this.state.failed ? 'app fallback' : this.props.children;
+        }
+      }
+      const container = document.createElement('div');
+      const root = createRoot(container, { onCaughtError: () => {} });
+      try {
+        await act(async () => {
+          root.render(
+            <AppBoundary>
+              <Root initialRscPath="late-cancel">
+                <Probe />
+                <Slot id="main" />
+                <Slot id="sibling" />
+              </Root>
+            </AppBoundary>,
+          );
+        });
+        expect(container.textContent).toBe('originalsibling');
+        await act(async () => {
+          await merge(
+            Promise.resolve({
+              main: (
+                <Suspense fallback="loading">
+                  <Pending />
+                </Suspense>
+              ),
+            }),
+          );
+        });
+        expect(container.textContent).toBe('loadingsibling');
+        if (retained) {
+          await act(async () => {
+            await merge(Promise.resolve({ main: <Cancelled /> }));
+          });
+          expect(container.textContent).toBe('loadingsibling');
+        }
+        await act(async () => {
+          gate.reject(cancellation);
+        });
+        expect(container.textContent).toBe('sibling');
+        await act(async () => {
+          await merge(Promise.resolve({ main: 'recovered' }));
+        });
+        expect(container.textContent).toBe('recoveredsibling');
+      } finally {
+        act(() => root.unmount());
+      }
+    },
+  );
 
   test('a cancelled Slot renders its retained element with current client children', async () => {
     const Cancelled = vi.fn(() => {

@@ -269,7 +269,7 @@ test.describe('nav-api-spike', () => {
     await expect(page.getByTestId('follow-error')).toHaveText(
       'detected a navigation loop',
     );
-    await expect(page).toHaveURL(/\/hash-only#details$/);
+    await expect(page).toHaveURL(/\/hash-only$/);
   });
 
   test('a query redirect cycle stops at the follow limit', async ({ page }) => {

@@ -7,8 +7,7 @@ const Home = () => (
     <p>This is the home page.</p>
     <Link to="/typed-redirect">Resolver redirect</Link>
     <RedirectControls />
-    <Link to="/fragment-ready">Fragment ready</Link>
-    <Link to="/fragment-late">Fragment late</Link>
+    <Link to="/fragment">Client fragment</Link>
     <Link to="/interceptor-cache">Intercepted static page</Link>
     <Link to="/action-static">Static action page</Link>
     <Link to="/async-cache">Async runtime page</Link>

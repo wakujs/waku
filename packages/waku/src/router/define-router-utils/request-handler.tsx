@@ -32,11 +32,6 @@ import type {
 } from './route-entries.js';
 import { getQuery } from './route-entries.js';
 
-type RouteEntries = {
-  elements: Record<string, unknown>;
-  etags: Record<string, string | 1>;
-};
-
 type HandlerInput = Parameters<HandleRequest>[0];
 
 const createNotFoundResponse = () =>
@@ -169,9 +164,11 @@ export function createRequestHandler({
         getOrigin: () =>
           readonly [rscPath: string, rscParams: unknown] | undefined,
       ) => {
-        const rerenders: { rscPath: string; rscParams: unknown }[] = [];
-        let isOrigin = false;
+        let rerender:
+          | { rscPath: string; rscParams: unknown; isOrigin: boolean }
+          | undefined;
         setRerender((rscPath, rscParams) => {
+          const isOrigin = rscPath === undefined;
           if (rscPath === undefined) {
             const origin = getOrigin();
             if (!origin) {
@@ -180,11 +177,8 @@ export function createRequestHandler({
               );
             }
             [rscPath, rscParams] = origin;
-            isOrigin = true;
-          } else {
-            isOrigin = false;
           }
-          rerenders.push({ rscPath, rscParams });
+          rerender = { rscPath, rscParams, isOrigin };
         });
         let value: T;
         try {
@@ -192,27 +186,23 @@ export function createRequestHandler({
         } finally {
           setRerender(undefined);
         }
-        const entries: RouteEntries = { elements: {}, etags: {} };
-        if (!intent.value) {
-          for (const result of await Promise.all(
-            rerenders.map(({ rscPath, rscParams }) =>
-              routeEntries.getEntriesForRoute(
-                rscPath,
-                rscParams,
-                clientEtags,
-                requestElementCache,
-              ),
-            ),
-          )) {
-            if (!result) {
-              console.warn('getEntries returned null');
-              continue;
-            }
-            Object.assign(entries.elements, result.elements);
-            Object.assign(entries.etags, result.etags);
-          }
+        const target = intent.value ? undefined : rerender;
+        const entries = target
+          ? await routeEntries.getEntriesForRoute(
+              target.rscPath,
+              target.rscParams,
+              clientEtags,
+              requestElementCache,
+            )
+          : undefined;
+        if (entries === null) {
+          console.warn('getEntries returned null');
         }
-        return { value, entries, isOrigin };
+        return {
+          value,
+          entries: entries ?? { elements: {}, etags: {} },
+          isOrigin: target?.isOrigin ?? false,
+        };
       };
 
       const handleRscRequest = async ({

@@ -1031,12 +1031,18 @@ describe('request dispatch', () => {
     expect(render).not.toHaveBeenCalled();
   });
 
-  it('merges multiple scheduled rerenders in declaration order', async () => {
+  it('renders only the last scheduled target', async () => {
+    const rendered: string[] = [];
     const router = unstable_defineRouter({
       resolve: async (path) => ({
         elements: {
           root: { render: () => path },
-          route: { render: () => path },
+          route: {
+            render: () => {
+              rendered.push(path);
+              return path;
+            },
+          },
         },
       }),
       getHas404: async () => false,
@@ -1053,34 +1059,45 @@ describe('request dispatch', () => {
     expect(utils.renderRsc.mock.calls[0]![0]).toMatchObject({
       [ROUTE_ID]: ['/second', ''],
       root: '/second',
-      'route:/first': '/first',
       'route:/second': '/second',
     });
+    expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(
+      'route:/first',
+    );
+    expect(rendered).toEqual(['/second']);
   });
 
-  it('skips a scheduled rerender when the server function records a redirect', async () => {
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [staticRoute('/cached')],
-    });
-    const utils = makeUtils();
+  it.each(['named', 'origin'] as const)(
+    'skips a scheduled %s rerender when the server function records a redirect',
+    async (target) => {
+      const { handleRequest } = createConfiguredRouter({
+        getConfigs: async () => [staticRoute('/cached')],
+      });
+      const utils = makeUtils();
 
-    await handleRequest(
-      callInput(async () => {
-        unstable_rerenderRoute('/cached');
-        await new Promise((resolve) => setTimeout(resolve, 0));
-        requestRedirect('/login');
-        return 'action-result';
-      }),
-      utils,
-    );
+      await handleRequest(
+        callInput(async () => {
+          if (target === 'origin') {
+            unstable_rerenderRoute();
+          } else {
+            unstable_rerenderRoute('/cached');
+          }
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          requestRedirect('/login');
+          return 'action-result';
+        }, '/cached'),
+        utils,
+      );
 
-    const [elements, options] = utils.renderRsc.mock.calls[0]!;
-    expect(elements[ROUTE_ID]).toBeUndefined();
-    await expect(elements[INTENT_ID]).resolves.toBe(
-      JSON.stringify({ status: 307, location: '/login' }),
-    );
-    expect(options?.value).toBe('action-result');
-  });
+      const [elements, options] = utils.renderRsc.mock.calls[0]!;
+      expect(elements[ROUTE_ID]).toBeUndefined();
+      expect(elements).not.toHaveProperty(IS_ORIGIN_ID);
+      await expect(elements[INTENT_ID]).resolves.toBe(
+        JSON.stringify({ status: 307, location: '/login' }),
+      );
+      expect(options?.value).toBe('action-result');
+    },
+  );
 
   it('returns null for an unknown rsc route', async () => {
     const { handleRequest } = createConfiguredRouter({

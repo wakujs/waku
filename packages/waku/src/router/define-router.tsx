@@ -41,6 +41,7 @@ const encodePathname = (pathname: string) => {
  * Schedules the calling route to render after the server function finishes,
  * unless a route intent was recorded. The client drops the rerender if the user
  * has left that route or any navigation is pending.
+ * Only the last rerender requested by a server function is applied.
  */
 export function rerenderRoute(): void;
 /**
@@ -49,6 +50,7 @@ export function rerenderRoute(): void;
  * is serialized as a URL pathname, so dot segments are resolved and unescaped
  * non-ASCII characters are percent-encoded. `query` is the search string
  * without `?`, serialized as URL search params, so `q=a b` becomes `q=a+b`.
+ * Only the last rerender requested by a server function is applied.
  */
 export function rerenderRoute(pathname: string, query?: string): void;
 export function rerenderRoute(pathname?: string, query?: string) {
@@ -78,6 +80,8 @@ export function rerenderRoute(pathname?: string, query?: string) {
  * `next()`. Immutable and prerendered sources must not record route intents.
  * API handlers return their own HTTP responses. Router does not apply intents
  * recorded inside them.
+ * Ordinary rendering left in the response must eventually finish; discarded streams
+ * are not guaranteed to be aborted.
  */
 export function requestNotFound(): void {
   getRouteIntent().record({ status: 404 });
@@ -134,6 +138,9 @@ const getRedirectLocation = (
  * (303 for a form POST).
  * After the shell, the browser follows the intent using JavaScript.
  * An absolute URL navigates the document even when it names this origin.
+ * App-relative redirects must change the path or query. Use client navigation
+ * for fragment-only changes. Ordinary rendering in the response must eventually
+ * finish; discarded streams are not guaranteed to be aborted.
  * The first intent recorded for a request wins, including concurrent renders.
  * Use in dynamic renders, server functions, or handler interceptors before
  * `next()`. Immutable and prerendered sources must not record route intents.
@@ -191,8 +198,8 @@ type RouterOptions = {
  * Only `slice:<id>` IDs are supported for standalone requests.
  * Unresolved or mutable build IDs fail the build.
  * An immutable source's optional `cacheKey` shares its cached content across
- * slot IDs. A route with only immutable sources and request-independent
- * metadata can be reused without a request, including in development.
+ * slot IDs. A route with only immutable sources can be reused without a request,
+ * including in development.
  * Handler interceptors can be bypassed by static reuse; checks that must run
  * on each request require a dynamic route.
  * `createPages` and `fsRouter` supply route cache keys automatically.

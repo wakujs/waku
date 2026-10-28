@@ -298,23 +298,14 @@ export const useNavigation = (
       const createStateForAttempt = (
         attempt: NavigationAttempt,
         history: HistoryIntent,
-      ): RouterState => {
-        const followedIntent =
-          options.followedIntent ??
-          (!shouldRefetch && isSameRscRoute(attempt.route, settledRoute)
-            ? getRouterState(elements)?.followedIntent
-            : undefined);
-        return {
-          ...createRouterState(attempt.route, attempt.url, {
-            history,
-            scroll: options.shouldScroll,
-            pathChanged:
-              requestedPathChanged || attempt.route.path !== settledRoute.path,
-            follows: attempt.follows,
-          }),
-          ...(followedIntent ? { followedIntent } : {}),
-        };
-      };
+      ): RouterState =>
+        createRouterState(attempt.route, attempt.url, {
+          history,
+          scroll: options.shouldScroll,
+          pathChanged:
+            requestedPathChanged || attempt.route.path !== settledRoute.path,
+          follows: attempt.follows,
+        });
       const initialState = createStateForAttempt(
         initialAttempt,
         options.history,
@@ -449,9 +440,6 @@ export const useNavigation = (
                   historyIntent,
                 ),
                 ...(adopted ? { originalState: initialState } : {}),
-                ...(outcome.type === 'loaded' && outcome.followedIntent
-                  ? { followedIntent: outcome.followedIntent }
-                  : {}),
               };
         request.target = destination.route;
         request.queuedState = state;

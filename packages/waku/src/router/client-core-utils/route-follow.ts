@@ -32,20 +32,6 @@ type FollowRequest = {
 
 type FollowOptions = { has404: boolean; maxFollows: number };
 
-export function canReuseForHashRedirect(
-  decision: Extract<FollowDecision, { type: 'follow' }>,
-  requested: FollowRequest,
-  elements: Readonly<Record<string | symbol, unknown>>,
-) {
-  const rendered = getRouteFromElements(elements);
-  return (
-    isSameRscRoute(decision.target, requested.route) &&
-    decision.url.pathname === requested.url.pathname &&
-    decision.url.search === requested.url.search &&
-    (!rendered || isSameRscRoute(rendered, decision.target))
-  );
-}
-
 export function getRouteIntentDecision(
   outcome: RouteIntentOutcome | undefined,
   elements: Readonly<Record<string | symbol, unknown>>,
@@ -68,16 +54,27 @@ export function getRouteIntentDecision(
   ) {
     return;
   }
-  return decideRouteIntent(intent, requested, {
+  const decision = decideRouteIntent(intent, requested, {
     has404: has404FromElements(elements) || has404,
     maxFollows: MAX_FOLLOWS_PER_NAVIGATION,
   });
+  if (decision.type === 'stop') {
+    throw decision.error;
+  }
+  if (decision.type === 'none') {
+    throw new Error('Not Found', {
+      cause: new Response(null, { status: 404 }),
+    });
+  }
+  return decision;
 }
 
 /**
  * Decides how to follow a decoded `INTENT` value using the triggering route,
  * browser URL and preceding follow count. Absolute destinations leave the
  * document; relative destinations and custom 404s share the follow budget.
+ * App-relative redirects must change the path or query; fragment-only changes
+ * belong to client navigation.
  */
 export function decideRouteIntent(
   intent: RouteIntentData,
@@ -116,10 +113,7 @@ export function decideRouteIntent(
   } else {
     return { type: 'none' };
   }
-  if (
-    isSameRscRoute(target, requested.route) &&
-    url.href === requested.url.href
-  ) {
+  if (isSameRscRoute(target, requested.route)) {
     return {
       type: 'stop',
       error: new Error('detected a navigation loop'),
