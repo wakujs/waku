@@ -128,8 +128,9 @@ Return an async function from `resolve` for an API endpoint. The function receiv
 The handler owns its returned `Response`, including its status and headers. Return
 `Response.redirect()` for a redirect or a response with status `404` for missing
 data. `requestRedirect()` and `requestNotFound()` are not supported inside API
-handlers; they serve dynamic React rendering and server function calls. An interceptor
-can record an intent before `next()` to skip the handler.
+handlers; they serve dynamic React rendering and server function calls. An intent
+recorded during runtime route resolution, or by a handler interceptor before
+`next()`, is applied before starting the API handler.
 
 Route params are caller-owned: match and capture them in `resolve`, then close over them in the handler or element source. Use `getRequest` from `waku/router/server` to inspect the request during resolution or rendering.
 

@@ -406,61 +406,66 @@ describe('request dispatch', () => {
     },
   );
 
-  it('renders an interceptor 404 in its ALS context before the form action', async () => {
-    const context = new AsyncLocalStorage<string>();
-    const renderNotFound = vi.fn(() => context.getStore());
-    const tryAction = vi.fn(async () => ({
-      action: true as const,
-      formState: null,
-    }));
-    const utils = makeUtils();
-    utils.renderHtml.mockImplementationOnce(
-      async (_stream, _html, { status }) =>
-        new Response('custom 404', { status: status ?? 200 }),
-    );
-    const router = unstable_defineRouter({
-      resolve: async (path) => ({
-        elements: {
-          root: { render: () => 'root' },
-          route: { render: path === '/404' ? renderNotFound : () => 'page' },
-        },
-      }),
-      getHas404: async () => true,
-      unstable_interceptors: [
-        (next) =>
-          context.run('tenant', async () => {
-            requestNotFound();
-            return next();
+  it.each(['/account', '/404'])(
+    'renders an interceptor 404 in its ALS context before the form action (%s)',
+    async (pathname) => {
+      const context = new AsyncLocalStorage<string>();
+      const renderNotFound = vi.fn(() => context.getStore());
+      const tryAction = vi.fn(async () => ({
+        action: true as const,
+        formState: null,
+      }));
+      const utils = makeUtils();
+      utils.renderHtml.mockImplementationOnce(
+        async (_stream, _html, { status }) =>
+          new Response('custom 404', { status: status ?? 200 }),
+      );
+      const router = unstable_defineRouter({
+        resolve: async (path) => ({
+          elements: {
+            root: { render: () => 'root' },
+            route: { render: path === '/404' ? renderNotFound : () => 'page' },
+          },
+        }),
+        getHas404: async () => true,
+        unstable_interceptors: [
+          (next) =>
+            context.run('tenant', async () => {
+              requestNotFound();
+              return next();
+            }),
+        ],
+      });
+
+      const response = (await router.handleRequest(
+        {
+          type: 'http',
+          pathname,
+          req: new Request('http://localhost' + pathname + '?q=one', {
+            method: 'POST',
           }),
-      ],
-    });
+          tryAction,
+        },
+        utils,
+      )) as Response;
 
-    const response = (await router.handleRequest(
-      {
-        type: 'http',
-        pathname: '/account',
-        req: new Request('http://localhost/account?q=one', { method: 'POST' }),
-        tryAction,
-      },
-      utils,
-    )) as Response;
-
-    expect(response.status).toBe(404);
-    expect(await response.text()).toBe('custom 404');
-    expect(renderNotFound).toHaveReturnedWith('tenant');
-    expect(renderNotFound).toHaveBeenCalledOnce();
-    expect(tryAction).not.toHaveBeenCalled();
-    expect(utils.renderHtml.mock.calls[0]![2]).toMatchObject({
-      status: 404,
-      rscPath: encodeRoutePath('/404'),
-      formState: undefined,
-    });
-    expect(utils.renderRsc.mock.calls[0]![0][ROUTE_ID]).toEqual([
-      '/404',
-      'q=one',
-    ]);
-    expect(context.getStore()).toBeUndefined();
-  });
+      expect(response.status).toBe(404);
+      expect(await response.text()).toBe('custom 404');
+      expect(renderNotFound).toHaveReturnedWith('tenant');
+      expect(renderNotFound).toHaveBeenCalledOnce();
+      expect(tryAction).not.toHaveBeenCalled();
+      expect(utils.renderHtml.mock.calls[0]![2]).toMatchObject({
+        status: 404,
+        rscPath: encodeRoutePath('/404'),
+        formState: undefined,
+      });
+      expect(utils.renderRsc.mock.calls[0]![0][ROUTE_ID]).toEqual([
+        '/404',
+        'q=one',
+      ]);
+      expect(context.getStore()).toBeUndefined();
+    },
+  );
 
   it('preserves interceptor headers on an already honored HTTP intent', async () => {
     const router = unstable_defineRouter({
@@ -710,6 +715,45 @@ describe('request dispatch', () => {
       expect(utils.renderHtml).not.toHaveBeenCalled();
     },
   );
+
+  it('renders a resolver not-found intent before starting an API handler', async () => {
+    const api = vi.fn(async () => new Response('api body'));
+    const utils = makeUtils();
+    utils.renderHtml.mockImplementation(
+      async (_stream, _html, { status }) =>
+        new Response('custom 404', { status: status ?? 200 }),
+    );
+    const router = unstable_defineRouter({
+      resolve: async (path) => {
+        if (path === '/api') {
+          requestNotFound();
+          return api;
+        }
+        return {
+          elements: {
+            root: { render: () => 'root' },
+            route: { render: () => 'custom 404' },
+          },
+        };
+      },
+      getHas404: async () => true,
+    });
+    const response = (await router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/api',
+        req: new Request('http://localhost/api'),
+      },
+      utils,
+    )) as Response;
+    expect(response.status).toBe(404);
+    expect(api).not.toHaveBeenCalled();
+    expect(utils.renderHtml).toHaveBeenCalledOnce();
+    expect(utils.renderRsc.mock.calls[0]![0]).toHaveProperty(
+      'route:/404',
+      'custom 404',
+    );
+  });
 
   it('propagates API cancellation without rendering its recorded intent', async () => {
     const utils = makeUtils();

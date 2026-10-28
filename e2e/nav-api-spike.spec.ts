@@ -239,6 +239,19 @@ test.describe('nav-api-spike', () => {
     await expect(page).toHaveURL(/\/new$/);
   });
 
+  test('a completed redirect does not interrupt the next navigation', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await page.evaluate(async () => {
+      await window.navigation.navigate('/old').finished;
+      await window.navigation.navigate('/hello/spike').finished;
+    });
+    await expect(page.getByTestId('hello')).toHaveText('Hello spike');
+    await expect(page).toHaveURL(/\/hello\/spike$/);
+  });
+
   test('a same-path query redirect renders the target', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
