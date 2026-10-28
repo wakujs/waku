@@ -386,7 +386,8 @@ Sibling components may continue rendering. On the client, the cancelled Slot
 reuses its last committed element. Entering cancellation can remount that content
 and reset its client state. If that element also cancels, or no element
 has committed, the Slot renders nothing. Cancellation does not restore an older
-tree after a Suspense fallback has committed. Changing its `id` does not remount
+tree after a Suspense fallback has committed. Keep edits that must survive
+cancellation above the affected Slot or in an application store. Changing its `id` does not remount
 it; use `<Slot key={id} id={id} />` when each ID should have
 its own lifetime. During SSR, React uses the nearest Suspense fallback or falls
 back to client rendering. Catch blocks and custom error boundaries must rethrow

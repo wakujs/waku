@@ -52,7 +52,7 @@ to render with `Slot`.
 | Entry       | Contract                                                                                                                                                                         |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ROUTE`     | `[pathname, query]` of the route the server rendered, not necessarily the requested route.                                                                                       |
-| `IS_STATIC` | The whole route can be reused without a request: its sources are immutable and its metadata is request-independent. It does not mean HTML was emitted at build time.             |
+| `IS_STATIC` | The whole route's sources are immutable, so its content can be reused without a request. It does not mean HTML was emitted at build time.                                        |
 | `INTENT`    | Weak promise for a JSON string with `{ status: 404 }` or `{ status, location }`, or `null` to clear the intent. An unused promise may remain pending or resolve to `undefined`.  |
 | `HAS404`    | A custom `/404` route is available. Present when true.                                                                                                                           |
 | `IS_ORIGIN` | A server function call used the no-argument `rerenderRoute()` form to refresh its request-time origin. The server function routing enhancer consumes this marker before merging. |
@@ -105,8 +105,9 @@ unused intent to decide whether a route has loaded. HTTP document requests use
 redirect statuses or render the 404 page when the shell has not been sent.
 Router does not start a form action if an intent has already been recorded.
 An action that has already run retains its form state when the handler renders
-the not-found view. A source factory that throws stops element construction;
+the not-found view. A source factory that cancels stops element construction;
 Router handles its recorded intent before starting an action or producing a response.
+Other source-factory errors propagate.
 
 Route intents are runtime decisions from dynamic rendering, server functions,
 or handler interceptors before `next()`. Immutable, cached, and prerendered
@@ -134,10 +135,14 @@ from the displayed route. The destination uses an existing route cache when
 possible; otherwise it needs its own request so that rendering uses the
 destination request's URL and context.
 
-A redirect that changes only the fragment reuses the available response without
-another RSC request. Its intent is marked as followed for that route activation,
-including later fragment changes. A new response or a later visit can follow the
-intent again. An identical self-redirect remains a navigation loop.
+An app-relative redirect must change the path or query. Fragment-only changes
+belong to client navigation. After committing a response, the Router handles
+its settled intent once. Each server request creates its own intent promise.
+
+Recording an intent does not terminate rendering. Return after requesting
+navigation and let ordinary rendering in the response finish. Discarded
+response streams are not guaranteed to be aborted, including shared prefetches
+and adopted responses. See [Redirects and Not Found](/guides/redirects-and-not-found).
 
 Router-managed slice fetches and actions observe their intents in the originating
 route's scope. Minimal's `useFetchRsc_UNSTABLE` only returns response data; custom
@@ -240,9 +245,6 @@ recovers from real HTTP 404s, including missing files on a static host, within t
 follow budget and stops waiting when cancelled. It does not require the Router
 cache or merge elements. It follows ready intents before returning a payload;
 the binding observes intents that arrive after commit.
-For a fragment-only follow, a loaded outcome's `followedIntent` identifies the
-promise already applied to its URL. A custom binding must suppress that promise
-after commit while retaining the intent for later route activations.
 
 This hook binds the loader to the enclosing Minimal `Root` without a Router cache:
 

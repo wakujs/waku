@@ -794,101 +794,36 @@ test('a dynamic redirect is fetched again while its static destination is reused
   expect(vi.mocked(fetch).mock.calls).toHaveLength(requests + 1);
 });
 
-test.each([
-  { ready: true, instant: false },
-  { ready: false, instant: false },
-  { ready: true, instant: true },
-  { ready: false, instant: true },
-])(
-  'a self-fragment intent reuses the response (ready: $ready, instant: $instant)',
-  async ({ ready, instant }) => {
-    mocks.queue.push({
-      ...payload('/one'),
-      [getRouteSlotId('/article')]: <p>Page /article</p>,
-      [ETAGS_ID]: { [getRouteSlotId('/article')]: 1 },
-    });
-    const view = await mount();
+test.each([false, true])(
+  'rejects fragment-only server redirects (ready: %s)',
+  async (ready) => {
+    mocks.queue.push(payload('/one'));
+    await mount();
     const pending = deferIntent();
     if (ready) {
       pending.resolve({ status: 307, location: '/article#comments' });
     }
-    mocks.queue.push({
-      ...payload('/article', pending.promise),
-      root: (
-        <>
-          <Probe />
-          <ErrorBoundary>
-            <Children />
-          </ErrorBoundary>
-        </>
-      ),
-    });
-    await act(async () => {
-      await controls.router.push('/article', { unstable_instant: instant });
-      await flush();
-    });
+    mocks.queue.push(payload('/article', pending.promise));
     if (!ready) {
       await act(async () => {
-        pending.resolve({ status: 307, location: '/article#comments' });
+        await controls.router.push('/article');
         await flush();
       });
     }
-    expect(window.location.pathname + window.location.hash).toBe(
-      '/article#comments',
-    );
-    expect(view.textContent).toContain('Page /article');
+    await expect(
+      act(async () => {
+        if (ready) {
+          await controls.router.push('/article');
+        } else {
+          pending.resolve({ status: 307, location: '/article#comments' });
+        }
+        await flush();
+      }),
+    ).rejects.toThrow('detected a navigation loop');
+    expect(window.location.hash).toBe('');
     expect(vi.mocked(fetch).mock.calls).toHaveLength(2);
-
-    await act(async () => {
-      await controls.router.push('/article#other');
-      await controls.merge({ sidebar: 'updated' });
-      await flush();
-    });
-    expect(window.location.hash).toBe('#other');
-    expect(view.textContent).toContain('Page /article');
-    expect(vi.mocked(fetch).mock.calls).toHaveLength(2);
-
-    mocks.queue.push({
-      ...payload('/article'),
-      [ROUTE_ID]: ['/article', 'q=changed'],
-    });
-    await act(async () => {
-      await controls.router.push('/article?q=changed');
-      await flush();
-    });
-    expect(window.location.search).toBe('?q=changed');
-    expect(vi.mocked(fetch).mock.calls).toHaveLength(3);
   },
 );
-
-test('a fragment intent is followed again on a later dynamic route activation', async () => {
-  mocks.queue.push(payload('/one', undefined, true));
-  const view = await mount();
-  const pending = Promise.resolve(
-    JSON.stringify({ status: 307, location: '/article#comments' }),
-  );
-  mocks.queue.push(payload('/article', pending));
-  await act(async () => {
-    await controls.router.push('/article');
-    await flush();
-  });
-  expect(window.location.hash).toBe('#comments');
-  await act(async () => {
-    await controls.router.push('/one');
-    await flush();
-  });
-  expect(view.textContent).toContain('Page /one');
-  mocks.queue.push(payload('/article', pending));
-  await act(async () => {
-    await controls.router.push('/article');
-    await flush();
-  });
-  expect(window.location.pathname + window.location.hash).toBe(
-    '/article#comments',
-  );
-  expect(view.textContent).toContain('Page /article');
-  expect(vi.mocked(fetch).mock.calls).toHaveLength(3);
-});
 
 test('a hash-only navigation preserves the current server-render intent', async () => {
   const pending = deferIntent();

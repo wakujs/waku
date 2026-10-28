@@ -37,6 +37,7 @@ export function getDigestIfRenderCancellation(
  * signal. Other render tasks can continue. On the client, a cancelled Slot
  * keeps its previous content, or renders nothing on its first render. During SSR,
  * cancellation uses the nearest Suspense fallback or switches to client rendering.
+ * Retained content can remount; keep persistent edits outside the affected Slot.
  * It carries no status or navigation data.
  * Catch blocks and custom error boundaries must rethrow the signal.
  *

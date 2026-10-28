@@ -81,8 +81,8 @@ describe('route intents', () => {
     });
   });
 
-  test.each(['/here?q=2', '/here#frag'])(
-    'a changed query or hash is a new destination: %s',
+  test.each(['/here?q=2', '/here?q=2#frag'])(
+    'a changed query is a new destination: %s',
     (location) => {
       expect(redirect(location, '/here').type).toBe('follow');
     },

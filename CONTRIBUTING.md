@@ -90,6 +90,9 @@ incomplete.
 
 ### Scope and design
 
+- Prefer a simpler supported contract when applications have a straightforward
+  workaround. Before adding coordination or recovery, decide whether the behavior
+  needs a framework guarantee and document intentional limitations.
 - Fix behavior in the layer that owns it. Do not spread a special case across
   unrelated modules.
 - Keep changes focused. Do not combine a bug fix with an unrelated refactor.

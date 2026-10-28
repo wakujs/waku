@@ -76,6 +76,9 @@ export const AddToCart = ({
 ```
 
 The rerender runs after the action finishes, so it reads the completed mutation.
+Only the last rerender requested by one server function is applied. Finish all
+mutations, then schedule the single view that should show their results. Refetch
+independent slices from the client when several views need updating.
 The page has to render dynamically for the rerender to read the new data. If the
 action requests a redirect or not-found view, Waku skips its scheduled rerenders
 and returns the action's value with that intent.

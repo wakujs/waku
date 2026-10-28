@@ -1,5 +1,4 @@
 import { expect } from '@playwright/test';
-import type { APIRequestContext } from '@playwright/test';
 import {
   createFetchResponseReader,
   prepareNormalSetup,
@@ -79,55 +78,27 @@ test.describe(`define-router`, () => {
     });
   }
 
-  for (const kind of ['ready', 'late']) {
-    const release =
-      kind === 'late'
-        ? async (request: APIRequestContext) => {
-            expect(
-              (
-                await request.get(`http://localhost:${port}/fragment-release`)
-              ).status(),
-            ).toBe(204);
-          }
-        : async () => {};
-
-    test(`a ${kind} self-fragment intent keeps its content without refetching`, async ({
-      page,
-      request,
-    }) => {
-      const requests: string[] = [];
-      const errors: string[] = [];
-      page.on('pageerror', (error) => errors.push(error.message));
-      page.on('request', (incoming) => {
-        if (incoming.url().includes(`/RSC/R/fragment-${kind}`)) {
-          requests.push(incoming.url());
-        }
-      });
-      await page.goto(`http://localhost:${port}/`);
-      await waitForHydration(page);
-      await page
-        .getByRole('link', { name: `Fragment ${kind}`, exact: true })
-        .click();
-      await expect(
-        page.getByRole('heading', { name: `Fragment ${kind}` }),
-      ).toBeVisible();
-      await release(request);
-      await expect(page).toHaveURL(
-        `http://localhost:${port}/fragment-${kind}#comments`,
-      );
-      await page
-        .getByRole('link', { name: 'Other section', exact: true })
-        .click();
-      await expect(page).toHaveURL(
-        `http://localhost:${port}/fragment-${kind}#other`,
-      );
-      await expect(
-        page.getByRole('heading', { name: `Fragment ${kind}` }),
-      ).toBeVisible();
-      expect(requests).toHaveLength(1);
-      expect(errors).toEqual([]);
+  test('client navigation changes a fragment without another RSC request', async ({
+    page,
+  }) => {
+    const requests: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/RSC/R/fragment.txt')) {
+        requests.push(request.url());
+      }
     });
-  }
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await page
+      .getByRole('link', { name: 'Client fragment', exact: true })
+      .click();
+    await expect(
+      page.getByRole('heading', { name: 'Client fragment' }),
+    ).toBeVisible();
+    await page.getByRole('link', { name: 'Comments', exact: true }).click();
+    await expect(page).toHaveURL(`http://localhost:${port}/fragment#comments`);
+    expect(requests).toHaveLength(1);
+  });
 
   test.describe('no-JavaScript form cancellation', () => {
     test.use({ javaScriptEnabled: false });

@@ -73,66 +73,38 @@ describe('load', () => {
     expect(window.location.href).toBe(href);
   });
 
-  it('stops a ready self-redirect before fetching the route again', async () => {
-    fetchRsc.mockResolvedValue({
-      [ROUTE_ID]: ['/next', ''],
-      [INTENT_ID]: Promise.resolve(
-        JSON.stringify({ status: 307, location: '/next' }),
-      ),
-    });
-    const outcome = await cache.load(
-      route('/next'),
-      baseOpts({ url: new URL('/next', window.location.href) }),
-    );
-    expect(outcome).toMatchObject({
-      type: 'failed',
-      error: { message: 'detected a navigation loop' },
-    });
-    expect(fetchRsc).toHaveBeenCalledOnce();
-  });
-
-  it.each([
-    { from: '', to: '#comments' },
-    { from: '#comments', to: '' },
-  ])(
-    'reuses the response for a fragment redirect from "$from" to "$to"',
-    async ({ from, to }) => {
-      const elements = {
-        [ROUTE_ID]: ['/next', 'q=one'],
-        [INTENT_ID]: Promise.resolve(
-          JSON.stringify({ status: 307, location: `/next?q=one${to}` }),
-        ),
-      };
-      fetchRsc.mockResolvedValue(elements);
+  it.each(['/next', '/next#comments'])(
+    'rejects a redirect to the same server route (%s)',
+    async (location) => {
+      fetchRsc.mockResolvedValue({
+        [ROUTE_ID]: ['/next', ''],
+        [INTENT_ID]: Promise.resolve(JSON.stringify({ status: 307, location })),
+      });
       const outcome = await cache.load(
-        route('/next', 'q=one', from),
-        baseOpts({ url: new URL(`/next?q=one${from}`, window.location.href) }),
+        route('/next'),
+        baseOpts({ url: new URL('/next', window.location.href) }),
       );
-
       expect(outcome).toMatchObject({
-        type: 'loaded',
-        route: route('/next', 'q=one', to),
-        url: new URL(`/next?q=one${to}`, window.location.href),
-        elements,
-        follows: 1,
+        type: 'failed',
+        error: { message: 'detected a navigation loop' },
       });
       expect(fetchRsc).toHaveBeenCalledOnce();
     },
   );
 
-  it('does not reuse a rewritten response for a fragment redirect', async () => {
+  it('follows a different route with a fragment', async () => {
     const elements = { [ROUTE_ID]: ['/next', ''] };
     fetchRsc
       .mockResolvedValueOnce({
-        [ROUTE_ID]: ['/rewritten', ''],
+        [ROUTE_ID]: ['/gate', ''],
         [INTENT_ID]: Promise.resolve(
           JSON.stringify({ status: 307, location: '/next#comments' }),
         ),
       })
       .mockResolvedValueOnce(elements);
     const outcome = await cache.load(
-      route('/next'),
-      baseOpts({ url: new URL('/next', window.location.href) }),
+      route('/gate'),
+      baseOpts({ url: new URL('/gate', window.location.href) }),
     );
     expect(outcome).toMatchObject({
       type: 'loaded',
@@ -140,24 +112,6 @@ describe('load', () => {
       route: route('/next', '', '#comments'),
     });
     expect(fetchRsc).toHaveBeenCalledTimes(2);
-  });
-
-  it('retains loop detection for an identical fragment redirect', async () => {
-    fetchRsc.mockResolvedValue({
-      [ROUTE_ID]: ['/next', ''],
-      [INTENT_ID]: Promise.resolve(
-        JSON.stringify({ status: 307, location: '/next#comments' }),
-      ),
-    });
-    const outcome = await cache.load(
-      route('/next', '', '#comments'),
-      baseOpts({ url: new URL('/next#comments', window.location.href) }),
-    );
-    expect(outcome).toMatchObject({
-      type: 'failed',
-      error: { message: 'detected a navigation loop' },
-    });
-    expect(fetchRsc).toHaveBeenCalledOnce();
   });
 
   it('follows a ready intent decoded from Flight before returning the source route', async () => {

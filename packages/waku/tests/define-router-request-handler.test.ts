@@ -1031,12 +1031,18 @@ describe('request dispatch', () => {
     expect(render).not.toHaveBeenCalled();
   });
 
-  it('merges multiple scheduled rerenders in declaration order', async () => {
+  it('renders only the last scheduled target', async () => {
+    const rendered: string[] = [];
     const router = unstable_defineRouter({
       resolve: async (path) => ({
         elements: {
           root: { render: () => path },
-          route: { render: () => path },
+          route: {
+            render: () => {
+              rendered.push(path);
+              return path;
+            },
+          },
         },
       }),
       getHas404: async () => false,
@@ -1053,9 +1059,12 @@ describe('request dispatch', () => {
     expect(utils.renderRsc.mock.calls[0]![0]).toMatchObject({
       [ROUTE_ID]: ['/second', ''],
       root: '/second',
-      'route:/first': '/first',
       'route:/second': '/second',
     });
+    expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(
+      'route:/first',
+    );
+    expect(rendered).toEqual(['/second']);
   });
 
   it('skips a scheduled rerender when the server function records a redirect', async () => {

@@ -10,7 +10,6 @@ export type ChangeRouteOptions = {
   url?: URL | undefined;
   instant?: boolean | undefined;
   follows?: number | undefined;
-  followedIntent?: PromiseLike<string | undefined> | undefined;
   pendingTransition?: ((fn: TransitionFunction) => void) | undefined;
   onSuperseded?: (() => void) | undefined;
 };

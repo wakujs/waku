@@ -3,7 +3,7 @@ import type { RouteProps } from './route-path.js';
 /** Element-map key for `[pathname, query]` of the represented route. */
 export const ROUTE_ID = 'ROUTE';
 
-/** Whether the represented route and its metadata can be reused without a request. */
+/** Whether the represented route content can be reused without a request. */
 export const IS_STATIC_ID = 'IS_STATIC';
 
 /** Whether the server provides a custom `/404` route. */
@@ -36,8 +36,8 @@ export const getRouteFromElements = (
 
 /**
  * Returns whether the represented route can be reused without a request. Its
- * sources must be immutable and its metadata request-independent. Returns false
- * without metadata; unrelated to prerendering.
+ * sources must be immutable. Returns false without metadata; unrelated to
+ * prerendering.
  */
 export const isStaticFromElements = (
   elements: Record<string, unknown>,
