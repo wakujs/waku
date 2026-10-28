@@ -18,6 +18,7 @@ import {
 import { useRouterCache_UNSTABLE as useRouterCache } from '../src/router/client-core.js';
 import { ErrorBoundary, Router, useRouter } from '../src/router/client.js';
 import {
+  ACTION_LOCATION_HEADER,
   HAS404_ID,
   INTENT_ID,
   IS_ORIGIN_ID,
@@ -28,9 +29,12 @@ import {
 } from '../src/router/isomorphic-utils/router-protocol.js';
 import type { RouteIntentData } from '../src/router/isomorphic-utils/router-protocol.js';
 import {
+  requestNotFound,
+  requestRedirect,
   unstable_defineRouter,
   unstable_notFound,
   unstable_redirect,
+  unstable_rerenderRoute,
 } from '../src/router/server.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
@@ -1557,6 +1561,103 @@ test.each([
     expect(view.textContent).toContain('Page ' + target);
     expect(window.location.pathname).toBe(url);
     expect(window.history.length).toBe(historyLength + addedEntries);
+  },
+);
+
+test.each([
+  { kind: 'redirect', committed: false },
+  { kind: 'redirect', committed: true },
+  { kind: 'notFound', committed: false },
+  { kind: 'notFound', committed: true },
+] as const)(
+  'an origin rerender producing $kind yields to newer navigation (committed: $committed)',
+  async ({ kind, committed }) => {
+    mocks.queue.push(payload('/one'));
+    const view = await mount();
+    const actionResponse = defer<Elements>();
+    const destination = defer<Elements>();
+    mocks.queue.push(actionResponse.promise, destination.promise);
+    let action!: Promise<unknown>;
+    let navigating!: Promise<void>;
+    await act(async () => {
+      action = callServerRsc('actions#save', []);
+      await flush();
+      navigating = controls.router.push('/two');
+      await flush();
+    });
+    if (committed) {
+      await act(async () => {
+        destination.resolve(payload('/two'));
+        await navigating;
+        await flush();
+      });
+    }
+    const requests = vi.mocked(fetch).mock.calls.length;
+    const router = unstable_defineRouter({
+      resolve: async () => ({
+        elements: {
+          root: { render: () => null },
+          route: {
+            render: () => {
+              if (kind === 'redirect') {
+                requestRedirect('/login');
+              } else {
+                requestNotFound();
+              }
+              return 'Outdated action result';
+            },
+          },
+        },
+      }),
+      getHas404: async () => false,
+    });
+    let elements!: Elements;
+    await router.handleRequest(
+      {
+        type: 'call',
+        pathname: '/RSC/F/save',
+        fn: async () => {
+          unstable_rerenderRoute();
+          return 'saved';
+        },
+        args: [],
+        req: new Request('http://localhost/RSC/F/save', {
+          method: 'POST',
+          headers: { [ACTION_LOCATION_HEADER]: '/one' },
+        }),
+      },
+      {
+        renderRsc: async (data, options) => {
+          elements = { ...data, _value: options?.value };
+          return new ReadableStream({
+            start(controller) {
+              controller.close();
+            },
+          });
+        },
+        renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
+        loadBuildMetadata: vi.fn(),
+      },
+    );
+    expect(elements[IS_ORIGIN_ID]).toBe(true);
+    await act(async () => {
+      actionResponse.resolve(elements);
+      expect(await action).toBe('saved');
+      await flush();
+    });
+    expect(vi.mocked(fetch).mock.calls).toHaveLength(requests);
+    expect(window.location.pathname).toBe(committed ? '/two' : '/one');
+    expect(view.textContent).toContain(committed ? 'Page /two' : 'Page /one');
+    if (!committed) {
+      await act(async () => {
+        destination.resolve(payload('/two'));
+        await navigating;
+        await flush();
+      });
+    }
+    expect(window.location.pathname).toBe('/two');
+    expect(view.textContent).toContain('Page /two');
   },
 );
 

@@ -186,22 +186,22 @@ export function createRequestHandler({
         } finally {
           setRerender(undefined);
         }
-        const entries =
-          !intent.value && rerender
-            ? await routeEntries.getEntriesForRoute(
-                rerender.rscPath,
-                rerender.rscParams,
-                clientEtags,
-                requestElementCache,
-              )
-            : undefined;
+        const target = intent.value ? undefined : rerender;
+        const entries = target
+          ? await routeEntries.getEntriesForRoute(
+              target.rscPath,
+              target.rscParams,
+              clientEtags,
+              requestElementCache,
+            )
+          : undefined;
         if (entries === null) {
           console.warn('getEntries returned null');
         }
         return {
           value,
           entries: entries ?? { elements: {}, etags: {} },
-          isOrigin: !intent.value && (rerender?.isOrigin ?? false),
+          isOrigin: target?.isOrigin ?? false,
         };
       };
 

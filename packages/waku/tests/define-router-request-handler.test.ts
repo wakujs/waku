@@ -1067,29 +1067,37 @@ describe('request dispatch', () => {
     expect(rendered).toEqual(['/second']);
   });
 
-  it('skips a scheduled rerender when the server function records a redirect', async () => {
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [staticRoute('/cached')],
-    });
-    const utils = makeUtils();
+  it.each(['named', 'origin'] as const)(
+    'skips a scheduled %s rerender when the server function records a redirect',
+    async (target) => {
+      const { handleRequest } = createConfiguredRouter({
+        getConfigs: async () => [staticRoute('/cached')],
+      });
+      const utils = makeUtils();
 
-    await handleRequest(
-      callInput(async () => {
-        unstable_rerenderRoute('/cached');
-        await new Promise((resolve) => setTimeout(resolve, 0));
-        requestRedirect('/login');
-        return 'action-result';
-      }),
-      utils,
-    );
+      await handleRequest(
+        callInput(async () => {
+          if (target === 'origin') {
+            unstable_rerenderRoute();
+          } else {
+            unstable_rerenderRoute('/cached');
+          }
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          requestRedirect('/login');
+          return 'action-result';
+        }, '/cached'),
+        utils,
+      );
 
-    const [elements, options] = utils.renderRsc.mock.calls[0]!;
-    expect(elements[ROUTE_ID]).toBeUndefined();
-    await expect(elements[INTENT_ID]).resolves.toBe(
-      JSON.stringify({ status: 307, location: '/login' }),
-    );
-    expect(options?.value).toBe('action-result');
-  });
+      const [elements, options] = utils.renderRsc.mock.calls[0]!;
+      expect(elements[ROUTE_ID]).toBeUndefined();
+      expect(elements).not.toHaveProperty(IS_ORIGIN_ID);
+      await expect(elements[INTENT_ID]).resolves.toBe(
+        JSON.stringify({ status: 307, location: '/login' }),
+      );
+      expect(options?.value).toBe('action-result');
+    },
+  );
 
   it('returns null for an unknown rsc route', async () => {
     const { handleRequest } = createConfiguredRouter({
