@@ -482,7 +482,9 @@ const compareRoutePriority = (
   return 0;
 };
 
-export const createPages = <AllPages extends (AnyPage | ReturnType<CreateLayout>)[]>(
+export const createPages = <
+  AllPages extends (AnyPage | ReturnType<CreateLayout>)[],
+>(
   fn: (fns: {
     createPage: CreatePage;
     createLayout: CreateLayout;

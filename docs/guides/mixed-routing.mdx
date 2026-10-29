@@ -1,38 +1,33 @@
 ---
 slug: mixed-routing
 title: Mix File Routes and Config Routes
-description: Combine discovered pages and programmatic routes in one router.
+description: Combine discovered pages and config routes in one router.
 category: Routing and Navigation
 order: 15
 tags: [Experimental]
 ---
 
-This guide adds programmatic routes to a Waku app with file-based routing. It assumes that you already have pages in `src/pages`.
+This guide shows how to add both file-based and config-based routing to a Waku app. Use the experimental `unstable_createFileRoutes` inside `createPages` to register file routes, then add explicit routes with `createPage`.
 
-Use `unstable_createFileRoutes` inside `createPages` to register file routes, then add explicit routes with `createPage`. Both sources share one router and its layouts.
-
-### unstable_createFileRoutes
-
-`unstable_createFileRoutes(modules, options?)` registers file-based routes inside the `createPages` callback. It returns `Promise<void>` and must be awaited before the callback returns.
-
-| Parameter                 | Type                                     | Default           | Description                                                                             |
-| ------------------------- | ---------------------------------------- | ----------------- | --------------------------------------------------------------------------------------- |
-| `modules`                 | `Record<string, () => Promise<unknown>>` | Required          | File paths mapped to asynchronous module loaders, normally from `import.meta.glob`.     |
-| `options.pagesDir`        | `string`                                 | `'pages'`         | Directory prefix in module keys. Keys outside this directory are ignored.               |
-| `options.apiDir`          | `string`                                 | `'_api'`          | Directory for API routes, relative to `pagesDir`. The prefix is removed from API paths. |
-| `options.slicesDir`       | `string`                                 | `'_slices'`       | Directory for slices, relative to `pagesDir`.                                           |
-| `options.interceptorsDir` | `string`                                 | `'_interceptors'` | Directory for handler interceptors, relative to `pagesDir`.                             |
+The following example illustrates how`unstable_createFileRoutes(modules, options?)` registers file-based routes inside the `createPages` callback.
 
 ```tsx
 // ./src/waku.server.tsx
 import { createPages } from 'waku';
 import adapter from 'waku/adapters/default';
 import type { PathsForPages } from 'waku/router';
+import { unstable_createFileRoutes } from 'waku/router/server';
 import { AboutPage } from './templates/about-page';
 import type { FilePages } from './pages.gen';
 
-const pages = createPages(async ({ createPage, unstable_createFileRoutes }) => {
-  await unstable_createFileRoutes(import.meta.glob('./pages/**/*.{tsx,ts}'));
+const pages = createPages(async (fns) => {
+  await unstable_createFileRoutes(
+    fns,
+    import.meta.glob('./pages/**/*.{tsx,ts}'),
+    { pagesDir: 'pages', apiDir: 'api' },
+  );
+  const { createPage } = fns;
+
   return [
     createPage({
       path: '/company',
@@ -45,118 +40,13 @@ const pages = createPages(async ({ createPage, unstable_createFileRoutes }) => {
 export default adapter(pages);
 ```
 
-File routes and programmatic routes share pages, layouts, roots, slices, APIs, and interceptors in one router. File conventions and module configuration match `fsRouter`. Duplicate page paths fail instead of overriding a registration. Equivalent dynamic page patterns, such as `/users/[id]` and `/users/[name]`, also fail. Static paths can still overlap dynamic patterns and retain their normal routing priority.
+File routes and config routes share pages, layouts, roots, slices, APIs, and interceptors in one router. File conventions and module configuration match `fsRouter`'s behavior. Duplicate page paths will fail instead of overriding a registration. Equivalent dynamic page patterns, such as `/users/[id]` and `/users/[name]`, will also fail. Static paths can still overlap dynamic patterns and retain their normal routing priority.
 
-The callback returns the explicit registrations, not the result of `unstable_createFileRoutes`. This preserves inference for the programmatic page paths. `PathsForPages<typeof pages, FilePages>` combines those paths with the generated file paths.
+Application middleware remains an adapter option through `middlewareModules`.
 
-For mixed routing, type generation exports `FilePages` and `FileLayouts` from `src/pages.gen.ts` without automatic module augmentations.
+## Known Limitations
 
-`RouteConfig.paths` checks string navigation targets. It does not register combined metadata for `PageProps`, `useParams_UNSTABLE`, or href factories. Do not use the component-bearing `typeof pages` table to augment `CreatePagesConfig`. See [Router paths type safety](#router-paths-type-safety).
-
-`unstable_createFileRoutes` does not accept `unstable_skipBuild`. Set that option on `createPages` to control build output for both sources. Application middleware remains an adapter option through `middlewareModules`.
-
-## 1. Keep your file routes
-
-Keep the existing pages and shared layout in `src/pages`:
-
-```text
-src/pages/index.tsx      -> `/` page
-src/pages/about.tsx      -> `/about` page
-src/pages/_layout.tsx    -> shared layout
-src/configured-pages.tsx -> components for programmatic routes
-```
-
-Create the components for the programmatic routes outside `src/pages`:
-
-```tsx
-// src/configured-pages.tsx
-export function ConfiguredPage() {
-  return <h1>Configured static page</h1>;
-}
-
-export function GreetingPage({ name }: { name: string }) {
-  return <h1>Hello, {name}!</h1>;
-}
-```
-
-## 2. Register both sources
-
-Create a custom server entry. Await `unstable_createFileRoutes` before returning the explicit page registrations:
-
-```tsx
-// src/waku.server.tsx
-import { createPages } from 'waku';
-import adapter from 'waku/adapters/default';
-import type { PathsForPages } from 'waku/router';
-import { ConfiguredPage, GreetingPage } from './configured-pages';
-import type { FilePages } from './pages.gen';
-
-const pages = createPages(async ({ createPage, unstable_createFileRoutes }) => {
-  await unstable_createFileRoutes(import.meta.glob('./pages/**/*.{tsx,ts}'));
-
-  return [
-    createPage({
-      path: '/configured',
-      render: 'static',
-      component: ConfiguredPage,
-    }),
-    createPage({
-      path: '/hello/[name]',
-      render: 'dynamic',
-      component: GreetingPage,
-    }),
-  ];
-});
-
-export default adapter(pages, {
-  middlewareModules: import.meta.glob([
-    './middleware/*.{tsx,ts}',
-    '!./middleware/*.{test,spec}.{tsx,ts}',
-  ]),
-});
-```
-
-The file layout at `src/pages/_layout.tsx` wraps both file pages and programmatic pages. Waku passes the matched `name` segment to `GreetingPage`.
-
-Keep `middlewareModules` when using a custom server entry. The adapter needs this mapping to load application middleware.
-
-Do not register the same page path in both sources. Duplicate registrations fail instead of overriding an existing page.
-
-## 3. Generate types and use Link
-
-Run type generation from your app directory:
-
-```sh
-pnpm exec waku router typegen
-```
-
-In mixed mode, `src/pages.gen.ts` exports `FilePages` and `FileLayouts` without automatically augmenting `waku/router`. The `RouteConfig` declaration above combines file paths with the inferred programmatic paths.
-
-Use `Link` for both sources in your existing layout:
-
-```tsx
-import { Link } from 'waku';
-
-export function Navigation() {
-  return (
-    <nav aria-label="Main">
-      <Link to="/">Home</Link>
-      <Link to="/about">About</Link>
-      <Link to="/configured">Configured static</Link>
-      <Link to="/hello/Waku">Configured dynamic</Link>
-    </nav>
-  );
-}
-```
-
-These links use client navigation after hydration. TypeScript accepts both discovered paths and explicit paths, and rejects unknown string paths.
-
-This declaration checks string navigation targets. It does not register combined metadata for `PageProps`, `useParams_UNSTABLE`, or href factory patterns. Do not augment `CreatePagesConfig` with the component-bearing `typeof pages` table because that can create circular type dependencies. See [Router paths type safety](/create-pages#router-paths-type-safety).
-
-## 4. Check routing and middleware
-
-Start your app and visit `/`, `/about`, `/configured`, and `/hello/Waku`. Navigate between them with the links. Each page uses the shared file layout, and `/hello/Waku` displays `Hello, Waku!`.
-
-With static file page configurations, the build prerenders `/`, `/about`, and `/configured`. The `/hello/[name]` route renders dynamically.
-
-With the default Node adapter, production static files are served before application middleware. A trailing-slash redirect middleware returns 301 for `/configured/` in development, but production serves its prerendered HTML with status 200. Dynamic `/hello/Waku/` redirects in both modes. Do not rely on application middleware to intercept prerendered files.
+1. For mixed routing, type generation only exports types for the file-based routes, while config routes are not included in the generated types. As a result, you might see type errors when referencing config routes in the `<Link>` component. However, you can still use `unstable_createRouteHref`(See [Typed Routes](./typed-routes.mdx)) to achieve fully type-safe navigation.
+2. Type generation only supports the standard `pages` directory structure and file conventions. Custom or non-standard page locations may not be included in the generated types.
+   - That's to say, if your pages are located in a custom directory like `src/custom-pages` and added via `await unstable_createFileRoutes(fns, import.meta.glob('./custom-pages/**/*.{tsx,ts}'));`, the generated types will not include these pages.
+3. `unstable_createFileRoutes` does not accept `unstable_skipBuild`. Set that option on `createPages` to control build output for both sources.
