@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createFileRoutes } from '../src/router/create-file-routes.js';
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
 import { createPages } from '../src/router/create-pages.js';
 import { fsRouter } from '../src/router/fs-router.js';
@@ -23,8 +24,9 @@ beforeEach(() => vi.clearAllMocks());
 describe('unstable_createFileRoutes', () => {
   it('shares file roots and layouts with explicit routes and retains sources', async () => {
     const load = vi.fn(module);
-    createPages(async ({ unstable_createFileRoutes, createPage }) => {
-      await unstable_createFileRoutes({
+    createPages(async (fns) => {
+      const { createPage } = fns;
+      await createFileRoutes(fns, {
         './pages/_root.tsx': async () => ({ default: Root }),
         './pages/_layout.tsx': async () => ({ default: Layout }),
         './pages/index.tsx': load,
@@ -59,9 +61,10 @@ describe('unstable_createFileRoutes', () => {
   it.each([false, true])(
     'rejects duplicate paths regardless of registration order (files first: %s)',
     async (filesFirst) => {
-      createPages(async ({ unstable_createFileRoutes, createPage }) => {
+      createPages(async (fns) => {
+        const { createPage } = fns;
         const files = () =>
-          unstable_createFileRoutes({ './pages/about.tsx': module });
+          createFileRoutes(fns, { './pages/about.tsx': module });
         if (filesFirst) {
           await files();
         }
@@ -86,8 +89,9 @@ describe('unstable_createFileRoutes', () => {
   ] as const)(
     'rejects equivalent dynamic page patterns: %s',
     async (path, file) => {
-      createPages(async ({ createPage, unstable_createFileRoutes }) => {
-        await unstable_createFileRoutes({ [file]: dynamicModule });
+      createPages(async (fns) => {
+        const { createPage } = fns;
+        await createFileRoutes(fns, { [file]: dynamicModule });
         return [createPage({ path, component: Page, render: 'dynamic' })];
       });
       await expect(configs()).rejects.toThrow(
@@ -97,8 +101,9 @@ describe('unstable_createFileRoutes', () => {
   );
 
   it('retains specificity for literal routes overlapping dynamic routes', async () => {
-    createPages(async ({ unstable_createFileRoutes, createPage }) => {
-      await unstable_createFileRoutes({
+    createPages(async (fns) => {
+      const { createPage } = fns;
+      await createFileRoutes(fns, {
         './pages/blog/[slug].tsx': dynamicModule,
       });
       return [
@@ -124,8 +129,9 @@ describe('unstable_createFileRoutes', () => {
     const interceptor = vi.fn(async (next: () => Promise<unknown>) => next());
     const ignored = vi.fn(module);
     const GET = async () => new Response('ok');
-    createPages(async ({ unstable_createFileRoutes }) => {
-      await unstable_createFileRoutes(
+    createPages(async (fns) => {
+      await createFileRoutes(
+        fns,
         {
           './routes/index.tsx': module,
           './routes/api/health.ts': async () => ({ GET }),
@@ -153,8 +159,8 @@ describe('unstable_createFileRoutes', () => {
   });
 
   it('propagates module and getConfig failures', async () => {
-    createPages(async ({ unstable_createFileRoutes }) => {
-      await unstable_createFileRoutes({
+    createPages(async (fns) => {
+      await createFileRoutes(fns, {
         './pages/index.tsx': async () => {
           throw new Error('load failed');
         },
@@ -162,8 +168,8 @@ describe('unstable_createFileRoutes', () => {
       return [];
     });
     await expect(configs()).rejects.toThrow('load failed');
-    createPages(async ({ unstable_createFileRoutes }) => {
-      await unstable_createFileRoutes({
+    createPages(async (fns) => {
+      await createFileRoutes(fns, {
         './pages/index.tsx': async () => ({
           default: Page,
           getConfig: async () => {
@@ -188,8 +194,8 @@ describe('unstable_createFileRoutes', () => {
     const fromFs = await configs();
     expect(configuration().unstable_skipBuild).toBe(skip);
     createPages(
-      async ({ unstable_createFileRoutes }) => {
-        await unstable_createFileRoutes({ './pages/index.tsx': module });
+      async (fns) => {
+        await createFileRoutes(fns, { './pages/index.tsx': module });
         return [];
       },
       { unstable_skipBuild: skip },

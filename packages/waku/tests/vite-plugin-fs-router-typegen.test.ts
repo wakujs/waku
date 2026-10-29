@@ -1,15 +1,12 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import ts from 'typescript';
-import type { ViteDevServer } from 'vite';
 import { describe, expect, test, vi } from 'vitest';
 import { resolveConfig } from '../src/lib/utils-build/config.js';
 import { combinedPlugins } from '../src/lib/vite-plugins/combined-plugins.js';
 import {
   detectFsRouterUsage,
-  fsRouterTypegenPlugin,
   generateFsRouterTypes,
   getImportModuleNamesForTest,
   toIdentifierForTest,
@@ -83,7 +80,6 @@ describe('vite-plugin-fs-router-typegen', () => {
   test('creates the expected imports the generated entries file', async () => {
     const generated = await generateFsRouterTypes(
       path.join(fixturesDir, 'plugin-fs-router-typegen', 'pages'),
-      'fsRouter',
     );
     expect(generated).toContain(
       `// prettier-ignore
@@ -118,7 +114,7 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
       await detectFsRouterUsage(
         path.join(fixturesDir, 'plugin-fs-router-typegen-with-fsrouter'),
       ),
-    ).toBe('fsRouter');
+    ).toBe(true);
   });
 
   test('generates types when no waku.server is present (managed fallback)', async () => {
@@ -126,7 +122,7 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
       await detectFsRouterUsage(
         path.join(fixturesDir, 'plugin-fs-router-typegen'),
       ),
-    ).toBe('fsRouter');
+    ).toBe(true);
   });
 
   test('detects fsRouter even when imported with an alias', async () => {
@@ -134,7 +130,7 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
       await detectFsRouterUsage(
         path.join(fixturesDir, 'plugin-fs-router-typegen-with-fsrouter-alias'),
       ),
-    ).toBe('fsRouter');
+    ).toBe(true);
   });
 
   test('does not detect fsRouter when imported from non-waku sources', async () => {
@@ -166,7 +162,7 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
           return [];
         });`,
       );
-      expect(await detectFsRouterUsage(dir)).toBe('unstable_createFileRoutes');
+      expect(await detectFsRouterUsage(dir)).toBe(true);
       await writeFile(
         entry,
         `import { createPages } from 'waku/router/server';
@@ -176,7 +172,7 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
           return [];
         });`,
       );
-      expect(await detectFsRouterUsage(dir)).toBe('unstable_createFileRoutes');
+      expect(await detectFsRouterUsage(dir)).toBe(true);
       expect(warning).not.toHaveBeenCalled();
     } finally {
       warning.mockRestore();
@@ -225,9 +221,7 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
         });
       `,
         );
-        expect(await detectFsRouterUsage(dir)).toBe(
-          'unstable_createFileRoutes',
-        );
+        expect(await detectFsRouterUsage(dir)).toBe(true);
         expect(warning).not.toHaveBeenCalled();
       } finally {
         warning.mockRestore();
@@ -235,164 +229,6 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
       }
     },
   );
-
-  test.each(['fsRouter', 'unstable_createFileRoutes'] as const)(
-    'Vite generates fresh output in %s mode',
-    async (mode) => {
-      const dir = await mkdtemp(path.join(tmpdir(), 'waku-typegen-plugin-'));
-      try {
-        await mkdir(path.join(dir, 'pages'));
-        await writeFile(
-          path.join(dir, 'pages/index.tsx'),
-          'export default () => null;',
-        );
-        if (mode === 'unstable_createFileRoutes') {
-          await writeFile(
-            path.join(dir, 'waku.server.tsx'),
-            `
-            import { createPages as pages } from 'waku';
-            export default pages(async ({ unstable_createFileRoutes }) => {
-              await unstable_createFileRoutes(import.meta.glob('./pages/**/*.tsx'));
-              return [];
-            });
-          `,
-          );
-        }
-        const plugin = fsRouterTypegenPlugin({ srcDir: '.' });
-        const configure = plugin.configureServer;
-        if (typeof configure !== 'function') {
-          throw new Error('Missing configureServer');
-        }
-        await configure.call(
-          {} as never,
-          {
-            config: { root: dir },
-            watcher: { on: vi.fn() },
-          } as unknown as ViteDevServer,
-        );
-        const output = path.join(dir, 'pages.gen.ts');
-        await vi.waitFor(async () => {
-          const generated = await readFile(output, 'utf8');
-          expect(generated).toContain("path: '/'");
-          if (mode === 'unstable_createFileRoutes') {
-            expect(generated).toContain('export type FilePages = Page;');
-            expect(generated).not.toContain('declare module');
-          } else {
-            expect(generated).toContain("declare module 'waku/router'");
-          }
-        });
-      } finally {
-        await rm(dir, { recursive: true, force: true });
-      }
-    },
-  );
-
-  test('exports mixed metadata without conflicting automatic registrations', async () => {
-    const generated = await generateFsRouterTypes(
-      path.join(fixturesDir, 'plugin-fs-router-typegen-complex', 'pages'),
-      'unstable_createFileRoutes',
-    );
-    expect(generated).toContain('export type FilePages = Page;');
-    expect(generated).toContain('export type FileLayouts = Layout;');
-    expect(generated).not.toContain('declare module');
-    expect(generated).not.toContain('PathsForPages');
-    expect(generated).not.toContain('SearchCodecsForPages');
-  });
-
-  test('emits never for mixed layout-only metadata', async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), 'waku-mixed-typegen-'));
-    try {
-      const pages = path.join(dir, 'pages');
-      await mkdir(pages);
-      await writeFile(
-        path.join(pages, '_layout.tsx'),
-        'export default () => null;',
-      );
-      const generated = await generateFsRouterTypes(
-        pages,
-        'unstable_createFileRoutes',
-      );
-      expect(generated).toContain('type Page =\nnever;');
-      expect(generated).toContain('export type FileLayouts = Layout;');
-    } finally {
-      await rm(dir, { recursive: true, force: true });
-    }
-  });
-
-  test('combines explicit and file paths before the empty-router fallback', () => {
-    const fileName = path.join(fixturesDir, '../mixed-route-typecheck.ts');
-    const source = `
-      import type { PathsForPages, RouteConfig } from '../src/router/base-types.js';
-      import { Link, useRouter } from '../src/router/client.js';
-      type FilePages = { path: '/file'; render: 'static' } |
-        { path: '/blog/[slug]'; render: 'static'; staticPaths: readonly ['one', 'two'] };
-      type Router = { DO_NOT_USE_pages: { path: '/explicit'; render: 'static' } };
-      declare module '../src/router/base-types.js' {
-        interface RouteConfig { paths: PathsForPages<Router, FilePages> }
-      }
-      const file: RouteConfig['paths'] = '/file';
-      const explicit: RouteConfig['paths'] = '/explicit';
-      const slug: RouteConfig['paths'] = '/blog/one';
-      // @ts-expect-error not a registered route
-      const invalid: RouteConfig['paths'] = '/missing';
-      // @ts-expect-error not a declared static slug
-      const invalidSlug: RouteConfig['paths'] = '/blog/three';
-      type Empty = { DO_NOT_USE_pages: never };
-      const fileOnly: PathsForPages<Empty, FilePages> = '/file';
-      // @ts-expect-error empty explicit routes must not widen file routes
-      const invalidFileOnly: PathsForPages<Empty, FilePages> = '/missing';
-      const fallback: PathsForPages<Empty> = '/anything';
-      Link({ to: '/file', children: null });
-      Link({ to: '/explicit', children: null });
-      useRouter().push('/file');
-      useRouter().replace('/explicit');
-      useRouter().prefetch('/blog/one');
-      // @ts-expect-error Link rejects unregistered routes
-      Link({ to: '/missing', children: null });
-      // @ts-expect-error push rejects unregistered routes
-      useRouter().push('/missing');
-      // @ts-expect-error replace rejects unregistered routes
-      useRouter().replace('/missing');
-      // @ts-expect-error prefetch rejects unregistered routes
-      useRouter().prefetch('/missing');
-    `;
-    const options: ts.CompilerOptions = {
-      strict: true,
-      noEmit: true,
-      skipLibCheck: true,
-      target: ts.ScriptTarget.ESNext,
-      module: ts.ModuleKind.ESNext,
-      moduleResolution: ts.ModuleResolutionKind.Bundler,
-      jsx: ts.JsxEmit.ReactJSX,
-    };
-    const host = ts.createCompilerHost(options);
-    const getSourceFile = host.getSourceFile.bind(host);
-    host.getSourceFile = (
-      name,
-      languageVersion,
-      onError,
-      shouldCreateNewSourceFile,
-    ) =>
-      name === fileName
-        ? ts.createSourceFile(name, source, languageVersion, true)
-        : getSourceFile(
-            name,
-            languageVersion,
-            onError,
-            shouldCreateNewSourceFile,
-          );
-    const program = ts.createProgram([fileName], options, host);
-    // Check the consumer independently of runtime source build configuration.
-    const diagnostics = ts.getPreEmitDiagnostics(
-      program,
-      program.getSourceFile(fileName),
-    );
-    expect(
-      diagnostics.map((diagnostic) =>
-        ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
-      ),
-    ).toEqual([]);
-  });
 
   test('skips built-in Waku plugin when user plugin overrides it', async () => {
     const pluginName = 'waku:vite-plugins:build-id';
@@ -419,20 +255,8 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     expect(
       await generateFsRouterTypes(
         path.join(fixturesDir, 'plugin-fs-router-typegen-empty', 'pages'),
-        'fsRouter',
       ),
     ).toBeUndefined();
-  });
-
-  test('exports never metadata for an empty mixed pages directory', async () => {
-    const generated = await generateFsRouterTypes(
-      path.join(fixturesDir, 'plugin-fs-router-typegen-empty', 'pages'),
-      'unstable_createFileRoutes',
-    );
-    expect(generated).toContain('type Page =\nnever;');
-    expect(generated).toContain('export type FilePages = Page;');
-    expect(generated).toContain('export type FileLayouts = never;');
-    expect(generated).not.toContain('declare module');
   });
 
   test('skips getConfig imports for pages without getConfig', async () => {
@@ -442,7 +266,6 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
         'plugin-fs-router-typegen-missing-getconfig',
         'pages',
       ),
-      'fsRouter',
     );
 
     expect(generated).not.toContain('GetConfigResponse');
@@ -456,7 +279,6 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
   test('emits page and layout paths while skipping ignored files and missing getConfig', async () => {
     const generated = await generateFsRouterTypes(
       path.join(fixturesDir, 'plugin-fs-router-typegen-complex', 'pages'),
-      'fsRouter',
     );
 
     expect(generated).toBeTruthy();

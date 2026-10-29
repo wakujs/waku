@@ -2,6 +2,7 @@ import type {
   FileRoutesModules,
   FileRoutesOptions,
 } from './create-file-routes.js';
+import { createFileRoutes } from './create-file-routes.js';
 import { createPages } from './create-pages.js';
 
 export function fsRouter(
@@ -32,8 +33,8 @@ export function fsRouter(
   } = {},
 ) {
   return createPages(
-    async ({ unstable_createFileRoutes }) => {
-      await unstable_createFileRoutes(modules, fileRoutesOptions);
+    async (fns) => {
+      await createFileRoutes(fns, modules, fileRoutesOptions);
       // File route types are supplied by type generation.
       // HACK: to satisfy the return type, unused at runtime
       return null as never;

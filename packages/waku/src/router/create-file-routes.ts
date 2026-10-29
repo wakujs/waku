@@ -74,12 +74,12 @@ export type FileRoutesOptions = {
   interceptorsDir?: string;
 };
 
-export type Unstable_CreateFileRoutes = (
+export type CreateFileRoutes = (
   modules: FileRoutesModules,
   options?: FileRoutesOptions,
 ) => Promise<void>;
 
-export async function registerFileRoutes(
+export async function createFileRoutes(
   {
     createPage,
     createLayout,

@@ -7,6 +7,7 @@
     "dev": "pnpm -r --filter='./packages/*' run dev",
     "compile": "pnpm -r --filter='./packages/*' run compile",
     "csb-install-FIXME": "pnpm install --no-frozen-lockfile",
+    "format": "prettier -w .",
     "test": "pnpm run \"/^test:.*/\"",
     "test:lint": "prettier -c . && eslint . && tsc -b && pnpm run tsc-templates",
     "test:unit": "pnpm run -r test",

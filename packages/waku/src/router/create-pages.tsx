@@ -6,8 +6,6 @@ import {
 } from 'waku/minimal/client';
 import { unstable_createCustomError as createCustomError } from 'waku/minimal/server';
 import { ErrorBoundary } from '../router/client.js';
-import { registerFileRoutes } from './create-file-routes.js';
-import type { Unstable_CreateFileRoutes } from './create-file-routes.js';
 import type {
   ApiHandler,
   HandlerInterceptor,
@@ -484,9 +482,7 @@ const compareRoutePriority = (
   return 0;
 };
 
-export const createPages = <
-  AllPages extends (AnyPage | ReturnType<CreateLayout>)[],
->(
+export const createPages = <AllPages extends (AnyPage | ReturnType<CreateLayout>)[]>(
   fn: (fns: {
     createPage: CreatePage;
     createLayout: CreateLayout;
@@ -494,7 +490,6 @@ export const createPages = <
     createApi: CreateApi;
     createSlice: CreateSlice;
     createInterceptor: CreateInterceptor;
-    unstable_createFileRoutes: Unstable_CreateFileRoutes;
   }) => Promise<AllPages>,
   options?: {
     unstable_skipBuild?: (routePath: string) => boolean;
@@ -978,19 +973,6 @@ export const createPages = <
         createApi,
         createSlice,
         createInterceptor,
-        unstable_createFileRoutes: (modules, options) =>
-          registerFileRoutes(
-            {
-              createPage,
-              createLayout,
-              createRoot,
-              createApi,
-              createSlice,
-              createInterceptor,
-            },
-            modules,
-            options,
-          ),
       });
       await ready;
 

@@ -5,6 +5,7 @@ dist
 /packages/waku/README.md
 /packages/website/.vercel
 /packages/create-waku/templates
+/packages/create-waku/src/tests/test-waku-app
 .env.local
 /*.local.md
 .devcontainer

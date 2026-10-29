@@ -19,10 +19,11 @@ export type {
   CreateInterceptor,
 } from './create-pages.js';
 export { fsRouter } from './fs-router.js';
+export { createFileRoutes as unstable_createFileRoutes } from './create-file-routes.js';
 export type {
-  Unstable_CreateFileRoutes,
-  FileRoutesModules,
-  FileRoutesOptions,
+  CreateFileRoutes as Unstable_CreateFileRoutes,
+  FileRoutesModules as Unstable_FileRoutesModules,
+  FileRoutesOptions as Unstable_FileRoutesOptions,
 } from './create-file-routes.js';
 export {
   formatRouterRequest as unstable_formatRouterRequest,

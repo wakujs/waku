@@ -1,9 +1,14 @@
 import { createPages } from 'waku';
 import adapter from 'waku/adapters/default';
+import { unstable_createFileRoutes } from 'waku/router/server';
 import { ConfiguredPage, GreetingPage } from './configured-pages';
 
-const pages = createPages(async ({ createPage, unstable_createFileRoutes }) => {
-  await unstable_createFileRoutes(import.meta.glob('./pages/**/*.{tsx,ts}'));
+const pages = createPages(async (fns) => {
+  const { createPage } = fns;
+  await unstable_createFileRoutes(
+    fns,
+    import.meta.glob('./pages/**/*.{tsx,ts}'),
+  );
 
   return [
     createPage({
