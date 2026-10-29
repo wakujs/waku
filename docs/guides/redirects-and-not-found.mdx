@@ -195,6 +195,20 @@ A form POST without JavaScript to an unresolved route renders the custom 404 pag
 
 A client-side navigation to a missing route is answered the same way: the server sends the 404 page in the response, so the client does not need a second request. That response carries status 200, because it carries a page rather than an error. A direct page load of the same URL is still a 404. Where no Waku server answers, such as a static export, the request 404s and the client fetches the 404 page itself.
 
+## Pending Client Intents
+
+An intent in the current page response stays attached to that response. A
+hash-only navigation that reuses the rendered route preserves its pending intent.
+
+Intents from independent slice requests and server function responses without a
+route belong to the navigation state where the request started. A later Router
+navigation, including a hash-only change, makes these pending intents stale.
+A navigation already in flight also takes precedence.
+
+If an application needs different behavior, return a destination as the server
+function's result and let the client decide whether to call `router.replace()`.
+The return value remains available even when Waku discards a stale intent.
+
 ## Status and Streaming Notes
 
 When not-found is requested before the document response is returned, a direct request server-renders the custom `/404` page and returns status 404. Handler interceptors must request it before calling `next()`, then return `next()` to render the response. If it is requested from inside a Suspense boundary after the shell has already been sent, the response keeps status 200 and the browser completes the not-found handling after hydration. This late path requires JavaScript; without it, the Suspense fallback remains.

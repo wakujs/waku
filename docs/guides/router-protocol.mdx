@@ -144,9 +144,13 @@ navigation and let ordinary rendering in the response finish. Discarded
 response streams are not guaranteed to be aborted, including shared prefetches
 and adopted responses. See [Redirects and Not Found](/guides/redirects-and-not-found).
 
-Router-managed slice fetches and actions observe their intents in the originating
-route's scope. Minimal's `useFetchRsc_UNSTABLE` only returns response data; custom
-integrations own the routing decisions for requests they make directly.
+The built-in Router observes intents from independent slice fetches and
+intent-only server function responses in the navigation state captured when the
+request starts. A later Router navigation, including a hash-only change, makes
+these pending intents stale. A navigation already in flight also takes precedence.
+A full route response keeps its own intent; a hash-only navigation that reuses
+that route preserves it. Minimal's `useFetchRsc_UNSTABLE` only returns response
+data; custom integrations own the routing decisions for requests they make directly.
 
 Each Router owns its Minimal Root and that Root's intent observer. Separate
 Router instances keep their observers separate, including during unmount cleanup.
@@ -434,7 +438,7 @@ accepted but suspended navigation from being replaced by the previous page.
 ## Server Function Intent
 
 `rerenderRoute()` records render work to perform after the server function
-finishes. Multiple requests merge in declaration order. If the function records a
+finishes. Only the last requested target is rendered. If the function records a
 redirect or not-found intent, Router skips that work and returns the function's
 value with its intent. A render failure after the function finishes follows normal
 request error or cancellation handling.
@@ -458,8 +462,9 @@ instant paint. The failed destination's URL remains in history.
   If the user has navigated away or any navigation is pending, including a reload
   or hash change on the same route, the client discards its elements but retains
   the server function's return value.
-- `rerenderRoute(destination)` and server function redirects express navigation intent.
-  Their destination must not be discarded merely because the user left the origin.
+- `rerenderRoute(destination)` explicitly selects a route to render and is not
+  limited to the origin. An intent-only server function response uses the captured
+  navigation scope described above; it does not override a later navigation.
 
 Create one controller and a stable enhancer array for each Root before rendering
 React. Install its `enhancer` last in Root's `rscEnhancers`, and call
