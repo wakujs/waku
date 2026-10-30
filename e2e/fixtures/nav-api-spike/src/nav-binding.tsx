@@ -282,11 +282,11 @@ const NavBinding = ({
         current.path === next.path &&
         (isStaticFromElements(responseElements) ||
           current.query === next.query);
-      const url =
-        sameRoute || next.path === '/404'
-          ? new URL(window.location.href)
-          : getRouteUrl(next);
       const target = sameRoute ? current : next;
+      const url =
+        next.path === '/404'
+          ? new URL(window.location.href)
+          : getRouteUrl(target);
       const adopt = Promise.resolve(responseElements);
       if (ownsNavigation) {
         const result = window.navigation.navigate(url.href, {
