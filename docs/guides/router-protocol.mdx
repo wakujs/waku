@@ -42,7 +42,9 @@ Route responses are authoritative for the represented route. A full route
 response may reconcile query or hash changes made directly with the History API;
 a partial response does not navigate. Use Router's `push`, `replace`, or search
 hooks when URL changes must stay coordinated with route rendering. Custom
-bindings own any additional History API synchronization.
+bindings own any additional URL synchronization; see
+[Server Function Intent](#server-function-intent) for the Navigation API example's
+fragment behavior.
 
 If a server function response arrives without a connected binding, its return
 value remains available and its elements and intents are discarded. A callback
@@ -538,6 +540,12 @@ ordinary navigation outcome handler. To match the built-in Router, adopted
 responses use the same navigation and cancellation path as ordinary navigation:
 they supersede older work and yield to newer navigation. Resolve ready intents
 before committing the source response and observe pending intents after commit.
+
+The Navigation API example rebuilds adopted URLs from path and query. A full
+route response can clear an initial fragment, even on a same-route rerender;
+custom 404 responses keep the attempted URL. If the fragment must survive,
+restore it with client navigation after the server function settles or implement
+fragment preservation in the custom binding.
 
 The controller preserves the server function's return value after the callback
 resolves. If the callback rejects, the call rejects. The built-in binding shows
