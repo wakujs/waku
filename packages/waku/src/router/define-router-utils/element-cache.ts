@@ -12,40 +12,39 @@ const bytesToBase64 = (bytes: Uint8Array) => {
   return btoa(binary);
 };
 
-export const base64ToBytes = (base64: string) =>
+const base64ToBytes = (base64: string) =>
   Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
 
 export type CacheId = string;
 
 export const createElementCache = (
-  onSerialize?: (cacheId: CacheId, serialized: string) => void,
+  onSerialize?: (cacheId: CacheId, data: string) => void,
 ) => {
   const cache = new Map<CacheId, Promise<Uint8Array>>();
   return {
-    preload: (cacheId: CacheId, bytes: Uint8Array) => {
-      cache.set(cacheId, Promise.resolve(bytes));
+    preload: (cacheId: CacheId, data: string) => {
+      cache.set(cacheId, Promise.resolve(base64ToBytes(data)));
     },
     has: (cacheId: CacheId) => cache.has(cacheId),
-    get: (cacheId: CacheId) => {
-      const cachedBytes = cache.get(cacheId);
-      if (!cachedBytes) {
-        return undefined;
-      }
-      return cachedBytes.then((bytes) =>
-        deserializeRsc(bytes),
-      ) as Promise<ReactNode>;
-    },
-    set: (cacheId: CacheId, element: unknown) => {
+    get: (cacheId: CacheId) =>
+      cache
+        .get(cacheId)
+        ?.then((result) => deserializeRsc(result) as Promise<ReactNode>),
+    set: async (cacheId: CacheId, render: ElementSource['render']) => {
       if (cache.has(cacheId)) {
         return;
       }
-      const bytesPromise = serializeRsc(element);
-      cache.set(cacheId, bytesPromise);
-      if (onSerialize) {
-        return bytesPromise.then((bytes) => {
-          onSerialize(cacheId, bytesToBase64(bytes));
-        });
-      }
+      const entry = (async () => serializeRsc(await render()))().catch(
+        (error) => {
+          if (cache.get(cacheId) === entry) {
+            cache.delete(cacheId);
+          }
+          throw error;
+        },
+      );
+      cache.set(cacheId, entry);
+      const result = await entry;
+      onSerialize?.(cacheId, bytesToBase64(result));
     },
   };
 };
@@ -56,13 +55,17 @@ export const cacheElementSource = (
   source: ElementSource,
   cacheId: CacheId,
   cache: ElementCache,
+  populate = true,
 ): ElementSource =>
   source.immutable
     ? {
         ...source,
         render: async () => {
           if (!cache.has(cacheId)) {
-            await cache.set(cacheId, await source.render());
+            if (!populate) {
+              return source.render();
+            }
+            await cache.set(cacheId, source.render);
           }
           return cache.get(cacheId);
         },

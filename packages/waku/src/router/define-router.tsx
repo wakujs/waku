@@ -1,4 +1,4 @@
-import { unstable_createCustomError as createCustomError } from 'waku/minimal/server';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
 import type { Unstable_Handlers as Handlers } from 'waku/minimal/server';
 import { createBuildHandler } from './define-router-utils/build-handler.js';
 import type {
@@ -9,6 +9,7 @@ import { createRequestHandler } from './define-router-utils/request-handler.js';
 import {
   getRequest,
   getRerender,
+  getRouteIntent,
   getRscParams,
   getRscPath,
   runWithRouterStore,
@@ -37,15 +38,19 @@ const encodePathname = (pathname: string) => {
 };
 
 /**
- * Renders the route the current server function was called from into its
- * response. The client drops it if the user has left that route by then.
+ * Schedules the calling route to render after the server function finishes,
+ * unless a route intent was recorded. The client drops the rerender if the user
+ * has left that route or any navigation is pending.
+ * Only the last rerender requested by a server function is applied.
  */
 export function rerenderRoute(): void;
 /**
- * Renders a route into the response of the current server function. `pathname`
+ * Schedules a route to render after the current server function finishes.
+ * A recorded route intent skips scheduled renders. `pathname`
  * is serialized as a URL pathname, so dot segments are resolved and unescaped
  * non-ASCII characters are percent-encoded. `query` is the search string
  * without `?`, serialized as URL search params, so `q=a b` becomes `q=a+b`.
+ * Only the last rerender requested by a server function is applied.
  */
 export function rerenderRoute(pathname: string, query?: string): void;
 export function rerenderRoute(pathname?: string, query?: string) {
@@ -63,23 +68,38 @@ export function rerenderRoute(pathname?: string, query?: string) {
   );
 }
 
-export function notFound(): never {
-  throw createCustomError('Not Found', { status: 404 });
+/**
+ * Requests the not-found view without terminating execution. Return from the
+ * current component or server function after calling it. Before the document
+ * response is returned this can produce HTTP 404; after the shell the client
+ * shows the view.
+ * The first intent recorded for a request wins, including concurrent renders.
+ * A server function keeps its normal return value; a form submitted without
+ * JavaScript responds with 404.
+ * Use in dynamic renders, server functions, or handler interceptors before
+ * `next()`. Immutable and prerendered sources must not record route intents.
+ * API handlers return their own HTTP responses. Router does not apply intents
+ * recorded inside them.
+ * Ordinary rendering left in the response must eventually finish; discarded streams
+ * are not guaranteed to be aborted.
+ */
+export function requestNotFound(): void {
+  getRouteIntent().record({ status: 404 });
 }
 
 /**
- * Redirect within the app, or away from it with an absolute http or https url.
- * Check destinations built from user input against your own allowlist.
- *
- * An absolute url navigates the document even when it names this origin, so
- * pass a path to stay within the app. A form submission without JavaScript is
- * followed by the browser, which resends the body on 307 and 308, so those
- * answer 303 instead.
+ * @deprecated Use `requestNotFound()` and `cancelRender()` to control termination.
+ * In handler interceptors, use `requestNotFound()` and return `next()`.
+ * An uncaught cancellation there returns HTTP 204 or an empty RSC payload.
  */
-export function redirect(
+export function notFound(): never {
+  requestNotFound();
+  cancelRender();
+}
+
+const getRedirectLocation = (
   to: NavigationHref | `http://${string}` | `https://${string}` | URL,
-  status: 303 | 307 | 308 = 307,
-): never {
+) => {
   let location = to instanceof URL ? to.href : to;
   const leavesTheApp =
     location.startsWith('http://') || location.startsWith('https://');
@@ -91,8 +111,6 @@ export function redirect(
     throw new Error(`Invalid redirect location: ${JSON.stringify(location)}`);
   }
   if (leavesTheApp) {
-    // a redirect thrown mid stream reaches the client as this digest, before
-    // anything resolves it
     const url = new URL(location);
     url.username = '';
     url.password = '';
@@ -109,7 +127,47 @@ export function redirect(
       throw new Error(`Invalid redirect location: ${JSON.stringify(location)}`);
     }
   }
-  throw createCustomError('Redirect', { status, location });
+  return location;
+};
+
+/**
+ * Requests navigation without terminating execution. Return explicitly after
+ * calling it. Accepts an app-relative path or an absolute HTTP(S) URL; validate
+ * destinations derived from user input against your own allowlist. Before a
+ * dynamic document response is returned this produces an HTTP redirect
+ * (303 for a form POST).
+ * After the shell, the browser follows the intent using JavaScript.
+ * An absolute URL navigates the document even when it names this origin.
+ * App-relative redirects must change the path or query. Use client navigation
+ * for fragment-only changes. Ordinary rendering in the response must eventually
+ * finish; discarded streams are not guaranteed to be aborted.
+ * The first intent recorded for a request wins, including concurrent renders.
+ * Use in dynamic renders, server functions, or handler interceptors before
+ * `next()`. Immutable and prerendered sources must not record route intents.
+ * API handlers return their own HTTP responses. Router does not apply intents
+ * recorded inside them.
+ */
+export function requestRedirect(
+  to: NavigationHref | `http://${string}` | `https://${string}` | URL,
+  status: 303 | 307 | 308 = 307,
+): void {
+  const intent = getRouteIntent();
+  if (!intent.value) {
+    intent.record({ status, location: getRedirectLocation(to) });
+  }
+}
+
+/**
+ * @deprecated Use `requestRedirect()` and `cancelRender()` to control termination.
+ * In handler interceptors, use `requestRedirect()` and return `next()`.
+ * An uncaught cancellation there returns HTTP 204 or an empty RSC payload.
+ */
+export function redirect(
+  to: NavigationHref | `http://${string}` | `https://${string}` | URL,
+  status: 303 | 307 | 308 = 307,
+): never {
+  requestRedirect(to, status);
+  cancelRender();
 }
 
 type RouterOptions = {
@@ -140,9 +198,14 @@ type RouterOptions = {
  * Only `slice:<id>` IDs are supported for standalone requests.
  * Unresolved or mutable build IDs fail the build.
  * An immutable source's optional `cacheKey` shares its cached content across
- * slot IDs. Without a key, route content is reused only from build-preloaded
- * entries. Custom 404 availability is checked once per router instance, using
- * `getHas404` when provided or resolving `/404` otherwise.
+ * slot IDs. A route with only immutable sources can be reused without a request,
+ * including in development.
+ * Handler interceptors can be bypassed by static reuse; checks that must run
+ * on each request require a dynamic route.
+ * `createPages` and `fsRouter` supply route cache keys automatically.
+ * Raw routers must supply `getHas404` to enable their custom 404 page.
+ * The callback is queried when route metadata or a fallback needs availability;
+ * `createPages` and `fsRouter` supply it from their route registry.
  * Immutable sources must render the same content for the lifetime of their ID
  * or explicit cache key. Use a bounded set of keys, not arbitrary request paths.
  */
@@ -152,18 +215,13 @@ export function defineRouter(fns: RouterOptions): Handlers {
     fns.resolveElement,
     fns.getHas404,
   );
-  const runHandled = async <T,>(
-    req: Request,
-    fn: () => Promise<T>,
-  ): Promise<T> => {
-    return runWithRouterStore(
-      { req },
+  const runHandled = <T,>(req: Request, fn: () => Promise<T>): Promise<T> =>
+    runWithRouterStore({ req }, () =>
       (fns.unstable_interceptors ?? []).reduceRight(
         (next, interceptor) => () => interceptor(next),
         fn,
-      ),
+      )(),
     );
-  };
   return {
     handleRequest: createRequestHandler({
       resolve: fns.resolve,

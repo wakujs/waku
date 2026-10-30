@@ -6,13 +6,11 @@ import type { RouteProps } from '../isomorphic-utils/route-path.js';
 /**
  * Binding-supplied route snapshot and navigation.
  *
- * Bindings that call `load` must commit `outcome.url` after follows so the
- * address bar matches the landed route, and must follow a redirect thrown
- * while rendering the landed slot. Bound that chain (`decideFollow`,
- * `MAX_FOLLOWS_PER_NAVIGATION`) and surface the failure; `load` cannot,
- * because the throw happens after it returns. Pass `onBuildIdMismatch` and
- * `onInvalidate` for build-mismatch recovery or omit them so `load` leaves
- * minimal's reload default in place. `navigate` must honor `scroll`.
+ * Bindings reconcile the response route metadata and observe `INTENT` to
+ * follow redirects and custom 404s. Bound that chain with `decideRouteIntent`
+ * and `MAX_FOLLOWS_PER_NAVIGATION`, and surface failures. Pass `onBuildIdMismatch`
+ * and `onInvalidate` for build-mismatch recovery or leave Minimal's default
+ * reload behavior. `navigate` must honor `scroll`.
  */
 export type RouterHost = {
   route: RouteProps;
@@ -22,9 +20,8 @@ export type RouterHost = {
    *
    * Resolves once the requested navigation has been handled: after its
    * response when the route needs one, right away when it does not, and when a
-   * newer navigation supersedes it. Rejects when the navigation fails, when a
-   * redirect hands the page to the browser, and when no custom 404 route can
-   * answer a missing route.
+   * newer navigation supersedes it. Rejects when the navigation fails.
+   * A streamed intent can redirect after this promise resolves.
    */
   navigate: (
     href: string,

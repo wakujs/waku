@@ -5,6 +5,7 @@ import {
   StrictMode,
   Suspense,
   act,
+  use,
   useEffect,
   useState,
 } from 'react';
@@ -20,7 +21,6 @@ import {
   test,
   vi,
 } from 'vitest';
-import { getErrorInfo } from '../src/lib/utils-isomorphic/custom-errors.js';
 import { ETAGS_ID } from '../src/lib/utils-isomorphic/etags.js';
 import { callServerRsc } from '../src/minimal/client-runtime.js';
 import {
@@ -33,6 +33,7 @@ import {
   registerRootStore,
 } from '../src/minimal/client-utils/root-store.js';
 import {
+  Children_UNSTABLE as Children,
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
   useFetchRsc_UNSTABLE,
@@ -126,6 +127,337 @@ afterEach(() => {
 });
 
 describe('minimal/client fetch', () => {
+  test('a cancelled Slot leaves siblings mounted and recovers when its element changes', async () => {
+    const cancellation = Object.assign(new Error('Flight error'), {
+      digest: 'WAKU_CANCEL_RENDER',
+    });
+    const Cancelled = () => {
+      throw cancellation;
+    };
+    mocks.createFromFetch.mockReturnValue(
+      resolvedThenable({ main: <Cancelled />, sibling: 'sibling' }),
+    );
+    stubFetch();
+    let merge!: ReturnType<typeof useMergeElements_UNSTABLE>;
+    const Probe = () => {
+      const mergeElements = useMergeElements_UNSTABLE();
+      useEffect(() => {
+        merge = mergeElements;
+      }, [mergeElements]);
+      return null;
+    };
+    const caught = vi.fn();
+    const container = document.createElement('div');
+    const root = createRoot(container, { onCaughtError: caught });
+    try {
+      await act(async () =>
+        root.render(
+          <Root initialRscPath="cancel">
+            <Probe />
+            <Slot id="main" />
+            <Slot id="sibling" />
+          </Root>,
+        ),
+      );
+      expect(container.textContent).toBe('sibling');
+      expect(caught).toHaveBeenCalledWith(cancellation, expect.anything());
+      await act(async () => {
+        await merge(Promise.resolve({ main: 'recovered' }));
+      });
+      expect(container.textContent).toBe('recoveredsibling');
+    } finally {
+      act(() => root.unmount());
+    }
+  });
+
+  test('a cancelled update retains Slot content and preserves subsequent edits on recovery', async () => {
+    const cancellation = Object.assign(new Error('Flight error'), {
+      digest: 'WAKU_CANCEL_RENDER',
+    });
+    const Cancelled = () => {
+      throw cancellation;
+    };
+    const mounted = vi.fn();
+    const Counter = ({ label }: { label: string }) => {
+      const [count, setCount] = useState(0);
+      useEffect(() => {
+        mounted();
+      }, []);
+      return (
+        <button onClick={() => setCount(count + 1)}>
+          {label}:{count}
+        </button>
+      );
+    };
+    mocks.createFromFetch.mockReturnValue(
+      resolvedThenable({
+        main: <Counter key="content" label="original" />,
+        sibling: 'sibling',
+      }),
+    );
+    stubFetch();
+    let merge!: ReturnType<typeof useMergeElements_UNSTABLE>;
+    const Probe = () => {
+      const fn = useMergeElements_UNSTABLE();
+      useEffect(() => {
+        merge = fn;
+      }, [fn]);
+      return null;
+    };
+    const container = document.createElement('div');
+    const root = createRoot(container, { onCaughtError: () => {} });
+    try {
+      await act(async () => {
+        root.render(
+          <Root initialRscPath="update-cancel">
+            <Probe />
+            <Slot id="main" />
+            <Slot id="sibling" />
+          </Root>,
+        );
+      });
+      await act(async () => {
+        await merge(
+          Promise.resolve({ main: <Cancelled />, sibling: 'updated sibling' }),
+        );
+      });
+      expect(container.textContent).toBe('original:0updated sibling');
+      await act(async () => {
+        container.querySelector('button')!.click();
+      });
+      expect(container.textContent).toBe('original:1updated sibling');
+      const mountCount = mounted.mock.calls.length;
+      await act(async () => {
+        await merge(
+          Promise.resolve({
+            main: <Counter key="content" label="recovered" />,
+          }),
+        );
+      });
+      expect(container.textContent).toBe('recovered:1updated sibling');
+      expect(mounted).toHaveBeenCalledTimes(mountCount);
+    } finally {
+      act(() => root.unmount());
+    }
+  });
+
+  test.each([false, true])(
+    'a late cancellation clears an unfinished Slot and permits recovery (retained: %s)',
+    async (retained) => {
+      const cancellation = Object.assign(new Error('Flight error'), {
+        digest: 'WAKU_CANCEL_RENDER',
+      });
+      const gate = Promise.withResolvers<string>();
+      const Pending = () => use(gate.promise);
+      const Cancelled = () => {
+        throw cancellation;
+      };
+      mocks.createFromFetch.mockReturnValue(
+        resolvedThenable({ main: 'original', sibling: 'sibling' }),
+      );
+      stubFetch();
+      let merge!: ReturnType<typeof useMergeElements_UNSTABLE>;
+      const Probe = () => {
+        const fn = useMergeElements_UNSTABLE();
+        useEffect(() => {
+          merge = fn;
+        }, [fn]);
+        return null;
+      };
+      class AppBoundary extends Component<
+        { children: ReactNode },
+        { failed: boolean }
+      > {
+        state = { failed: false };
+        static getDerivedStateFromError() {
+          return { failed: true };
+        }
+        render() {
+          return this.state.failed ? 'app fallback' : this.props.children;
+        }
+      }
+      const container = document.createElement('div');
+      const root = createRoot(container, { onCaughtError: () => {} });
+      try {
+        await act(async () => {
+          root.render(
+            <AppBoundary>
+              <Root initialRscPath="late-cancel">
+                <Probe />
+                <Slot id="main" />
+                <Slot id="sibling" />
+              </Root>
+            </AppBoundary>,
+          );
+        });
+        expect(container.textContent).toBe('originalsibling');
+        await act(async () => {
+          await merge(
+            Promise.resolve({
+              main: (
+                <Suspense fallback="loading">
+                  <Pending />
+                </Suspense>
+              ),
+            }),
+          );
+        });
+        expect(container.textContent).toBe('loadingsibling');
+        if (retained) {
+          await act(async () => {
+            await merge(Promise.resolve({ main: <Cancelled /> }));
+          });
+          expect(container.textContent).toBe('loadingsibling');
+        }
+        await act(async () => {
+          gate.reject(cancellation);
+        });
+        expect(container.textContent).toBe('sibling');
+        await act(async () => {
+          await merge(Promise.resolve({ main: 'recovered' }));
+        });
+        expect(container.textContent).toBe('recoveredsibling');
+      } finally {
+        act(() => root.unmount());
+      }
+    },
+  );
+
+  test('a cancelled Slot renders its retained element with current client children', async () => {
+    const Cancelled = vi.fn(() => {
+      throw Object.assign(new Error('Flight error'), {
+        digest: 'WAKU_CANCEL_RENDER',
+      });
+    });
+    mocks.createFromFetch.mockReturnValue(
+      resolvedThenable({
+        main: (
+          <main>
+            <Children />
+          </main>
+        ),
+      }),
+    );
+    stubFetch();
+    let merge!: ReturnType<typeof useMergeElements_UNSTABLE>;
+    let setLabel!: (label: string) => void;
+    const App = () => {
+      const mergeElements = useMergeElements_UNSTABLE();
+      const [label, updateLabel] = useState('original');
+      useEffect(() => {
+        merge = mergeElements;
+        setLabel = updateLabel;
+      }, [mergeElements]);
+      return <Slot id="main">{label}</Slot>;
+    };
+    const container = document.createElement('div');
+    const root = createRoot(container, { onCaughtError: () => {} });
+    try {
+      await act(async () => {
+        root.render(
+          <Root initialRscPath="cancel-children">
+            <App />
+          </Root>,
+        );
+      });
+      expect(container.querySelector('main')?.textContent).toBe('original');
+      await act(async () => {
+        await merge(Promise.resolve({ main: <Cancelled /> }));
+      });
+      const attempts = Cancelled.mock.calls.length;
+      expect(attempts).toBeGreaterThan(0);
+      await act(async () => {
+        setLabel('updated');
+      });
+      expect(container.querySelector('main')?.textContent).toBe('updated');
+      expect(Cancelled).toHaveBeenCalledTimes(attempts);
+    } finally {
+      act(() => root.unmount());
+    }
+  });
+
+  test('a cancelled Slot id change retains its displayed content and accepts another id', async () => {
+    const Cancelled = () => {
+      throw Object.assign(new Error('Flight error'), {
+        digest: 'WAKU_CANCEL_RENDER',
+      });
+    };
+    mocks.createFromFetch.mockReturnValue(
+      resolvedThenable({ a: 'page A', b: <Cancelled />, c: 'page C' }),
+    );
+    stubFetch();
+    let select!: (id: string) => void;
+    const App = () => {
+      const [id, setId] = useState('a');
+      useEffect(() => {
+        select = setId;
+      }, []);
+      return (
+        <Root initialRscPath="cancel-id-change">
+          <Slot id={id} />
+        </Root>
+      );
+    };
+    const container = document.createElement('div');
+    const root = createRoot(container, { onCaughtError: () => {} });
+    try {
+      await act(async () => {
+        root.render(<App />);
+      });
+      expect(container.textContent).toBe('page A');
+      await act(async () => {
+        select('b');
+      });
+      expect(container.textContent).toBe('page A');
+      await act(async () => {
+        select('c');
+      });
+      expect(container.textContent).toBe('page C');
+    } finally {
+      act(() => root.unmount());
+    }
+  });
+
+  test('a Slot propagates application errors to the app error boundary', async () => {
+    const failure = new Error('application failure');
+    const Broken = () => {
+      throw failure;
+    };
+    mocks.createFromFetch.mockReturnValue(
+      resolvedThenable({ main: <Broken /> }),
+    );
+    stubFetch();
+    class AppBoundary extends Component<
+      { children: ReactNode },
+      { failed: boolean }
+    > {
+      state = { failed: false };
+      static getDerivedStateFromError(error: unknown) {
+        expect(error).toBe(failure);
+        return { failed: true };
+      }
+      render() {
+        return this.state.failed ? 'app fallback' : this.props.children;
+      }
+    }
+    const container = document.createElement('div');
+    const root = createRoot(container, { onCaughtError: vi.fn() });
+    try {
+      await act(async () =>
+        root.render(
+          <Root initialRscPath="failure">
+            <AppBoundary>
+              <Slot id="main" />
+            </AppBoundary>
+          </Root>,
+        ),
+      );
+      expect(container.textContent).toBe('app fallback');
+    } finally {
+      act(() => root.unmount());
+    }
+  });
+
   test('a fetch returns the decoded elements', async () => {
     // Minimal only fetches + decodes and hands the promise back to the caller.
     const fetchMock = vi.fn<typeof fetch>(
@@ -304,7 +636,10 @@ describe('minimal/client transport failures', () => {
 
     // waku never reads Location, so a fetch enhancer using redirect: 'manual'
     // is not supported. Decided 2026-07-30; revisit with a real use case.
-    expect(getErrorInfo(error)).toEqual({ status: 307 });
+    expect(error).toMatchObject({
+      message: 'Temporary Redirect',
+      cause: { status: 307 },
+    });
   });
 
   test('a redirected response is decoded like any other', async () => {
@@ -318,14 +653,13 @@ describe('minimal/client transport failures', () => {
     });
   });
 
-  test('a network error is marked as such', async () => {
-    vi.stubGlobal('fetch', () =>
-      Promise.reject(new TypeError('Failed to fetch')),
-    );
+  test('a network error passes through unchanged', async () => {
+    const failure = new TypeError('Failed to fetch');
+    vi.stubGlobal('fetch', () => Promise.reject(failure));
 
     const error = await fetchRsc('R/next.txt').catch((e: unknown) => e);
 
-    expect(getErrorInfo(error)).toEqual({ unstable_networkError: true });
+    expect(error).toBe(failure);
     expect((error as Error).message).toBe('Failed to fetch');
   });
 
@@ -336,7 +670,6 @@ describe('minimal/client transport failures', () => {
     const aborted = await fetchRsc('R/next.txt').catch((e: unknown) => e);
 
     expect((aborted as Error).name).toBe('AbortError');
-    expect(getErrorInfo(aborted)).toBeNull();
 
     // an app's own failure (a fetch enhancer, an unserializable argument)
     // reaches the caller as it is
@@ -383,21 +716,6 @@ describe('minimal/client server actions', () => {
     expect(getDefaultRootStore()?.etags).toEqual({ App: 'v' });
 
     act(() => root.unmount());
-  });
-
-  test('a document location is reported as an error, not merged', async () => {
-    // minimal only tags it; deciding what a location means is the router's
-    mocks.createFromFetch.mockResolvedValueOnce({
-      _location: 'https://other.example/next',
-    });
-    stubFetch();
-
-    const error = await fetchRsc('R/next.txt').catch((e: unknown) => e);
-
-    expect(getErrorInfo(error)).toEqual({
-      location: 'https://other.example/next',
-      unstable_leave: true,
-    });
   });
 
   test('a server action returning elements throws when no Root is mounted', async () => {

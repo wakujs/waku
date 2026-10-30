@@ -950,7 +950,7 @@ test('an action keeps the headers of a request an inner enhancer builds', async 
   expect(sent?.has(ETAGS_HEADER)).toBe(true);
 });
 
-test('a rerender of the route an action came from survives a navigation within that route', async () => {
+test('an origin rerender is dropped while its action holds a hash navigation pending', async () => {
   const view = await mount();
   const response = deferred<Record<string, unknown>>({});
   decode.mockReturnValueOnce(response.promise);
@@ -977,11 +977,12 @@ test('a rerender of the route an action came from survives a navigation within t
     expect(await action).toBe('returned');
   });
 
-  expect(view.container.textContent).toBe('refreshed start');
+  expect(view.container.textContent).toBe('start');
+  expect(window.location.hash).toBe('#details');
   expect(view.errors).not.toHaveBeenCalled();
 });
 
-test('an action result keeps a search string written with the History API', async () => {
+test('a route response reconciles History API changes while a partial response leaves them alone', async () => {
   const view = await mount();
   decode.mockReturnValueOnce({
     [getRouteSlotId('/start')]: 'filtered start',
@@ -1009,7 +1010,7 @@ test('an action result keeps a search string written with the History API', asyn
     expect(await callServerRsc('action#test', [])).toBe('done');
   });
   expect(view.container.textContent).toBe('refreshed start');
-  expect.soft(window.location.search).toBe('?filter=1&tab=b');
+  expect(window.location.search).toBe('?filter=1');
 
   window.history.replaceState(
     window.history.state,

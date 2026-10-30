@@ -1,11 +1,24 @@
 import type { ReactFormState } from 'react-dom/client';
 import type { Config } from '../../config.js';
 import type { HandleRequest } from '../types.js';
-import { createCustomError } from '../utils-isomorphic/custom-errors.js';
 import { ETAGS_HEADER, parseClientEtags } from '../utils-isomorphic/etags.js';
+import { isRenderCancellation } from '../utils-isomorphic/render-cancellation.js';
 import { parseRequestUrl } from './request-url.js';
 
 type HandleRequestInput = Parameters<HandleRequest>[0];
+
+const invokeServerFunction = async (
+  serverFunction: (...args: unknown[]) => unknown,
+  args: unknown[],
+) => {
+  try {
+    return await serverFunction(...args);
+  } catch (error) {
+    if (!isRenderCancellation(error)) {
+      throw error;
+    }
+  }
+};
 
 export async function getInput(
   req: Request,
@@ -35,7 +48,11 @@ export async function getInput(
       const serverFunction = await loadServerAction(parsed.serverFunctionId);
       input = {
         type: 'call',
-        fn: serverFunction as never,
+        fn: (...args) =>
+          invokeServerFunction(
+            serverFunction as (...args: unknown[]) => unknown,
+            args,
+          ),
         args,
         pathname,
         req,
@@ -82,7 +99,7 @@ export async function getInput(
               return { action: false as const, formData };
             }
             validateSameOriginPost(req);
-            const result = await decodedAction();
+            const result = await invokeServerFunction(decodedAction, []);
             const formState = await decodeFormState(result, formData);
             return { action: true as const, formState };
           })()),
@@ -113,19 +130,19 @@ export async function getInput(
 
 function validateSameOriginPost(req: Request) {
   if (req.method !== 'POST') {
-    throw createCustomError('Method Not Allowed', { status: 405 });
+    throw new Response('Method Not Allowed', { status: 405 });
   }
   const origin = req.headers.get('origin');
   if (origin) {
     if (origin === 'null') {
-      throw createCustomError('Forbidden', { status: 403 });
+      throw new Response('Forbidden', { status: 403 });
     }
     const requestUrl = new URL(req.url);
     let originUrl: URL;
     try {
       originUrl = new URL(origin);
     } catch {
-      throw createCustomError('Forbidden', { status: 403 });
+      throw new Response('Forbidden', { status: 403 });
     }
     if (
       originUrl.origin !== requestUrl.origin &&
@@ -135,10 +152,10 @@ function validateSameOriginPost(req: Request) {
         originUrl.host === requestUrl.host
       )
     ) {
-      throw createCustomError('Forbidden', { status: 403 });
+      throw new Response('Forbidden', { status: 403 });
     }
   } else if (req.headers.get('sec-fetch-site') === 'cross-site') {
-    throw createCustomError('Forbidden', { status: 403 });
+    throw new Response('Forbidden', { status: 403 });
   }
 }
 

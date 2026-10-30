@@ -1,21 +1,27 @@
+import { createElement } from 'react';
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
 import {
-  type Unstable_HandleRequest as HandleRequest,
-  unstable_getErrorInfo,
+  unstable_cancelRender as cancelRender,
+  unstable_isRenderCancellation as isRenderCancellation,
 } from '../src/minimal/server.js';
+import { type Unstable_HandleRequest as HandleRequest } from '../src/minimal/server.js';
 import { unstable_createRouteHref } from '../src/router/base-types.js';
+import { getRscPath } from '../src/router/define-router-utils/request-store.js';
 import {
   defineRouter,
   getRequest,
   notFound,
   redirect,
+  requestNotFound,
+  requestRedirect,
   rerenderRoute,
   setNonce,
 } from '../src/router/define-router.js';
 import {
   ACTION_LOCATION_HEADER,
   HAS404_ID,
+  INTENT_ID,
   IS_ORIGIN_ID,
   IS_STATIC_ID,
   ROUTE_ID,
@@ -23,6 +29,10 @@ import {
   encodeSliceId,
 } from '../src/router/isomorphic-utils/router-protocol.js';
 import { deserializeRsc, serializeRsc } from '../src/server.js';
+
+const intentPromise = expect.objectContaining({
+  then: expect.any(Function),
+});
 
 vi.mock('../src/server.js', () => ({
   serializeRsc: vi.fn(async (value: unknown) =>
@@ -85,7 +95,7 @@ describe('defineRouter route resolver', () => {
     expect(render).toHaveBeenCalledOnce();
     expect(utils.renderRsc).toHaveBeenLastCalledWith(
       expect.objectContaining({ 'route:/two': 'shell' }),
-      expect.objectContaining({ etags: { 'route:/two': 1 } }),
+      { etags: { 'route:/two': 1 } },
     );
   });
 
@@ -102,7 +112,7 @@ describe('defineRouter route resolver', () => {
       ),
     );
     expect(resolve.mock.calls.map(([path]) => path)).toEqual(['/one', '/two']);
-    expect(getHas404).toHaveBeenCalledOnce();
+    expect(getHas404).toHaveBeenCalledTimes(2);
     for (const [elements] of utils.renderRsc.mock.calls) {
       expect(elements).not.toHaveProperty(HAS404_ID);
     }
@@ -124,25 +134,26 @@ describe('defineRouter route resolver', () => {
     const router = defineRouter({
       resolve: async (path) =>
         path === '/redirect'
-          ? async () => redirect(href)
+          ? {
+              elements: {
+                root: { render: () => 'root' },
+                route: { render: () => redirect(href) },
+              },
+            }
           : createRouterDefinition('content'),
       getHas404: async () => false,
     });
     const utils = makeUtils();
-    const error = await router
-      .handleRequest(
-        {
-          type: 'http',
-          pathname: '/redirect',
-          req: new Request('http://localhost/redirect'),
-        },
-        utils,
-      )
-      .catch((error: unknown) => error);
-    expect(unstable_getErrorInfo(error)).toEqual({
-      status: 307,
-      location: href,
-    });
+    const response = (await router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/redirect',
+        req: new Request('http://localhost/redirect'),
+      },
+      utils,
+    )) as Response;
+    expect(response.headers.get('location')).toBe(href);
+    expect(response.status).toBe(307);
     expect(codec.serialize).toHaveBeenCalledExactlyOnceWith({ tag: 'a b' });
     expect(codec.parse).not.toHaveBeenCalled();
     expect(utils.renderHtml).not.toHaveBeenCalled();
@@ -180,8 +191,62 @@ describe('defineRouter route resolver', () => {
     expect(serializeRsc).toHaveBeenCalledTimes(1);
   });
 
+  it('does not cache an intent recorded while Flight renders a dynamic route', async () => {
+    const Page = async () => {
+      await Promise.resolve();
+      requestRedirect('/login');
+      return 'page';
+    };
+    const router = defineRouter({
+      resolve: async () => ({
+        elements: {
+          root: { immutable: true, render: () => 'root' },
+          route: { render: () => createElement(Page) },
+        },
+      }),
+      getHas404: async () => false,
+    });
+    const utils = makeUtils();
+    utils.renderRsc.mockImplementation(async (elements) => {
+      // A factory returning JSX finishes before Flight executes its component.
+      expect(elements['route:/private']).toEqual(createElement(Page));
+      await Page();
+      expect(await elements[INTENT_ID]).toBe(
+        JSON.stringify({ status: 307, location: '/login' }),
+      );
+      expect(elements[IS_STATIC_ID]).toBe(false);
+      return new ReadableStream({ start: (controller) => controller.close() });
+    });
+
+    await router.handleRequest(rscInput('/private'), utils);
+  });
+
+  it.each([undefined, 'page'])(
+    'keeps whole-route reuse for immutable sources (key: %s)',
+    async (cacheKey) => {
+      const router = defineRouter({
+        resolve: async () => ({
+          elements: {
+            root: { immutable: true, render: () => 'root' },
+            route: {
+              immutable: true,
+              ...(cacheKey ? { cacheKey } : {}),
+              render: () => 'page',
+            },
+          },
+        }),
+        getHas404: async () => false,
+      });
+      const utils = makeUtils();
+
+      await router.handleRequest(rscInput('/cached'), utils);
+
+      expect(utils.renderRsc.mock.calls[0]![0][IS_STATIC_ID]).toBe(true);
+    },
+  );
+
   it.each([false, true])(
-    'probes 404 availability once across concurrent requests (exists: %s)',
+    'uses declared 404 availability across requests without probing (exists: %s)',
     async (exists) => {
       const resolve = vi.fn<RouterOptions['resolve']>(async (path, query) =>
         path === '/404'
@@ -190,7 +255,7 @@ describe('defineRouter route resolver', () => {
             : null
           : createRouterDefinition(query),
       );
-      const router = defineRouter({ resolve });
+      const router = defineRouter({ resolve, getHas404: async () => exists });
       const utils = makeUtils();
       await Promise.all([
         router.handleRequest(rscInput('/one'), utils),
@@ -206,7 +271,10 @@ describe('defineRouter route resolver', () => {
       );
       expect(
         resolve.mock.calls.filter(([path]) => path === '/404'),
-      ).toHaveLength(1);
+      ).toHaveLength(0);
+      for (const [elements] of utils.renderRsc.mock.calls) {
+        expect(elements[HAS404_ID]).toBe(exists || undefined);
+      }
       expect(utils.renderRsc).toHaveBeenLastCalledWith(
         expect.objectContaining({ 'route:/three': 'q=latest' }),
         expect.anything(),
@@ -214,15 +282,14 @@ describe('defineRouter route resolver', () => {
     },
   );
 
-  it('retries a failed 404 probe and resolves the 404 content for each visit', async () => {
-    let attempts = 0;
-    const resolve = vi.fn<RouterOptions['resolve']>(async (path, query) => {
-      if (path === '/404' && ++attempts === 1) {
-        throw new Error('CMS unavailable');
-      }
-      return createRouterDefinition(query);
-    });
-    const router = defineRouter({ resolve });
+  it('propagates an availability error without retaining it across requests', async () => {
+    const getHas404 = vi
+      .fn(async () => true)
+      .mockRejectedValueOnce(new Error('CMS unavailable'));
+    const resolve = vi.fn<RouterOptions['resolve']>(async (_path, query) =>
+      createRouterDefinition(query),
+    );
+    const router = defineRouter({ resolve, getHas404 });
     const utils = makeUtils();
     await expect(router.handleRequest(rscInput('/'), utils)).rejects.toThrow(
       'CMS unavailable',
@@ -230,11 +297,44 @@ describe('defineRouter route resolver', () => {
     await router.handleRequest(rscInput('/'), utils);
     await router.handleRequest(rscInput('/404', 'q=first'), utils);
     await router.handleRequest(rscInput('/404', 'q=second'), utils);
-    expect(attempts).toBe(4);
+    expect(resolve.mock.calls.filter(([path]) => path === '/404')).toHaveLength(
+      2,
+    );
     expect(utils.renderRsc).toHaveBeenLastCalledWith(
       expect.objectContaining({ 'route:/404': 'q=second', [HAS404_ID]: true }),
       expect.anything(),
     );
+  });
+
+  it('does not resolve an undeclared 404 while rendering a valid document', async () => {
+    let missingRouteCalls = 0;
+    const router = defineRouter({
+      resolve: async (path) => {
+        if (path === '/404') {
+          missingRouteCalls++;
+          throw new Response('Not Found', { status: 404 });
+        }
+        return createRouterDefinition('home');
+      },
+    });
+    const utils = makeUtils();
+    const response = await router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/',
+        req: new Request('http://localhost/'),
+      },
+      utils,
+    );
+    expect(response).toBeInstanceOf(Response);
+    expect((response as Response).status).toBe(200);
+    expect(utils.renderRsc).toHaveBeenCalledWith(
+      expect.objectContaining({ 'route:/': 'home', [ROUTE_ID]: ['/', ''] }),
+      expect.anything(),
+    );
+    expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(HAS404_ID);
+    await router.handleRequest(rscInput('/another'), utils);
+    expect(missingRouteCalls).toBe(0);
   });
 
   it('reuses build-preloaded route content without retaining unbuilt routes', async () => {
@@ -350,7 +450,7 @@ describe('defineRouter route resolver', () => {
     ).rejects.toThrow('Build path must be a pathname');
     expect(generateFile).not.toHaveBeenCalled();
   });
-  it('treats a not-found thrown by the 404 probe as no custom 404', async () => {
+  it('records not-found for an unresolved route without a custom 404', async () => {
     const router = defineRouter({
       resolve: async (path) =>
         path === '/' ? createRouterDefinition('home') : notFound(),
@@ -362,7 +462,11 @@ describe('defineRouter route resolver', () => {
       expect.anything(),
     );
     expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(HAS404_ID);
-    expect(await router.handleRequest(rscInput('/missing'), utils)).toBeNull();
+    await router.handleRequest(rscInput('/missing'), utils);
+    const missing = utils.renderRsc.mock.calls.at(-1)![0];
+    expect(JSON.parse(await (missing[INTENT_ID] as Promise<string>))).toEqual({
+      status: 404,
+    });
   });
   it('uses the same normalized route and query for document and RSC requests', async () => {
     const resolve = vi.fn<RouterOptions['resolve']>(async (path, query) =>
@@ -455,19 +559,31 @@ describe('defineRouter route resolver', () => {
           ? {
               elements: {
                 ...createRouterDefinition('route', true).elements,
+                route: {
+                  immutable: true,
+                  cacheKey: 'route',
+                  render: () => 'route',
+                },
                 content: { render, getEtag: async () => 'v1' },
               },
             }
           : null,
     });
     const utils = makeUtils();
+    await router.handleRequest(rscInput('/'), utils);
+    render.mockClear();
+    utils.renderRsc.mockClear();
     await router.handleRequest(
       { ...rscInput('/'), etags: { root: 1, 'route:/': 1, content: 'v1' } },
       utils,
     );
     expect(render).not.toHaveBeenCalled();
     expect(utils.renderRsc).toHaveBeenCalledWith(
-      { [ROUTE_ID]: ['/', ''], [IS_STATIC_ID]: false },
+      {
+        [ROUTE_ID]: ['/', ''],
+        [IS_STATIC_ID]: false,
+        [INTENT_ID]: intentPromise,
+      },
       { etags: {} },
     );
   });
@@ -489,7 +605,7 @@ describe('defineRouter route resolver', () => {
     );
     expect(resolveElement).toHaveBeenCalledWith('slice:fragment');
     expect(utils.renderRsc).toHaveBeenCalledWith(
-      { 'slice:fragment': 'fragment' },
+      { 'slice:fragment': 'fragment', [INTENT_ID]: intentPromise },
       { etags: { 'slice:fragment': 'v1' } },
     );
   });
@@ -527,6 +643,7 @@ describe('defineRouter route resolver', () => {
         path === '/404'
           ? createRouterDefinition('not found:' + query)
           : notFound(),
+      getHas404: async () => true,
     });
     const utils = makeUtils();
     const response = await router.handleRequest(
@@ -549,11 +666,11 @@ describe('defineRouter route resolver', () => {
     expect(utils.renderHtml).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      expect.objectContaining({ status: 404, unstable_rethrowNotFound: false }),
+      expect.objectContaining({ status: 404 }),
     );
   });
 
-  it('returns a redirected route in the same RSC response', async () => {
+  it('returns an intent-only route response when its source factory redirects', async () => {
     const router = defineRouter({
       resolve: async (path, query) =>
         path === '/old'
@@ -571,11 +688,16 @@ describe('defineRouter route resolver', () => {
     await router.handleRequest(rscInput('/old'), utils);
     expect(utils.renderRsc).toHaveBeenCalledWith(
       expect.objectContaining({
-        [ROUTE_ID]: ['/next', 'q=one'],
-        'route:/next': 'q=one',
+        [ROUTE_ID]: ['/old', ''],
+        'route:/old': null,
       }),
-      expect.anything(),
+      { etags: { 'route:/old': '' } },
     );
+    const elements = utils.renderRsc.mock.calls[0]![0];
+    expect(JSON.parse(await (elements[INTENT_ID] as Promise<string>))).toEqual({
+      status: 307,
+      location: '/next?q=one',
+    });
   });
 
   it('keeps origin rerenders and action values in the client protocol', async () => {
@@ -696,6 +818,59 @@ describe('defineRouter route resolver', () => {
     expect(mutableRender).toHaveBeenCalledTimes(1);
   });
 
+  it.each([undefined, 'shared-route'])(
+    'builds immutable route cache key %s in source order without route intents',
+    async (cacheKey) => {
+      const rendered: [string, string | undefined][] = [];
+      const rootRender = vi.fn(() => {
+        rendered.push(['root', getRscPath()]);
+        return 'root';
+      });
+      const routeRender = vi.fn(() => {
+        rendered.push(['route', getRscPath()]);
+        return 'route';
+      });
+      const router = defineRouter({
+        resolve: async () => ({
+          elements: {
+            root: { immutable: true, render: rootRender },
+            route: {
+              immutable: true,
+              ...(cacheKey === undefined ? {} : { cacheKey }),
+              render: routeRender,
+            },
+          },
+        }),
+        getBuildPaths: async () => ['/built'],
+        getHas404: async () => false,
+      });
+      const metadata = new Map<string, string>();
+      const utils = makeUtils();
+      await router.handleBuild({
+        ...utils,
+        rscPathToFileName: (rscPath) => 'payload/' + rscPath,
+        generateFile: vi.fn(),
+        generateDefaultHtml: vi.fn(),
+        saveBuildMetadata: async (key, value) => {
+          metadata.set(key, value);
+        },
+        unstable_registerPrunableFile: vi.fn(),
+      });
+      expect(rootRender).toHaveBeenCalledOnce();
+      expect(routeRender).toHaveBeenCalledOnce();
+      expect(rendered).toEqual([
+        ['root', encodeRoutePath('/built')],
+        ['route', encodeRoutePath('/built')],
+      ]);
+      const elements = utils.renderRsc.mock.calls[0]![0];
+      expect(elements).toHaveProperty(INTENT_ID, null);
+      expect(elements[IS_STATIC_ID]).toBe(true);
+      const cached = JSON.parse(metadata.get('defineRouter:cachedElements')!);
+      const routeCacheId = cacheKey ? 'key/' + cacheKey : 'slot/route:/built';
+      expect(cached[routeCacheId]).toBe(btoa(JSON.stringify('route')));
+    },
+  );
+
   it('emits independently resolved immutable elements without route build paths', async () => {
     const id = 'slice:folder/fragment';
     const render = vi.fn(() => 'fragment');
@@ -709,10 +884,10 @@ describe('defineRouter route resolver', () => {
     const files = new Map<string, string>();
     const metadata = new Map<string, string>();
     const utils = makeUtils();
-    utils.renderRsc.mockImplementation(
-      async (elements, options) =>
-        new Response(JSON.stringify({ elements, etags: options?.etags })).body!,
-    );
+    utils.renderRsc.mockImplementation(async (elements, options) => {
+      return new Response(JSON.stringify({ elements, etags: options?.etags }))
+        .body!;
+    });
     await router.handleBuild({
       ...utils,
       rscPathToFileName: (path) => 'payload/' + path,
@@ -725,10 +900,14 @@ describe('defineRouter route resolver', () => {
       },
       unstable_registerPrunableFile: vi.fn(),
     });
+    expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(INTENT_ID);
     expect(files.size).toBe(1);
     expect(
       JSON.parse(files.get('payload/' + encodeSliceId('folder/fragment'))!),
-    ).toEqual({ elements: { [id]: 'fragment' }, etags: { [id]: 1 } });
+    ).toEqual({
+      elements: { [id]: 'fragment' },
+      etags: { [id]: 1 },
+    });
     const runtime = defineRouter({
       resolve: async () => null,
       resolveElement,
@@ -742,7 +921,7 @@ describe('defineRouter route resolver', () => {
       runtimeUtils,
     );
     expect(runtimeUtils.renderRsc).toHaveBeenCalledWith(
-      { [id]: 'fragment' },
+      { [id]: 'fragment', [INTENT_ID]: intentPromise },
       { etags: { [id]: 1 } },
     );
     expect(render).toHaveBeenCalledOnce();
@@ -1056,7 +1235,9 @@ describe('defineRouter route resolver', () => {
       expect.any(ReadableStream),
     );
     expect(utils.renderRsc).toHaveBeenCalledWith(
-      { 'slice:summary': 'static summary' },
+      {
+        'slice:summary': 'static summary',
+      },
       { etags: { 'slice:summary': 1 } },
     );
   });
@@ -1099,4 +1280,80 @@ describe('defineRouter route resolver', () => {
     sandbox.__WAKU_ROUTER_PREFETCH__!('/posts/two', (id) => modules.push(id));
     expect(modules).toEqual(['post-module']);
   });
+});
+
+it('uses the declared custom 404 after an interceptor intent without running the gated action', async () => {
+  const router = defineRouter({
+    resolve: async (path, query) =>
+      path === '/404'
+        ? createRouterDefinition('missing:' + query)
+        : createRouterDefinition('protected'),
+    getHas404: async () => true,
+    unstable_interceptors: [
+      async (next) => {
+        requestNotFound();
+        return next();
+      },
+    ],
+  });
+  const utils = makeUtils();
+  const tryAction = vi.fn();
+  await router.handleRequest(
+    {
+      type: 'http',
+      pathname: '/protected',
+      req: new Request('http://localhost/protected?q=one'),
+      tryAction,
+    },
+    utils,
+  );
+  expect(utils.renderHtml).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.anything(),
+    expect.objectContaining({ status: 404 }),
+  );
+  expect(utils.renderRsc.mock.calls[0]![0]['route:/404']).toBe('missing:q=one');
+  expect(tryAction).not.toHaveBeenCalled();
+});
+
+it('leaves cancellation without an intent to Minimal', async () => {
+  const router = defineRouter({
+    resolve: async () => cancelRender(),
+    getHas404: async () => true,
+  });
+  const utils = makeUtils();
+  await expect(
+    router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/cancelled',
+        req: new Request('http://localhost/cancelled'),
+      },
+      utils,
+    ),
+  ).rejects.toSatisfy(isRenderCancellation);
+  await expect(
+    router.handleRequest(rscInput('/cancelled'), utils),
+  ).rejects.toSatisfy(isRenderCancellation);
+  expect(utils.renderHtml).not.toHaveBeenCalled();
+  expect(utils.renderRsc).not.toHaveBeenCalled();
+});
+
+it('ignores invalid later redirects after an intent has won', async () => {
+  const router = defineRouter({
+    resolve: async () => {
+      requestRedirect('/done');
+      requestRedirect('invalid' as '/');
+      return createRouterDefinition('body');
+    },
+  });
+  const utils = makeUtils();
+  await router.handleRequest(rscInput('/gate'), utils);
+  expect(
+    JSON.parse(
+      await (utils.renderRsc.mock.calls[0]![0][
+        INTENT_ID
+      ] as PromiseLike<string>),
+    ),
+  ).toEqual({ status: 307, location: '/done' });
 });

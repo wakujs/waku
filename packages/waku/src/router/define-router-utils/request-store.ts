@@ -1,4 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { unstable_createWeakPromise as createWeakPromise } from 'waku/minimal/server';
+import type { RouteIntentData } from '../isomorphic-utils/router-protocol.js';
 
 export type HandlerInterceptor = <T>(next: () => Promise<T>) => Promise<T>;
 
@@ -8,11 +10,38 @@ export type RouterStore = {
   req: Request;
   rscPath?: string;
   rscParams?: unknown;
-  rerender?: Rerender;
+  rerender?: Rerender | undefined;
   nonce?: string;
+  intent?: ReturnType<typeof createRouteIntent>;
 };
 
 const routerStorage = new AsyncLocalStorage<RouterStore>();
+
+const createRouteIntent = (signal: AbortSignal) => {
+  const { promise, resolve } = createWeakPromise();
+  let value: RouteIntentData | undefined;
+  return {
+    promise,
+    get value() {
+      return value;
+    },
+    record(intent: RouteIntentData) {
+      if (value || signal.aborted) {
+        return;
+      }
+      value = intent;
+      resolve(JSON.stringify(intent));
+    },
+  };
+};
+
+export const getRouteIntent = () => {
+  const store = routerStorage.getStore();
+  if (!store) {
+    throw new Error('Route intent is not available.');
+  }
+  return (store.intent ??= createRouteIntent(store.req.signal));
+};
 
 export const runWithRouterStore = <T>(store: RouterStore, fn: () => T): T =>
   routerStorage.run(store, fn);
@@ -70,7 +99,7 @@ export function getRscParams(): unknown {
   return routerStorage.getStore()?.rscParams;
 }
 
-export const setRerender = (rerender: Rerender) => {
+export const setRerender = (rerender: Rerender | undefined) => {
   const store = routerStorage.getStore();
   if (store) {
     store.rerender = rerender;

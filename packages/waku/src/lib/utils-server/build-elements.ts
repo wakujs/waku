@@ -1,6 +1,5 @@
 import { IMMUTABLE_ETAG, isValidEtag } from '../utils-isomorphic/etags.js';
-import type { Etags } from '../utils-isomorphic/etags.js';
-
+import type { Etag, Etags } from '../utils-isomorphic/etags.js';
 /** A slot renderer and its validator; immutable slots are reusable indefinitely. */
 export type ElementSource = {
   immutable?: boolean;
@@ -16,7 +15,8 @@ type BuiltElements = {
 /**
  * Renders sources whose validators the client does not hold, returning their
  * elements and etags for `renderRsc`. Missing or invalid validators force a
- * render; a previously advertised validator is then cleared.
+ * render; a previously advertised validator is then cleared. Source errors
+ * propagate without producing an elements record.
  */
 export const buildElements = async (
   clientEtags: Etags,
@@ -30,7 +30,7 @@ export const buildElements = async (
       const rawEtag = elementSource.immutable
         ? IMMUTABLE_ETAG
         : await elementSource.getEtag?.();
-      const etag = isValidEtag(rawEtag) ? rawEtag : undefined;
+      const etag: Etag | undefined = isValidEtag(rawEtag) ? rawEtag : undefined;
       if (etag !== undefined && etag === clientEtags[slotId]) {
         return;
       }

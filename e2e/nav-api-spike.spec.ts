@@ -95,19 +95,6 @@ test.describe('nav-api-spike imports', () => {
     expect(src).toContain("info?.scroll === false ? { scroll: 'manual' } : {}");
   });
 
-  test('FollowBoundary remounts on path and resets on query', () => {
-    const bindingPath = fileURLToPath(
-      new URL('./fixtures/nav-api-spike/src/nav-binding.tsx', import.meta.url),
-    );
-    const src = readFileSync(bindingPath, 'utf8');
-    expect(src).toContain('key={route.path}');
-    expect(src).toContain(
-      'routeKey={`${route.path}\\0${route.query}\\0${route.hash}`}',
-    );
-    expect(src).toContain('getDerivedStateFromProps');
-    expect(src).toContain('decideFollow');
-  });
-
   test('slot follow count is not module state', () => {
     const bindingPath = fileURLToPath(
       new URL('./fixtures/nav-api-spike/src/nav-binding.tsx', import.meta.url),
@@ -120,9 +107,7 @@ test.describe('nav-api-spike imports', () => {
     expect(src).toContain("typeof info?.follows === 'number'");
     expect(src).not.toContain("event.navigationType !== 'replace'");
     const chainIdx = src.indexOf("typeof info?.follows === 'number'");
-    const samePathIdx = src.indexOf(
-      'next.path === current.path && next.query === current.query',
-    );
+    const samePathIdx = src.indexOf('next.path === current.path');
     expect(chainIdx).toBeGreaterThan(-1);
     expect(chainIdx).toBeLessThan(samePathIdx);
     expect(src).toContain('last.href === href && last.follows === follows');
@@ -252,6 +237,19 @@ test.describe('nav-api-spike', () => {
     await expect(page).toHaveURL(/\/new$/);
   });
 
+  test('a completed redirect does not interrupt the next navigation', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await page.evaluate(async () => {
+      await window.navigation.navigate('/old').finished;
+      await window.navigation.navigate('/hello/spike').finished;
+    });
+    await expect(page.getByTestId('hello')).toHaveText('Hello spike');
+    await expect(page).toHaveURL(/\/hello\/spike$/);
+  });
+
   test('a same-path query redirect renders the target', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
@@ -269,7 +267,7 @@ test.describe('nav-api-spike', () => {
     await expect(page.getByTestId('follow-error')).toHaveText(
       'detected a navigation loop',
     );
-    await expect(page).toHaveURL(/\/hash-only#details$/);
+    await expect(page).toHaveURL(/\/hash-only$/);
   });
 
   test('a query redirect cycle stops at the follow limit', async ({ page }) => {
@@ -341,37 +339,27 @@ test.describe('nav-api-spike', () => {
     await expect(page.getByTestId('owning-follow-count')).toHaveText('0');
   });
 
-  test('a load follow then a slot revisit is not skipped as a replay', async ({
-    page,
-  }) => {
-    await page.goto(`http://localhost:${port}/mix`);
+  test('fresh same-query intents share the follow budget', async ({ page }) => {
+    let mixBFetches = 0;
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === '/RSC/R/mix-b.txt') {
+        mixBFetches += 1;
+      }
+    });
+    await page.goto(`http://localhost:${port}/mix-budget?same=1`);
     await waitForHydration(page);
-    await expect(page.getByTestId('mix')).toHaveText('mix');
-    // derived from the follow contract, not from a prior run:
-    //   slot mix-a → /mix-b?mix=1 (1)
-    //   load: mix-b RSC is HTTP 404, so decideFollow hops to /404?mix=1 (2)
-    //   slot 404 → /mix-b?mix=1 (3)
-    //   load 404-follows to /404?mix=1 (4); path is already /404, so the
-    //   boundary does not remount and the chain stalls.
-    // omitting setFollows(outcome.follows) resumes the second slot from 1
-    // and leaves the count at 2. a 200 404-page for mix-b skips both load
-    // hops and also leaves it at 2.
-    await expect(
-      page.getByTestId('mix-host').getByTestId('follow-count'),
-    ).toHaveText('4');
-    await expect(
-      page.getByTestId('mix-host').getByTestId('follow-error'),
-    ).toHaveCount(0);
+    const host = page.getByTestId('mix-budget-host');
+    await expect(host.getByTestId('follow-error')).toHaveText(
+      'too many redirect or 404 follows',
+      { timeout: 30_000 },
+    );
+    await expect(host.getByTestId('follow-count')).toHaveText('20');
+    expect(mixBFetches).toBe(10);
   });
 
-  test('a mixed slot and load follow chain stops at the follow limit', async ({
+  test('redirect and not-found intents share the follow limit', async ({
     page,
   }) => {
-    // mixcycle remounts FollowBoundary on each 404 slot throw; load hops
-    // to /404 in between. both share MAX_FOLLOWS_PER_NAVIGATION: 10 load
-    // hops (mix-b RSC) plus 10 slot hops hit 20. omitting
-    // setFollows(outcome.follows), slots still display 20 and mix-b is
-    // fetched ~20 times.
     test.setTimeout(60_000);
     let mixBFetches = 0;
     page.on('request', (request) => {
@@ -438,4 +426,90 @@ test.describe('nav-api-spike', () => {
     await expect(page.getByTestId('static')).toHaveText('Static');
     await expect(page).toHaveURL(/\/static$/);
   });
+
+  test('a newer navigation supersedes an action redirect that is loading', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/rerender-action`);
+    await waitForHydration(page);
+    const requested = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const sent = Promise.withResolvers<void>();
+    await page.route('**/RSC/R/new.txt*', async (route) => {
+      const response = await route.fetch();
+      requested.resolve();
+      await release.promise;
+      await route.fulfill({ response });
+      sent.resolve();
+    });
+    try {
+      await page
+        .getByTestId('render-redirect')
+        .evaluate((button: HTMLButtonElement) => button.click());
+      await requested.promise;
+      const cancelled = page.waitForEvent('requestfailed', {
+        predicate: (request) => request.url().includes('/RSC/R/new.txt'),
+      });
+      await page.evaluate(
+        () => window.navigation.navigate('/hello/latest').finished,
+      );
+      await cancelled;
+      release.resolve();
+      await sent.promise;
+      await expect(page).toHaveURL(/\/hello\/latest$/);
+      await expect(page.getByTestId('hello')).toHaveText('Hello latest');
+    } finally {
+      release.resolve();
+    }
+  });
+
+  for (const { path, buttonId, contentId } of [
+    { path: '/static', buttonId: 'render-static', contentId: 'static' },
+    {
+      path: '/rerender-action',
+      buttonId: 'render-same',
+      contentId: 'rerender-count',
+    },
+  ]) {
+    test(`an action response for ${path} supersedes an older navigation that is loading`, async ({
+      page,
+    }) => {
+      await page.goto(`http://localhost:${port}/rerender-action`);
+      await waitForHydration(page);
+      const requested = Promise.withResolvers<void>();
+      const release = Promise.withResolvers<void>();
+      const sent = Promise.withResolvers<void>();
+      await page.route('**/RSC/R/hello/older.txt*', async (route) => {
+        const response = await route.fetch();
+        requested.resolve();
+        await release.promise;
+        await route.fulfill({ response });
+        sent.resolve();
+      });
+      try {
+        await page.evaluate(() => {
+          void window.navigation
+            .navigate('/hello/older')
+            .finished?.catch(() => {});
+        });
+        await requested.promise;
+        const cancelled = page.waitForEvent('requestfailed', {
+          predicate: (request) =>
+            request.url().includes('/RSC/R/hello/older.txt'),
+        });
+        await page
+          .getByTestId(buttonId)
+          .evaluate((button: HTMLButtonElement) => button.click());
+        await cancelled;
+        await expect(page.getByTestId(contentId)).toBeVisible();
+        release.resolve();
+        await sent.promise;
+        await page.evaluate(() => window.navigation.transition?.finished);
+        await expect(page).toHaveURL(`http://localhost:${port}${path}`);
+        await expect(page.getByTestId(contentId)).toBeVisible();
+      } finally {
+        release.resolve();
+      }
+    });
+  }
 });

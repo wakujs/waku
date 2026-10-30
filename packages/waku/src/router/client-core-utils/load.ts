@@ -1,12 +1,18 @@
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
-import { MAX_FOLLOWS_PER_NAVIGATION, decideFollow } from './error-route.js';
-import { getRouteUrl, isSameRscRoute } from './route-url.js';
+import { INTENT_ID } from '../isomorphic-utils/router-protocol.js';
+import { getRouteIntentOutcome } from './observe-route-intent.js';
+import {
+  MAX_FOLLOWS_PER_NAVIGATION,
+  decideRouteIntent,
+  getRouteIntentDecision,
+} from './route-follow.js';
+import { getRouteUrl } from './route-url.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
 /**
  * A fetch attempt and its intended browser URL, which can differ for a custom
- * 404. `follows` counts preceding fetch-time and render-time follows.
+ * 404. `follows` counts earlier redirects and custom-404 follows in this navigation.
  */
 export type RouteAttempt = {
   route: RouteProps;
@@ -15,9 +21,9 @@ export type RouteAttempt = {
 };
 
 /**
- * Fetches one attempt's elements, rejecting with redirect or not-found errors
- * to follow. Return `undefined` only when this Root already has usable content
- * for the attempt, not when a route is missing. Forward the signal to transport.
+ * Fetches one attempt's elements. Return `undefined` only when this Root
+ * already has usable content for the attempt. An empty record cancels the
+ * update, preserving the active route. Forward the signal to transport.
  */
 export type FetchRoute = (
   attempt: RouteAttempt,
@@ -39,36 +45,26 @@ export type LoadOutcome =
     }
   | { type: 'reused'; route: RouteProps; url: URL; follows: number }
   | {
-      type: 'external';
-      url: URL;
-      error: unknown;
-      route: RouteProps;
-      /** Last attempted browser URL, for applying history before leaving. */
-      from: URL;
-      follows: number;
-    }
-  | {
       type: 'failed';
       route: RouteProps;
       url: URL;
       error: unknown;
       follows: number;
     }
-  | { type: 'aborted' };
+  | { type: 'aborted' }
+  | { type: 'leave'; url: URL; follows: number; location: URL };
 
 /** A payload-bearing outcome; does not imply that React has committed it. */
 export type Loaded = Extract<LoadOutcome, { type: 'loaded' }>;
 
 /**
- * `settled` identifies the retained RSC route, used to reuse hash-only redirects
- * to it; it need not have painted. `url` defaults to the requested route's URL.
- * `follows` defaults to zero; pass the preceding count when resuming a
- * render-time follow chain.
+ * `url` defaults to the requested route's URL. `follows` defaults to zero;
+ * pass the preceding count when following a route intent. `has404` enables
+ * recovery from HTTP 404s, including missing files on a static host.
  */
 export type LoadOptions = {
   signal: AbortSignal;
   has404: boolean;
-  settled: RouteProps;
   url?: URL;
   follows?: number;
 };
@@ -94,16 +90,16 @@ export const rejectOnAbort = <T>(
 };
 
 /**
- * Fetches a route through the supplied callback and follows redirects or a
- * custom 404 within one shared follow budget. `has404` enables following /404
- * while retaining the requested browser URL. Cancellation stops waiting even
- * if the callback ignores its signal; transport may continue in that case.
- * Returns an outcome without merging elements or updating history or scroll.
- * The binding reconciles response route metadata and handles streamed-slot
- * errors, which can occur after this promise resolves.
+ * Fetches a route through the supplied callback without merging elements or
+ * updating browser state. Ready intents and HTTP 404s follow within the navigation
+ * budget before returning a payload. `leave` carries the attempted `url` and
+ * external `location`; the binding commits history before replacing the document.
+ * Cancellation stops waiting even if the callback ignores its
+ * signal. Pending intents do not delay loading; the binding observes them after
+ * committing and reconciles the final response's route metadata.
  *
  * @example
- * const outcome = await unstable_load(fetchRoute, route, { signal, has404, settled });
+ * const outcome = await unstable_load(fetchRoute, route, { signal, has404 });
  */
 export const load = async (
   fetchRoute: FetchRoute,
@@ -125,8 +121,40 @@ export const load = async (
       if (opts.signal.aborted) {
         return { type: 'aborted' };
       }
+      if (elements && Reflect.ownKeys(elements).length === 0) {
+        return { type: 'aborted' };
+      }
       if (elements === undefined) {
         return { type: 'reused', ...attempt };
+      }
+      const pending = elements[INTENT_ID] as
+        PromiseLike<string | undefined> | null | undefined;
+      if (pending) {
+        const outcome = await getRouteIntentOutcome(pending);
+        if (opts.signal.aborted) {
+          return { type: 'aborted' };
+        }
+        const decision = getRouteIntentDecision(
+          outcome,
+          elements,
+          attempt,
+          opts.has404,
+        );
+        if (decision?.type === 'follow') {
+          return run({
+            route: decision.target,
+            url: decision.url,
+            follows: attempt.follows + 1,
+          });
+        }
+        if (decision?.type === 'leave') {
+          return {
+            type: 'leave',
+            url: attempt.url,
+            follows: attempt.follows,
+            location: decision.url,
+          };
+        }
       }
       return {
         type: 'loaded',
@@ -139,20 +167,15 @@ export const load = async (
       if (opts.signal.aborted) {
         return { type: 'aborted' };
       }
-      const decision = decideFollow(error, attempt, {
-        has404: opts.has404,
-        maxFollows: MAX_FOLLOWS_PER_NAVIGATION,
-      });
-      if (decision.type === 'leave') {
-        return {
-          type: 'external',
-          url: decision.url,
-          error,
-          route: attempt.route,
-          from: attempt.url,
-          follows: attempt.follows,
-        };
-      }
+      const decision =
+        error instanceof Error &&
+        error.cause instanceof Response &&
+        error.cause.status === 404
+          ? decideRouteIntent({ status: 404 }, attempt, {
+              has404: opts.has404,
+              maxFollows: MAX_FOLLOWS_PER_NAVIGATION,
+            })
+          : { type: 'none' as const };
       if (decision.type !== 'follow') {
         return {
           type: 'failed',
@@ -167,18 +190,6 @@ export const load = async (
         url: decision.url,
         follows: attempt.follows + 1,
       };
-      if (
-        initialFollows === 0 &&
-        isSameRscRoute(decision.target, attempt.route) &&
-        isSameRscRoute(decision.target, opts.settled)
-      ) {
-        return {
-          type: 'reused',
-          route: nextAttempt.route,
-          url: nextAttempt.url,
-          follows: nextAttempt.follows,
-        };
-      }
       return run(nextAttempt);
     }
   };

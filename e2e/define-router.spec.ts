@@ -1,5 +1,10 @@
 import { expect } from '@playwright/test';
-import { prepareNormalSetup, test, waitForHydration } from './utils.js';
+import {
+  createFetchResponseReader,
+  prepareNormalSetup,
+  test,
+  waitForHydration,
+} from './utils.js';
 
 const startApp = prepareNormalSetup('define-router');
 
@@ -23,6 +28,313 @@ test.describe(`define-router`, () => {
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
   });
 
+  for (const kind of ['redirect', 'not-found']) {
+    test(`a cancelled mutable slot repeats its ${kind} intent on a revisit`, async ({
+      page,
+    }) => {
+      const readBody = await createFetchResponseReader(page);
+      const etags: string[] = [];
+      page.on('request', (request) => {
+        if (request.url().includes(`/RSC/R/etag-${kind}`)) {
+          etags.push(request.headers()['x-waku-etags'] ?? '{}');
+        }
+      });
+      await page.goto(`http://localhost:${port}/`);
+      await waitForHydration(page);
+      for (let visit = 0; visit < 2; visit++) {
+        const response = page.waitForResponse(`**/RSC/R/etag-${kind}*`);
+        await page
+          .getByRole('link', { name: `Mutable ${kind}`, exact: true })
+          .click();
+        expect(await readBody((await response).url())).not.toContain(
+          'gated-v1',
+        );
+        await expect(page).toHaveURL(
+          `http://localhost:${port}/${kind === 'redirect' ? 'foo' : 'etag-not-found'}`,
+        );
+        await expect(
+          page.getByRole('heading', {
+            name:
+              kind === 'redirect' ? 'Foo' : 'Scoped Not Found: missing context',
+            exact: true,
+          }),
+        ).toBeVisible();
+        await page.goBack();
+        await expect(page.getByTestId('home-title')).toHaveText('Home');
+      }
+      expect(etags).toHaveLength(2);
+      expect(etags.join()).not.toContain('gated-v1');
+    });
+
+    test(`an unavailable slice preserves its ${kind} intent`, async ({
+      request,
+    }) => {
+      const response = await request.get(
+        `http://localhost:${port}/RSC/S/guarded-${kind}.txt`,
+      );
+      expect(response.status()).toBe(200);
+      expect(response.headers()['cache-control']).toBe('private, no-store');
+      expect(await response.text()).toContain('"INTENT"');
+    });
+  }
+
+  test('client navigation changes a fragment without another RSC request', async ({
+    page,
+  }) => {
+    const requests: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/RSC/R/fragment.txt')) {
+        requests.push(request.url());
+      }
+    });
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await page
+      .getByRole('link', { name: 'Client fragment', exact: true })
+      .click();
+    await expect(
+      page.getByRole('heading', { name: 'Client fragment' }),
+    ).toBeVisible();
+    await page.getByRole('link', { name: 'Comments', exact: true }).click();
+    await expect(page).toHaveURL(`http://localhost:${port}/fragment#comments`);
+    expect(requests).toHaveLength(1);
+  });
+
+  test.describe('no-JavaScript form cancellation', () => {
+    test.use({ javaScriptEnabled: false });
+
+    for (const { kind, status, destination, heading } of [
+      { kind: 'redirect', status: 303, destination: '/foo', heading: 'Foo' },
+      {
+        kind: 'not-found',
+        status: 404,
+        destination: '/guarded-form-not-found',
+        heading: 'Scoped Not Found: missing context',
+      },
+    ]) {
+      test(`a ${kind} from the route source prevents executing the action`, async ({
+        page,
+      }) => {
+        await page.goto(`http://localhost:${port}/guarded-form-${kind}`);
+        const posted = page.waitForResponse(
+          (response) => response.request().method() === 'POST',
+        );
+        await page
+          .getByRole('button', { name: 'Submit guarded action' })
+          .click();
+        expect((await posted).status()).toBe(status);
+        await expect(page).toHaveURL(`http://localhost:${port}${destination}`);
+        await expect(
+          page.getByRole('heading', { name: heading, exact: true }),
+        ).toBeVisible();
+      });
+    }
+  });
+
+  test('an interceptor redirect is not replayed after access changes', async ({
+    page,
+  }) => {
+    const readResponseBody = await createFetchResponseReader(page);
+    const requests: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/RSC/R/interceptor-cache')) {
+        requests.push(request.url());
+      }
+    });
+    await page.setExtraHTTPHeaders({ 'x-waku-test-gate': 'deny' });
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await page
+      .locator('a[href="/interceptor-cache"]')
+      .click({ noWaitAfter: true });
+    await expect(page.getByTestId('foo-title')).toHaveText('Foo');
+
+    await page.setExtraHTTPHeaders({ 'x-waku-test-gate': 'allow' });
+    await page.locator('a[href="/"]').click({ noWaitAfter: true });
+    await expect(page.getByTestId('home-title')).toHaveText('Home');
+    const response = page.waitForResponse('**/RSC/R/interceptor-cache*');
+    await page
+      .locator('a[href="/interceptor-cache"]')
+      .click({ noWaitAfter: true });
+    await readResponseBody((await response).url());
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Allowed page',
+    );
+    expect(requests).toHaveLength(2);
+    expect(page.url()).toBe(`http://localhost:${port}/interceptor-cache`);
+
+    await page.setExtraHTTPHeaders({ 'x-waku-test-gate': 'deny' });
+    await page.locator('a[href="/"]').click({ noWaitAfter: true });
+    await expect(page.getByTestId('home-title')).toHaveText('Home');
+    await page
+      .locator('a[href="/interceptor-cache"]')
+      .click({ noWaitAfter: true });
+    await expect(page.getByTestId('foo-title')).toHaveText('Foo');
+    expect(requests).toHaveLength(3);
+  });
+
+  test('an interceptor can add cookies to the chosen redirect response', async ({
+    request,
+  }) => {
+    const response = await request.get(
+      `http://localhost:${port}/interceptor-cache`,
+      {
+        headers: { 'x-waku-test-gate': 'deny' },
+        maxRedirects: 0,
+      },
+    );
+    expect(response.status()).toBe(307);
+    expect(response.headers().location).toBe('/foo');
+    expect(response.headers()['cache-control']).toBe('private, no-store');
+    expect(response.headers()['x-waku-test-interceptor']).toBe('kept');
+    expect(
+      response
+        .headersArray()
+        .filter(({ name }) => name.toLowerCase() === 'set-cookie')
+        .map(({ value }) => value),
+    ).toEqual([
+      'session=interceptor; HttpOnly; Path=/',
+      'preferences=compact; Path=/',
+    ]);
+  });
+
+  test('an interceptor can add cookies to its custom 404 response', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      javaScriptEnabled: false,
+      extraHTTPHeaders: {
+        'x-waku-test-gate': 'missing',
+        'x-waku-test-context': 'tenant-a',
+      },
+    });
+    try {
+      const page = await context.newPage();
+      const response = await page.goto(
+        `http://localhost:${port}/interceptor-cache`,
+      );
+      expect(response?.status()).toBe(404);
+      expect(response?.headers()['cache-control']).toBe('private, no-store');
+      expect(response?.headers()['x-waku-test-interceptor']).toBe('kept');
+      expect(await context.cookies()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'session',
+            value: 'interceptor',
+            httpOnly: true,
+          }),
+          expect.objectContaining({ name: 'preferences', value: 'compact' }),
+        ]),
+      );
+      await expect(
+        page.getByRole('heading', { name: 'Scoped Not Found: tenant-a' }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: 'Allowed page' }),
+      ).toBeHidden();
+    } finally {
+      await context.close();
+    }
+  });
+
+  for (const gate of ['after', 'after-not-found']) {
+    test(`an intent recorded after next preserves the middleware-owned document (${gate})`, async ({
+      request,
+    }) => {
+      const response = await request.get(
+        `http://localhost:${port}/interceptor-cache`,
+        { headers: { 'x-waku-test-gate': gate }, maxRedirects: 0 },
+      );
+      expect(response.status()).toBe(200);
+      expect(response.headers().location).toBeUndefined();
+      expect(response.headers()['x-waku-test-interceptor']).toBe('kept');
+      expect(await response.text()).toContain('Allowed page');
+    });
+  }
+
+  test('a static action redirect does not become the next visit intent', async ({
+    page,
+  }) => {
+    const requests: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/RSC/R/action-static')) {
+        requests.push(request.url());
+      }
+    });
+    await page.goto(`http://localhost:${port}/action-static`);
+    await waitForHydration(page);
+    await page.locator('button[type="submit"]').click({ noWaitAfter: true });
+    await expect(page.getByTestId('foo-title')).toHaveText('Foo');
+    await page.locator('a[href="/"]').click({ noWaitAfter: true });
+    await expect(page.getByTestId('home-title')).toHaveText('Home');
+    await page.locator('a[href="/action-static"]').click({ noWaitAfter: true });
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Static action page',
+    );
+    expect(requests).toHaveLength(0);
+    expect(page.url()).toBe(`http://localhost:${port}/action-static`);
+  });
+
+  test('an async dynamic page checks access again on the next visit', async ({
+    page,
+  }) => {
+    const readResponseBody = await createFetchResponseReader(page);
+    const requests: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/RSC/R/async-cache')) {
+        requests.push(request.url());
+      }
+    });
+    await page.setExtraHTTPHeaders({ 'x-waku-test-gate': 'deny' });
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await page.locator('a[href="/async-cache"]').click({ noWaitAfter: true });
+    await expect(page.getByTestId('foo-title')).toHaveText('Foo');
+
+    await page.setExtraHTTPHeaders({ 'x-waku-test-gate': 'allow' });
+    await page.locator('a[href="/"]').click({ noWaitAfter: true });
+    await expect(page.getByTestId('home-title')).toHaveText('Home');
+    const response = page.waitForResponse('**/RSC/R/async-cache*', {
+      timeout: 10_000,
+    });
+    await page.locator('a[href="/async-cache"]').click({ noWaitAfter: true });
+    await readResponseBody((await response).url());
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Async page',
+    );
+    expect(requests).toHaveLength(2);
+    expect(page.url()).toBe(`http://localhost:${port}/async-cache`);
+  });
+
+  test('an interceptor intent preserves ALS in the streamed 404 page', async ({
+    request,
+  }) => {
+    const response = await request.get(
+      `http://localhost:${port}/interceptor-missing`,
+      {
+        headers: { 'x-waku-test-context': 'tenant-a' },
+      },
+    );
+    expect(response.status()).toBe(404);
+    expect(await response.text()).toContain(
+      'Scoped Not Found: <!-- -->tenant-a',
+    );
+  });
+
+  for (const pathname of ['/missing', '/interceptor-missing']) {
+    test(`a cancelled custom 404 for ${pathname} returns the generic 404 document`, async ({
+      request,
+    }) => {
+      const response = await request.get(
+        `http://localhost:${port}${pathname}`,
+        { headers: { 'x-waku-test-cancel-404': '1' } },
+      );
+      expect(response.status()).toBe(404);
+      expect(response.headers()['cache-control']).toBe('private, no-store');
+      expect(await response.text()).toContain('<h1>Not Found</h1>');
+    });
+  }
+
   test('foo', async ({ page }) => {
     await page.goto(`http://localhost:${port}/foo`);
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
@@ -40,6 +352,53 @@ test.describe(`define-router`, () => {
     expect(response.status()).toBe(307);
     expect(response.headers().location).toBe('/foo?q=redirected');
   });
+
+  test('a cancelled resolver redirects during client navigation', async ({
+    page,
+  }) => {
+    const gate = Promise.withResolvers<void>();
+    await page.route('**/RSC/R/foo*', async (route) => {
+      await gate.promise;
+      await route.continue();
+    });
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    const destination = page.waitForRequest('**/RSC/R/foo*');
+    try {
+      await page
+        .getByRole('link', { name: 'Resolver redirect', exact: true })
+        .click();
+      await destination;
+      await expect(page.getByTestId('home-title')).toHaveText('Home');
+      await expect(page).toHaveURL(`http://localhost:${port}/`);
+    } finally {
+      gate.resolve();
+    }
+    await expect(page.getByTestId('foo-title')).toHaveText('Foo');
+    await expect(page).toHaveURL(`http://localhost:${port}/foo?q=redirected`);
+  });
+
+  for (const mode of ['Push', 'Replace'] as const) {
+    test(`a ready absolute redirect preserves ${mode.toLowerCase()} history when going back`, async ({
+      page,
+    }) => {
+      await page.goto(`http://localhost:${port}/foo`);
+      await page.goto(`http://localhost:${port}/`);
+      await waitForHydration(page);
+      await page
+        .getByRole('button', { name: `${mode} absolute redirect` })
+        .click();
+      await expect(page).toHaveURL(`http://localhost:${port}/api/hi`);
+      await expect(page.locator('body')).toHaveText('hello world!');
+      await page.goBack();
+      await expect(page).toHaveURL(
+        `http://localhost:${port}/${mode === 'Push' ? '' : 'foo'}`,
+      );
+      await expect(
+        page.getByTestId(mode === 'Push' ? 'home-title' : 'foo-title'),
+      ).toHaveText(mode === 'Push' ? 'Home' : 'Foo');
+    });
+  }
 
   test('typed hrefs render and navigate from a Server Component', async ({
     page,

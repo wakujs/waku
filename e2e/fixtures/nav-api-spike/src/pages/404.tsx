@@ -7,10 +7,10 @@ let count = 0;
 
 export default function NotFoundPage({ query = '' }: { query?: string }) {
   const params = new URLSearchParams(query);
-  if (params.get('mix') === '1') {
-    redirect('/mix-b?mix=1' as '/');
-  }
   const cycle = params.get('mixcycle');
+  if (cycle === 'same') {
+    redirect('/mix-b?mixcycle=same' as '/');
+  }
   if (cycle === 'a') {
     redirect('/mix-b?mixcycle=b' as '/');
   }

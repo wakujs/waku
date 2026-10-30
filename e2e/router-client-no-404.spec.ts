@@ -45,6 +45,30 @@ test.describe('router-client-no-404', () => {
       0,
     );
     await expect(page).toHaveURL(/\/missing$/);
+    await expect(page.getByTestId('go-missing')).toHaveCount(0);
+    await page.goBack();
+    await expect(page.getByTestId('go-missing')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Not Found' })).toHaveCount(
+      0,
+    );
+  });
+
+  test('direct not found renders the default document without JavaScript', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    try {
+      const page = await context.newPage();
+      const response = await page.goto(
+        `http://localhost:${port}/trigger-not-found`,
+      );
+      expect(response?.status()).toBe(404);
+      await expect(
+        page.getByRole('heading', { name: 'Not Found' }),
+      ).toBeVisible();
+    } finally {
+      await context.close();
+    }
   });
 
   test('client navigation to missing trailing-slash route renders Not Found fallback without /404 page', async ({

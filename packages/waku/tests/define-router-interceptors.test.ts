@@ -2,11 +2,17 @@ import type { ReactNode } from 'react';
 import { createElement } from 'react';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { describe, expect, it, vi } from 'vitest';
+import type { RenderHtml } from '../src/lib/types.js';
+import {
+  unstable_cancelRender as cancelRender,
+  unstable_isRenderCancellation as isRenderCancellation,
+} from '../src/minimal/server.js';
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
 import { createPages } from '../src/router/create-pages.js';
 import {
   type HandlerInterceptor,
   getRequest,
+  requestNotFound,
 } from '../src/router/define-router.js';
 import { fsRouter } from '../src/router/fs-router.js';
 
@@ -53,7 +59,12 @@ const callHandleRequest = (
     },
     {
       renderRsc: vi.fn().mockResolvedValue(makeStream()),
-      renderHtml: vi.fn().mockResolvedValue(new Response('ok')),
+      renderHtml: vi
+        .fn<RenderHtml>()
+        .mockImplementation(
+          async (_stream, _html, { status }) =>
+            new Response('ok', { status: status ?? 200 }),
+        ),
       renderHtmlFallback: vi.fn(),
       loadBuildMetadata: vi.fn(),
     },
@@ -120,6 +131,40 @@ describe('define-router handler interceptors', () => {
     await callHandleRequest(router);
 
     expect(seen).toBe('from-interceptor');
+  });
+
+  it('preserves interceptor ALS when next renders the requested custom 404', async () => {
+    const als = new AsyncLocalStorage<string>();
+    let seen: string | undefined;
+    const router = make404Router(() => {
+      seen = als.getStore();
+      return 'not found';
+    }, [
+      (next) =>
+        als.run('from-interceptor', async () => {
+          requestNotFound();
+          return next();
+        }),
+    ]);
+
+    await callHandleRequest(router);
+
+    expect(seen).toBe('from-interceptor');
+    expect(als.getStore()).toBeUndefined();
+  });
+
+  it('lets cancellation escape when an interceptor does not call next', async () => {
+    const render = vi.fn(() => 'not found');
+    const router = make404Router(render, [
+      async () => {
+        requestNotFound();
+        cancelRender();
+      },
+    ]);
+    await expect(callHandleRequest(router)).rejects.toSatisfy(
+      isRenderCancellation,
+    );
+    expect(render).not.toHaveBeenCalled();
   });
 
   it('runs createInterceptor-registered interceptors in createPages', async () => {

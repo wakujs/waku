@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 import {
+  createFetchResponseReader,
   prepareNormalSetup,
   test,
   waitForHydration,
@@ -535,6 +536,7 @@ test.describe('router-client', () => {
   test('soft navigation omits the unchanged static layout payload', async ({
     page,
   }) => {
+    const readResponseBody = await createFetchResponseReader(page);
     await page.goto(`http://localhost:${port}/skip/a`);
     await waitForHydration(page);
 
@@ -562,7 +564,7 @@ test.describe('router-client', () => {
     expect(Array.isArray(etags)).toBe(false);
     expect('root' in etags).toBe(true);
 
-    const payload = await response.text();
+    const payload = await readResponseBody(response.url());
     expect(payload).toContain('SKIP_B_PAGE_MARKER');
     expect(payload).not.toContain('SKIP_STATIC_LAYOUT_MARKER');
     expect(payload).not.toContain('SKIP_A_PAGE_MARKER');

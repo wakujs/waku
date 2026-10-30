@@ -1,0 +1,560 @@
+import { describe, expect, it, vi } from 'vitest';
+import {
+  unstable_cancelRender as cancelRender,
+  unstable_hasRenderCancellationDigest as hasRenderCancellationDigest,
+  unstable_isRenderCancellation as isRenderCancellation,
+} from '../src/minimal/server.js';
+import {
+  cacheElementSource,
+  createElementCache,
+} from '../src/router/define-router-utils/element-cache.js';
+import {
+  getRouteIntent,
+  runWithRouterStore,
+} from '../src/router/define-router-utils/request-store.js';
+import {
+  requestNotFound,
+  requestRedirect,
+  unstable_defineRouter,
+  unstable_notFound,
+  unstable_redirect,
+} from '../src/router/server.js';
+
+vi.mock('../src/server.js', () => ({
+  serializeRsc: async (value: unknown) => {
+    try {
+      return new TextEncoder().encode(JSON.stringify(await value));
+    } catch (error) {
+      if (!isRenderCancellation(error)) {
+        throw error;
+      }
+      return new TextEncoder().encode(JSON.stringify({ cancelled: true }));
+    }
+  },
+  deserializeRsc: async (bytes: Uint8Array) => {
+    const value = JSON.parse(new TextDecoder().decode(bytes));
+    if (value?.cancelled) {
+      throw Object.assign(new Error('Flight cancellation'), {
+        digest: 'WAKU_CANCEL_RENDER',
+      });
+    }
+    return value;
+  },
+}));
+
+const withinRequest = <T>(fn: () => T, signal?: AbortSignal) =>
+  runWithRouterStore(
+    { req: new Request('http://localhost/page', signal ? { signal } : {}) },
+    fn,
+  );
+
+const expectPending = async (promise: PromiseLike<unknown>) => {
+  const settled = vi.fn();
+  void Promise.resolve(promise).then(settled, settled);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  expect(settled).not.toHaveBeenCalled();
+};
+
+describe('intent metadata', () => {
+  it('honors an interceptor intent before resolving the route', async () => {
+    const resolve = vi.fn(async () => null);
+    const router = unstable_defineRouter({
+      resolve,
+      getHas404: async () => false,
+      unstable_interceptors: [
+        async (next) => {
+          requestRedirect('/login');
+          return next();
+        },
+      ],
+    });
+    const utils = {
+      renderRsc: vi.fn(
+        async (_elements: Record<string, unknown>) => new ReadableStream(),
+      ),
+      renderHtml: vi.fn(),
+      renderHtmlFallback: vi.fn(),
+      loadBuildMetadata: vi.fn(),
+    };
+    const document = await router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/private',
+        req: new Request('http://localhost/base/private'),
+      },
+      utils,
+    );
+    expect((document as Response).status).toBe(307);
+    expect((document as Response).headers.get('location')).toBe('/base/login');
+    await router.handleRequest(
+      {
+        type: 'rsc',
+        pathname: '/RSC/R/private',
+        rscPath: 'R/private',
+        rscParams: undefined,
+        req: new Request('http://localhost/RSC/R/private'),
+      },
+      utils,
+    );
+    const elements = utils.renderRsc.mock.calls[0]![0];
+    expect(JSON.parse(await (elements.INTENT as Promise<string>))).toEqual({
+      status: 307,
+      location: '/login',
+    });
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
+  it('does not probe the resolver for custom 404 availability', async () => {
+    const resolve = vi.fn(async (path: string) =>
+      path === '/404'
+        ? unstable_notFound()
+        : {
+            elements: {
+              root: { render: () => 'root' },
+              route: { render: () => 'page' },
+            },
+          },
+    );
+    const router = unstable_defineRouter({ resolve });
+    const renderRsc = vi.fn(async (elements) => {
+      await expectPending(elements.INTENT);
+      return new ReadableStream({
+        start(controller) {
+          controller.close();
+        },
+      });
+    });
+    await router.handleRequest(
+      {
+        type: 'rsc',
+        pathname: '/RSC/R/page',
+        rscPath: 'R/page',
+        rscParams: undefined,
+        req: new Request('http://localhost/RSC/R/page'),
+      },
+      {
+        renderRsc,
+        renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
+        loadBuildMetadata: vi.fn(),
+      },
+    );
+    expect(renderRsc).toHaveBeenCalledOnce();
+    expect(resolve).toHaveBeenCalledExactlyOnceWith('/page', '');
+  });
+
+  it.each([
+    [unstable_notFound, { status: 404 }],
+    [() => unstable_redirect('/next'), { status: 307, location: '/next' }],
+  ])(
+    'deprecated helpers record intent and stop execution with a generic cancellation',
+    async (invoke, expected) => {
+      await withinRequest(async () => {
+        let cancellation: unknown;
+        try {
+          invoke();
+          throw new Error('execution continued');
+        } catch (error) {
+          cancellation = error;
+        }
+        expect(isRenderCancellation(cancellation)).toBe(true);
+        expect(typeof cancellation).toBe('symbol');
+        expect(JSON.parse((await getRouteIntent().promise)!)).toEqual(expected);
+      });
+    },
+  );
+
+  it('transports a cancelled resolver redirect as intent without resolving its destination', async () => {
+    const resolve = vi.fn(async () => unstable_redirect('/next?q=one'));
+    const router = unstable_defineRouter({
+      resolve,
+      getHas404: async () => false,
+    });
+    const renderRsc = vi.fn(async (elements) => {
+      expect(elements).toMatchObject({
+        'route:/old': null,
+        ROUTE: ['/old', ''],
+        IS_STATIC: false,
+      });
+      expect(elements).not.toHaveProperty('root');
+      expect(JSON.parse(await elements.INTENT)).toEqual({
+        status: 307,
+        location: '/next?q=one',
+      });
+      return new ReadableStream({
+        start(controller) {
+          controller.close();
+        },
+      });
+    });
+    await router.handleRequest(
+      {
+        type: 'rsc',
+        pathname: '/RSC/R/old',
+        rscPath: 'R/old',
+        rscParams: undefined,
+        req: new Request('http://localhost/RSC/R/old'),
+      },
+      {
+        renderRsc,
+        renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
+        loadBuildMetadata: vi.fn(),
+      },
+    );
+    expect(resolve).toHaveBeenCalledOnce();
+    expect(renderRsc).toHaveBeenCalledOnce();
+    expect(renderRsc).toHaveBeenCalledWith(expect.anything(), {
+      etags: { 'route:/old': '' },
+    });
+  });
+
+  it('keeps a cancelled resolver redirect as an HTTP response without JavaScript', async () => {
+    const router = unstable_defineRouter({
+      resolve: async () => unstable_redirect('/next'),
+      getHas404: async () => false,
+    });
+    const response = await router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/old',
+        req: new Request('http://localhost/old'),
+      },
+      {
+        renderRsc: vi.fn(),
+        renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
+        loadBuildMetadata: vi.fn(),
+      },
+    );
+    expect((response as Response).status).toBe(307);
+    expect((response as Response).headers.get('location')).toBe('/next');
+  });
+
+  it('reuses a preloaded serialized failure without retrying its immutable source', async () => {
+    const cache = createElementCache();
+    cache.preload('slot/cancelled', btoa(JSON.stringify({ cancelled: true })));
+    const render = vi.fn(() => 'recovered');
+    const source = cacheElementSource(
+      { immutable: true, render },
+      'slot/cancelled',
+      cache,
+    );
+    await withinRequest(async () => {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        await expect(source.render()).rejects.toSatisfy(
+          hasRenderCancellationDigest,
+        );
+      }
+      expect(cache.has('slot/cancelled')).toBe(true);
+      expect(render).not.toHaveBeenCalled();
+    });
+  });
+
+  it.each(['root', 'route'] as const)(
+    'retries a throwing immutable %s factory before producing a payload',
+    async (slot) => {
+      let renders = 0;
+      const guarded = {
+        immutable: true,
+        cacheKey: 'guarded',
+        render: () => {
+          if (++renders === 1) {
+            cancelRender();
+          }
+          return 'recovered';
+        },
+      };
+      const router = unstable_defineRouter({
+        resolve: async () => ({
+          elements: {
+            root: { immutable: true, render: () => 'root' },
+            route: { immutable: true, cacheKey: 'page', render: () => 'page' },
+            [slot]: guarded,
+          },
+        }),
+        getHas404: async () => false,
+      });
+      const utils = {
+        renderRsc: vi.fn(
+          async (_elements: Record<string, unknown>) => new ReadableStream(),
+        ),
+        renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
+        loadBuildMetadata: vi.fn(),
+      };
+      const input = {
+        type: 'rsc' as const,
+        pathname: '/RSC/R/page',
+        rscPath: 'R/page',
+        rscParams: undefined,
+        req: new Request('http://localhost/RSC/R/page'),
+      };
+      const id = slot === 'route' ? 'route:/page' : slot;
+      await expect(router.handleRequest(input, utils)).rejects.toSatisfy(
+        isRenderCancellation,
+      );
+      expect(utils.renderRsc).not.toHaveBeenCalled();
+
+      await router.handleRequest(input, utils);
+      expect(utils.renderRsc.mock.calls[0]![0][id]).toBe('recovered');
+      expect(renders).toBe(2);
+    },
+  );
+
+  it('encodes Unicode destinations and preserves existing escapes in HTTP headers', async () => {
+    const router = unstable_defineRouter({
+      resolve: async () => {
+        requestRedirect('/日本?q=café&escaped=%2F');
+        return null;
+      },
+      getHas404: async () => false,
+    });
+    const response = await router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/unicode',
+        req: new Request('http://localhost/base/unicode'),
+      },
+      {
+        renderRsc: vi.fn(),
+        renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
+        loadBuildMetadata: vi.fn(),
+      },
+    );
+    expect(response).toBeInstanceOf(Response);
+    expect((response as Response).status).toBe(307);
+    expect((response as Response).headers.get('location')).toBe(
+      '/base/%E6%97%A5%E6%9C%AC?q=caf%C3%A9&escaped=%2F',
+    );
+  });
+
+  it('delivers a resolver intent even when no route elements are returned', async () => {
+    const router = unstable_defineRouter({
+      resolve: async () => {
+        requestRedirect('/destination');
+        return null;
+      },
+      getHas404: async () => false,
+    });
+    const renderRsc = vi.fn(async (elements) => {
+      expect(JSON.parse((await elements.INTENT)!)).toEqual({
+        status: 307,
+        location: '/destination',
+      });
+      return new ReadableStream({
+        start(controller) {
+          controller.close();
+        },
+      });
+    });
+    await router.handleRequest(
+      {
+        type: 'rsc',
+        pathname: '/RSC/R/resolve',
+        rscPath: 'R/resolve',
+        rscParams: undefined,
+        req: new Request('http://localhost/RSC/R/resolve'),
+      },
+      {
+        renderRsc,
+        renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
+        loadBuildMetadata: vi.fn(),
+      },
+    );
+    expect(renderRsc).toHaveBeenCalledOnce();
+  });
+
+  it('does not await an unused intent for an API response', async () => {
+    let intent: ReturnType<typeof getRouteIntent> | undefined;
+    const router = unstable_defineRouter({
+      resolve: async () => async () => {
+        intent = getRouteIntent();
+        return new Response('api');
+      },
+      getHas404: async () => false,
+    });
+    await router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/api',
+        req: new Request('http://localhost/api'),
+      },
+      {
+        renderRsc: vi.fn(),
+        renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
+        loadBuildMetadata: vi.fn(),
+      },
+    );
+    await expectPending(intent!.promise);
+  });
+
+  it('propagates metadata errors without awaiting an unused intent', async () => {
+    let intent: ReturnType<typeof getRouteIntent> | undefined;
+    const failure = new Error('metadata unavailable');
+    const router = unstable_defineRouter({
+      resolve: async () => null,
+      unstable_interceptors: [
+        async (next) => {
+          intent = getRouteIntent();
+          return next();
+        },
+      ],
+    });
+    await expect(
+      router.handleRequest(
+        {
+          type: 'http',
+          pathname: '/page',
+          req: new Request('http://localhost/page'),
+        },
+        {
+          renderRsc: vi.fn(),
+          renderHtml: vi.fn(),
+          renderHtmlFallback: vi.fn(),
+          loadBuildMetadata: vi.fn().mockRejectedValue(failure),
+        },
+      ),
+    ).rejects.toBe(failure);
+    await expectPending(intent!.promise);
+  });
+
+  it('executes a no-JavaScript action once when notFound renders the 404 page', async () => {
+    const route = {
+      elements: {
+        root: { immutable: false, render: () => 'root' },
+        route: { immutable: false, render: () => 'page' },
+      },
+    };
+    const router = unstable_defineRouter({
+      resolve: async () => route,
+      getHas404: async () => true,
+    });
+    const formState = { message: 'missing' };
+    const tryAction = vi.fn(async () => {
+      requestNotFound();
+      return { action: true as const, formState };
+    });
+    const renderHtml = vi.fn(
+      async (_stream, _html, options) =>
+        new Response('page', { status: options.status }),
+    );
+    const response = await router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/posted',
+        req: new Request('http://localhost/posted', { method: 'POST' }),
+        tryAction,
+      },
+      {
+        renderRsc: vi.fn(
+          async () =>
+            new ReadableStream({
+              start(controller) {
+                controller.close();
+              },
+            }),
+        ),
+        renderHtml,
+        renderHtmlFallback: vi.fn(),
+        loadBuildMetadata: vi.fn(),
+      },
+    );
+    expect(tryAction).toHaveBeenCalledOnce();
+    expect((response as Response).status).toBe(404);
+    expect(renderHtml.mock.calls.at(-1)![2]).toEqual(
+      expect.objectContaining({ status: 404, formState }),
+    );
+  });
+
+  it('honors a resolver notFound before a no-SSR fallback', async () => {
+    const router = unstable_defineRouter({
+      resolve: async () => {
+        requestNotFound();
+        return {
+          noSsr: true,
+          elements: {
+            root: { immutable: false, render: () => null },
+            route: { immutable: false, render: () => null },
+          },
+        };
+      },
+      getHas404: async () => false,
+    });
+    const renderHtmlFallback = vi.fn();
+    const response = await router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/client',
+        req: new Request('http://localhost/client'),
+      },
+      {
+        renderRsc: vi.fn(),
+        renderHtml: vi.fn(),
+        renderHtmlFallback,
+        loadBuildMetadata: vi.fn(),
+      },
+    );
+    expect((response as Response).status).toBe(404);
+    expect((response as Response).headers.get('content-type')).toContain(
+      'text/html',
+    );
+    expect(await (response as Response).text()).toContain('<h1>Not Found</h1>');
+    expect(renderHtmlFallback).not.toHaveBeenCalled();
+  });
+
+  it('records navigation without throwing or consuming the normal return value', async () => {
+    await withinRequest(async () => {
+      const intent = getRouteIntent();
+      const value = (() => {
+        try {
+          requestRedirect('/login');
+        } catch {
+          throw new Error('navigation was thrown');
+        }
+        return { saved: true };
+      })();
+      expect(value).toEqual({ saved: true });
+      expect(JSON.parse((await intent.promise)!)).toEqual({
+        status: 307,
+        location: '/login',
+      });
+    });
+  });
+
+  it('ignores intents from an aborted request', async () => {
+    const controller = new AbortController();
+    await withinRequest(async () => {
+      const intent = getRouteIntent();
+      controller.abort();
+      requestNotFound();
+      await expectPending(intent.promise);
+      expect(intent.value).toBeUndefined();
+    }, controller.signal);
+  });
+
+  it('isolates concurrent requests and keeps the first intent per request', async () => {
+    const gate = Promise.withResolvers<void>();
+    const first = withinRequest(async () => {
+      const intent = getRouteIntent();
+      await gate.promise;
+      requestRedirect('/first');
+      requestNotFound();
+      return intent.promise;
+    });
+    const second = withinRequest(async () => {
+      const intent = getRouteIntent();
+      requestNotFound();
+      return intent.promise;
+    });
+    gate.resolve();
+    expect(JSON.parse((await first)!)).toEqual({
+      status: 307,
+      location: '/first',
+    });
+    expect(JSON.parse((await second)!)).toEqual({ status: 404 });
+  });
+});

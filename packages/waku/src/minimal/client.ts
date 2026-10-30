@@ -12,6 +12,6 @@ export {
   useMergeElements as useMergeElements_UNSTABLE,
   combineElements as unstable_combineElements,
   formatRscUrl as unstable_formatRscUrl,
-  getErrorInfo as unstable_getErrorInfo,
+  hasRenderCancellationDigest as unstable_hasRenderCancellationDigest,
   isImmutableElement as unstable_isImmutableElement,
 } from './client-runtime.js';

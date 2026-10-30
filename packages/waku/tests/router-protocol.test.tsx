@@ -27,8 +27,9 @@ import {
 } from '../src/minimal/client.js';
 import { unstable_parseRequest as parseRequest } from '../src/minimal/server.js';
 import {
+  unstable_ROUTE_ID as ROUTE_ID,
   unstable_createServerFunctionRouting as createServerFunctionRouting,
-  unstable_decideFollow as decideFollow,
+  unstable_decideRouteIntent as decideRouteIntent,
   unstable_encodeRoutePath as encodeRoutePath,
   unstable_getRouteFromElements as getRouteFromElements,
   unstable_getRouteSlotId as getRouteSlotId,
@@ -37,10 +38,9 @@ import {
   useRouterCache_UNSTABLE as useRouterCache,
   useServerFunctionRouting_UNSTABLE as useServerFunctionRouting,
 } from '../src/router/client-core.js';
+import { INTENT_ID } from '../src/router/isomorphic-utils/router-protocol.js';
 import {
   unstable_defineRouter as defineRouter,
-  unstable_notFound as notFound,
-  unstable_redirect as redirect,
   unstable_rerenderRoute as rerenderRoute,
 } from '../src/router/server.js';
 
@@ -80,10 +80,14 @@ afterEach(async () => {
   vi.unstubAllEnvs();
 });
 
-const route = (content: string, immutable = false) => ({
+const route = (content: string, immutable = false, cacheKey?: string) => ({
   elements: {
     root: { immutable: true, render: () => 'root' },
-    route: { immutable, render: () => content },
+    route: {
+      immutable,
+      ...(cacheKey === undefined ? {} : { cacheKey }),
+      render: () => content,
+    },
   },
 });
 
@@ -113,6 +117,14 @@ const mount = async (
     buildId: '',
     onError: () => undefined,
   });
+  // This JSON harness omits weak entries that have no result at EOF.
+  const renderRsc = renderUtils.renderRsc;
+  renderUtils.renderRsc = async (elements, options) => {
+    const data = { ...elements };
+    const intent = data[INTENT_ID] as { value?: string } | undefined;
+    data[INTENT_ID] = intent?.value;
+    return renderRsc(data, options);
+  };
   const fetch = vi.fn<typeof globalThis.fetch>(async (url, init) => {
     const req = new Request(new URL(String(url), window.location.href), init);
     const parsed = parseRequest(req);
@@ -139,7 +151,9 @@ const mount = async (
     mergeElements: ReturnType<typeof useMergeElements>;
     cache: ReturnType<typeof useRouterCache>;
   };
-  const onRouteChange = vi.fn();
+  const applyRouteResponse = vi.fn(async (responseElements: Elements) => {
+    await view.mergeElements(responseElements);
+  });
   const serverFunctionRouting = createServerFunctionRouting();
   const Probe = () => {
     const elements = use(useElementsPromise());
@@ -154,7 +168,7 @@ const mount = async (
     useServerFunctionRouting(serverFunctionRouting, {
       getSettledRoute,
       getPendingRoute: noPendingRoute,
-      onRouteChange,
+      applyRouteResponse,
     });
     useLayoutEffect(() => {
       settled.current = elements;
@@ -180,7 +194,13 @@ const mount = async (
       </Suspense>,
     );
   });
-  return { getView: () => view, container, fetch, payloads, onRouteChange };
+  return {
+    getView: () => view,
+    container,
+    fetch,
+    payloads,
+    applyRouteResponse,
+  };
 };
 
 test('immutable route identities do not collide across paths or imply a static page', async () => {
@@ -193,7 +213,7 @@ test('immutable route identities do not collide across paths or imply a static p
               page: { render: () => 'mutable page' },
             },
           }
-        : route(path, true),
+        : route(path, true, path),
     getHas404: async () => false,
   });
   const binding = await mount(router, '/first');
@@ -221,6 +241,12 @@ test('immutable route identities do not collide across paths or imply a static p
   expect(binding.container.textContent).toBe('/second');
   expect(view.elements[getRouteSlotId('/first')]).toBe('/first');
   expect(view.elements[getRouteSlotId('/second')]).toBe('/second');
+  expect(
+    view.cache.canReuseStaticRoute(
+      { path: '/second', query: '', hash: '' },
+      view.elements,
+    ),
+  ).toBe(true);
   const dynamic = await view.fetchRsc(encodeRoutePath('/dynamic'));
   expect(
     view.cache.hasCachedShell(
@@ -242,6 +268,7 @@ test('an omitted mutable slot still keeps the response route dynamic', async () 
     resolve: async () => ({
       elements: {
         ...route('shell', true).elements,
+        route: { ...route('shell', true).elements.route, cacheKey: 'page' },
         page: { getEtag: async () => 'v1', render: () => 'page' },
       },
     }),
@@ -267,33 +294,12 @@ test('an omitted mutable slot still keeps the response route dynamic', async () 
   });
 });
 
-test('an eagerly resolved redirect reports the rendered destination to the client', async () => {
-  const binding = await mount(
-    defineRouter({
-      resolve: async (path, query) => {
-        if (path === '/old') {
-          redirect('/new?q=one');
-        }
-        return route(path + '?' + query);
-      },
-      getHas404: async () => false,
-    }),
-    '/old',
-  );
-  expect(binding.fetch).toHaveBeenCalledOnce();
-  expect(binding.container.textContent).toBe('/new?q=one');
-  expect(getRouteFromElements(binding.getView().elements)).toEqual({
-    path: '/new',
-    query: 'q=one',
-    hash: '',
-  });
-});
-
-test('a custom 404 reports its rendered route and enables following late not-found errors', async () => {
+test('a custom 404 reports its rendered route and enables following not-found intents', async () => {
   const binding = await mount(
     defineRouter({
       resolve: async (path, query) =>
         path === '/404' ? route('not found: ' + query) : null,
+      getHas404: async () => true,
     }),
     '/missing',
     'q=one',
@@ -305,15 +311,9 @@ test('a custom 404 reports its rendered route and enables following late not-fou
     query: 'q=one',
     hash: '',
   });
-  let error: unknown;
-  try {
-    notFound();
-  } catch (caught) {
-    error = caught;
-  }
   const url = new URL('http://localhost/missing?q=one');
-  const decision = decideFollow(
-    error,
+  const decision = decideRouteIntent(
+    { status: 404 },
     { route: { path: '/missing', query: 'q=one' }, url, follows: 0 },
     { has404: has404FromElements(elements), maxFollows: 20 },
   );
@@ -358,15 +358,13 @@ test('origin refreshes are dropped after navigating away, but explicit action de
     expect(await action).toBe('returned');
   });
   expect(binding.container.textContent).toBe('/second');
-  expect(binding.onRouteChange).not.toHaveBeenCalled();
+  expect(binding.applyRouteResponse).not.toHaveBeenCalled();
   explicit = true;
   await act(async () => {
     expect(await callServerRsc('action#refresh', [])).toBe('returned');
   });
   expect(binding.container.textContent).toBe('/first');
-  expect(binding.onRouteChange).toHaveBeenCalledExactlyOnceWith({
-    path: '/first',
-    query: '',
-    hash: '',
-  });
+  expect(binding.applyRouteResponse).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ [ROUTE_ID]: ['/first', ''] }),
+  );
 });

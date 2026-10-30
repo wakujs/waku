@@ -20,6 +20,10 @@ import { createSliceCache } from './slice-cache.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
+type RouteIntentObserver = (
+  signal: AbortSignal | undefined,
+) => (elements: Elements) => Elements;
+
 type CachedLoadOptions = LoadOptions & {
   /** `false` reuses the initial attempt without fetching. */
   refetch?: boolean;
@@ -43,25 +47,50 @@ export const createRscParams = (query: string): URLSearchParams =>
   new URLSearchParams({ query });
 
 const createRouterCache = (fetchRsc: FetchRsc) => {
+  let intentObserver: RouteIntentObserver | undefined;
+  const captureRouteIntentScope = (signal?: AbortSignal) =>
+    intentObserver?.(signal);
+  const fetchRouteElements: FetchRsc = async (...args) => {
+    const [, , options] = args;
+    const applyIntent = captureRouteIntentScope(options?.signal);
+    const elements = await fetchRsc(...args);
+    return applyIntent?.(elements) ?? elements;
+  };
   const manager = createPrefetchManager();
-  const staticPathSet = new Set<string>();
+  const staticRoutePaths = new Set<string>();
 
   const getPrefetchedElements = (route: RouteProps): Elements | undefined =>
     manager.getElements(encodeRoutePath(route.path));
 
   const canReuseStaticRoute = (route: RouteProps, elements: Elements) =>
-    staticPathSet.has(route.path) && getRouteSlotId(route.path) in elements;
+    staticRoutePaths.has(route.path) && getRouteSlotId(route.path) in elements;
+
+  const learnStaticFromElements = (elements: Elements): void => {
+    const route = getRouteFromElements(elements);
+    if (route && isStaticFromElements(elements)) {
+      staticRoutePaths.add(route.path);
+    }
+  };
 
   return {
-    fetchRsc,
-    slices: createSliceCache(fetchRsc),
+    fetchRsc: fetchRouteElements,
+    slices: createSliceCache(fetchRouteElements),
+    captureRouteIntentScope,
+    connectRouteIntentObserver(observer: RouteIntentObserver) {
+      intentObserver = observer;
+      return () => {
+        if (intentObserver === observer) {
+          intentObserver = undefined;
+        }
+      };
+    },
     prefetchRoute: (route: RouteProps, options?: PrefetchOptions): void => {
       const rscPath = encodeRoutePath(route.path);
       manager.prefetch(
         rscPath,
         route.query,
         (base, invalidate) =>
-          fetchRsc(rscPath, createRscParams(route.query), {
+          fetchRouteElements(rscPath, createRscParams(route.query), {
             ...(base ? { unstable_base: base } : {}),
             onBuildIdMismatch: () => {
               invalidate();
@@ -87,12 +116,11 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
       manager.get(encodeRoutePath(route.path), route.query),
     canReuseStaticRoute,
     /**
-     * Loads with static reuse, an optional initial response, prefetch, or the
-     * network, in that order, using `unstable_load`'s follow and cancellation rules.
+     * Loads an optional initial response before static reuse, prefetch, or the
+     * network, using `unstable_load`'s follow and cancellation rules.
      * Network results are response patches; cached prefetches return stored
      * maps. Combine patches with the retained base when reading a full snapshot.
-     * Does not merge elements or commit browser state. Cached synchronous
-     * commits belong to the binding, before awaiting this method.
+     * Cached synchronous commits belong to the binding.
      */
     load: async (
       requested: RouteProps,
@@ -108,8 +136,9 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
             try {
               const first = attempt.follows === initialFollows;
               if (
-                canReuseStaticRoute(attempt.route, opts.base) ||
-                (first && opts.refetch === false)
+                !(first && opts.adopt !== undefined) &&
+                (canReuseStaticRoute(attempt.route, opts.base) ||
+                  (first && opts.refetch === false))
               ) {
                 return;
               }
@@ -122,26 +151,26 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
                   opts.onInvalidate?.(attempt.url);
                 }
               });
-              if (first && opts.adopt !== undefined) {
-                return opts.adopt;
-              }
-              if (cached) {
-                return cached.promise;
-              }
               const onBuildIdMismatch = opts.onBuildIdMismatch;
-              return fetchRsc(
-                encodeRoutePath(attempt.route.path),
-                createRscParams(attempt.route.query),
-                {
-                  signal,
-                  ...(onBuildIdMismatch
-                    ? {
-                        onBuildIdMismatch: () => onBuildIdMismatch(attempt.url),
-                      }
-                    : {}),
-                  unstable_base: opts.base,
-                },
-              );
+              const pending =
+                first && opts.adopt !== undefined
+                  ? opts.adopt
+                  : cached?.promise;
+              return await (pending ??
+                fetchRouteElements(
+                  encodeRoutePath(attempt.route.path),
+                  createRscParams(attempt.route.query),
+                  {
+                    signal,
+                    ...(onBuildIdMismatch
+                      ? {
+                          onBuildIdMismatch: () =>
+                            onBuildIdMismatch(attempt.url),
+                        }
+                      : {}),
+                    unstable_base: opts.base,
+                  },
+                ));
             } finally {
               unsubscribePrevious?.();
             }
@@ -153,15 +182,10 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
         unsubscribe?.();
       }
     },
-    learnStaticFromElements: (elements: Record<string, unknown>): void => {
-      const route = getRouteFromElements(elements);
-      if (route && isStaticFromElements(elements)) {
-        staticPathSet.add(route.path);
-      }
-    },
+    learnStaticFromElements,
     clearCaches: (): void => {
       manager.clear();
-      staticPathSet.clear();
+      staticRoutePaths.clear();
     },
   };
 };

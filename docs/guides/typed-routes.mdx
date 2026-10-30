@@ -50,7 +50,7 @@ export default function Navigation() {
 - Route groups are stripped from the URL. `hash` accepts a fragment with or without the leading `#`.
 - Completed `.` and `..` path segments are rejected because URL normalization would change the path.
 - The result is a primitive string, so it can cross a Server/Client Component boundary. Import factories and codecs where they are used; their functions cannot be passed as ordinary Client Component props.
-- Hrefs exclude the application's base path. Waku's `Link`, navigation methods, and `unstable_redirect` apply the base. A native `<a href>` needs a URL that includes the base.
+- Hrefs exclude the application's base path. Waku's `Link`, navigation methods, and `requestRedirect` apply the base. A native `<a href>` needs a URL that includes the base.
 
 Client navigation uses the same result:
 
@@ -67,7 +67,7 @@ export const PostButton = ({ slug }: { slug: string }) => {
 };
 ```
 
-`router.replace(href)`, `router.prefetch(href)`, and server-side `unstable_redirect(href)` also accept factory results. For same-page navigation, bare `?query` and `#hash` strings are resolved against the current URL.
+`router.replace(href)`, `router.prefetch(href)`, and server-side `requestRedirect(href)` also accept factory results. Request redirects from dynamic rendering or server functions, then return. For same-page client navigation, bare `?query` and `#hash` strings are resolved against the current URL.
 
 ### What the types check
 
@@ -283,7 +283,7 @@ The schema validates inbound queries and outbound values independently. Query-st
 
 The typed-navigation API changes are breaking, including for unstable exports.
 
-1. Replace structured `to` targets with a local factory call. Pass its string result to `Link`, `push`, `replace`, `prefetch`, or `unstable_redirect`:
+1. Replace structured `to` targets with a local factory call. Pass its string result to `Link`, `push`, `replace`, `prefetch`, or `requestRedirect`:
 
    ```tsx
    import { unstable_createRouteHref as createRouteHref } from 'waku/router';

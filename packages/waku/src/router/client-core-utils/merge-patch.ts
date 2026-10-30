@@ -1,11 +1,9 @@
 import { unstable_combineElements as combineElements } from 'waku/minimal/client';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
-  HAS404_ID,
-  IS_STATIC_ID,
-  ROUTE_ID,
   getRouteFromElements,
   getRouteSlotId,
+  isMetaKey,
 } from '../isomorphic-utils/router-protocol.js';
 import type { Loaded } from './load.js';
 import { isSameRscRoute } from './route-url.js';
@@ -25,12 +23,10 @@ export const buildMergePatch = (
   // A server function call can merge newer values while this request waits.
   return combineElements({}, elements, {
     filter: (key) =>
-      key === ROUTE_ID ||
-      key === HAS404_ID ||
-      key === IS_STATIC_ID ||
-      (typeof key === 'string' &&
-        ((rscRouteChanged && key === routeSlotId) ||
-          (Object.hasOwn(current, key) === Object.hasOwn(base, key) &&
-            current[key] === base[key]))),
+      typeof key === 'string' &&
+      (isMetaKey(key) ||
+        (rscRouteChanged && key === routeSlotId) ||
+        (Object.hasOwn(current, key) === Object.hasOwn(base, key) &&
+          current[key] === base[key])),
   });
 };

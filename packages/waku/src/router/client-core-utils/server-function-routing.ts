@@ -6,7 +6,6 @@ import {
   ACTION_LOCATION_HEADER,
   IS_ORIGIN_ID,
   getRouteFromElements,
-  isStaticFromElements,
 } from '../isomorphic-utils/router-protocol.js';
 import { useRouterCache } from './caches.js';
 import { isSameRscRoute } from './route-url.js';
@@ -14,7 +13,9 @@ import { isSameRscRoute } from './route-url.js';
 type ServerFunctionRoutingCallbacks = {
   getSettledRoute: () => RouteProps;
   getPendingRoute: () => Pick<RouteProps, 'path' | 'query'> | undefined;
-  onRouteChange: (route: RouteProps) => void;
+  applyRouteResponse: (
+    elements: Readonly<Record<string | symbol, unknown>>,
+  ) => void | Promise<void>;
 };
 
 /**
@@ -44,14 +45,12 @@ export type ServerFunctionRouting = {
  */
 export const createServerFunctionRouting = (): ServerFunctionRouting => {
   let connection: Parameters<ServerFunctionRouting['connect']>[0] | undefined;
-  let connected = false;
   return {
     connect: (nextConnection) => {
       connection = nextConnection;
-      connected = true;
       return () => {
         if (connection === nextConnection) {
-          connected = false;
+          connection = undefined;
         }
       };
     },
@@ -59,13 +58,16 @@ export const createServerFunctionRouting = (): ServerFunctionRouting => {
       if (options.type !== 'call') {
         return next(rscPath, rscParams, options);
       }
-      if (!connected || !connection) {
+      if (!connection) {
         throw new Error(
           'Server function routing is not connected. Call mount-time server functions from useEffect, not useLayoutEffect.',
         );
       }
       const origin = connection.getSettledRoute();
-      const result = await next(rscPath, rscParams, {
+      const applyIntent = connection.cache.captureRouteIntentScope(
+        options.signal,
+      );
+      const response = await next(rscPath, rscParams, {
         ...options,
         fetch: (input, init) => {
           const headers = new Headers(
@@ -79,45 +81,30 @@ export const createServerFunctionRouting = (): ServerFunctionRouting => {
           return options.fetch(input, { ...init, headers });
         },
       });
-      const { cache, getSettledRoute, getPendingRoute, onRouteChange } =
+      if (!connection) {
+        return { ...response, elements: {} };
+      }
+      const { getSettledRoute, getPendingRoute, applyRouteResponse } =
         connection;
-      const handleServerFunctionElements = (
-        nextElements: Record<string, unknown>,
-      ) => {
-        cache.learnStaticFromElements(nextElements);
-        const route = getRouteFromElements(nextElements);
-        if (!route) {
-          return;
+      let responseElements = response.elements;
+      if (IS_ORIGIN_ID in responseElements) {
+        const pendingRoute = getPendingRoute();
+        // React holds a navigation back until a pending action settles
+        if (pendingRoute || !isSameRscRoute(getSettledRoute(), origin)) {
+          return { ...response, elements: {} };
         }
-        const settledRoute = getSettledRoute();
-        if (
-          settledRoute.path === route.path &&
-          (isStaticFromElements(nextElements) ||
-            settledRoute.query === route.query)
-        ) {
-          return;
-        }
-        onRouteChange(route);
-      };
-      if (!(IS_ORIGIN_ID in result.elements)) {
-        if (Reflect.ownKeys(result.elements).length) {
-          handleServerFunctionElements(result.elements);
-        }
-        return result;
+        responseElements = combineElements({}, responseElements, {
+          filter: (key) => key !== IS_ORIGIN_ID,
+        });
       }
-      const pendingRoute = getPendingRoute();
-      // React holds a navigation back until a pending action settles
-      if (
-        (pendingRoute && !isSameRscRoute(pendingRoute, origin)) ||
-        !isSameRscRoute(getSettledRoute(), origin)
-      ) {
-        return { ...result, elements: {} };
+      if (getRouteFromElements(responseElements)) {
+        await applyRouteResponse(responseElements);
+        return { ...response, elements: {} };
       }
-      const elements = combineElements({}, result.elements, {
-        filter: (key) => key !== IS_ORIGIN_ID,
-      });
-      handleServerFunctionElements(elements);
-      return { ...result, elements };
+      const elements = applyIntent?.(responseElements) ?? responseElements;
+      return elements === response.elements
+        ? response
+        : { ...response, elements };
     },
   };
 };
@@ -125,19 +112,22 @@ export const createServerFunctionRouting = (): ServerFunctionRouting => {
 /**
  * Connects a declaratively installed server-function-routing controller to this Root.
  * Each server function call reports `getSettledRoute()` as its origin. Origin
- * rerenders are dropped, retaining the return value, if the settled or pending
- * route changes.
+ * rerenders are dropped, retaining the return value, if the settled route changes
+ * or any navigation request is pending.
  * `getPendingRoute` returns the uncommitted destination or `undefined`.
- * `onRouteChange` commits a different response route without fetching: Minimal
- * merges its elements after the enhancer chain resolves. Callback updates take
- * effect on commit without replacing the enhancer.
+ * `applyRouteResponse` handles every accepted route-bearing response, including
+ * same-route updates. It owns applying the elements and their intents; Minimal
+ * does not merge that response again. The controller waits for the callback.
+ * A rejected callback rejects the call. Callback updates take effect on commit
+ * without replacing the enhancer. A response arriving without a connected
+ * binding retains its return value and discards its elements.
  */
 export const useServerFunctionRouting = (
   serverFunctionRouting: ServerFunctionRouting,
   {
     getSettledRoute,
     getPendingRoute,
-    onRouteChange,
+    applyRouteResponse,
   }: ServerFunctionRoutingCallbacks,
 ): void => {
   const cache = useRouterCache();
@@ -147,14 +137,14 @@ export const useServerFunctionRouting = (
         cache,
         getSettledRoute,
         getPendingRoute,
-        onRouteChange,
+        applyRouteResponse,
       }),
     [
       serverFunctionRouting,
       cache,
       getSettledRoute,
       getPendingRoute,
-      onRouteChange,
+      applyRouteResponse,
     ],
   );
 };
