@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveConfig } from '../src/lib/utils-build/config.js';
-import { getErrorInfo } from '../src/lib/utils-isomorphic/custom-errors.js';
 import { ETAGS_HEADER } from '../src/lib/utils-isomorphic/etags.js';
 import { encodeServerFunctionId } from '../src/lib/utils-isomorphic/rsc-path.js';
 import { getInput } from '../src/lib/utils-server/request.js';
 import {
+  unstable_cancelRender as cancelRender,
   unstable_formatRscUrl as formatRscUrl,
   unstable_parseRequest as parseRequest,
 } from '../src/minimal/server.js';
@@ -18,7 +18,7 @@ const getStatus = async (promise: Promise<unknown>) => {
   try {
     await promise;
   } catch (e) {
-    return getErrorInfo(e)?.status;
+    return e instanceof Response ? e.status : undefined;
   }
 };
 
@@ -142,6 +142,56 @@ describe('getInput request URLs', () => {
 });
 
 describe('getInput server action request validation', () => {
+  it('completes hydrated and form actions after cancellation without continuing their bodies', async () => {
+    const continued = vi.fn();
+    const action = vi.fn(async () => {
+      cancelRender();
+      continued();
+    });
+    const decodeFormState = vi.fn().mockResolvedValue(undefined);
+    const call = await getInput(
+      makeRequest({ origin: 'https://app.test' }),
+      makeConfig(),
+      undefined,
+      vi.fn().mockResolvedValue([]),
+      vi.fn(),
+      decodeFormState,
+      vi.fn().mockResolvedValue(action),
+    );
+    expect(call.type).toBe('call');
+    if (call.type !== 'call') {
+      throw new Error('expected call');
+    }
+    await expect(call.fn(...call.args)).resolves.toBeUndefined();
+    const form = await getInput(
+      new Request('https://app.test/', {
+        method: 'POST',
+        body: new FormData(),
+        headers: { origin: 'https://app.test' },
+      }),
+      makeConfig(),
+      undefined,
+      vi.fn(),
+      vi.fn().mockResolvedValue(action),
+      decodeFormState,
+      vi.fn(),
+    );
+    expect(form.type).toBe('http');
+    if (form.type !== 'http') {
+      throw new Error('expected http');
+    }
+    await expect(form.tryAction!()).resolves.toEqual({
+      action: true,
+      formState: undefined,
+    });
+    expect(action).toHaveBeenCalledTimes(2);
+    expect(decodeFormState).toHaveBeenCalledWith(
+      undefined,
+      expect.any(FormData),
+    );
+    expect(continued).not.toHaveBeenCalled();
+  });
+
   it('accepts same-origin server function requests over HTTPS', async () => {
     const input = await makeInput(
       makeRequest({ origin: 'https://app.test' }, {}, 'https'),

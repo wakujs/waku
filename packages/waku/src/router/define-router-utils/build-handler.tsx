@@ -5,6 +5,7 @@ import type {
 import { INTERNAL_ServerRouter } from '../client.js';
 import { pathnameToRoutePath } from '../isomorphic-utils/route-path.js';
 import {
+  INTENT_ID,
   encodeRoutePath,
   encodeSliceId,
   getRouteSlotId,
@@ -12,11 +13,7 @@ import {
 } from '../isomorphic-utils/router-protocol.js';
 import { ROUTER_METADATA } from './build-metadata.js';
 import { getRouterPrefetchCode } from './client-code.js';
-import {
-  cacheElementSource,
-  createElementCache,
-  getElementCacheId,
-} from './element-cache.js';
+import { createElementCache, getElementCacheId } from './element-cache.js';
 import { validateRouteElementIds } from './route-entries.js';
 import type {
   Resolve,
@@ -76,8 +73,8 @@ export const createBuildHandler =
   }): HandleBuild =>
   async (utils) => {
     const cachedElements: Record<string, string> = {};
-    const cache = createElementCache((id, bytes) => {
-      cachedElements[id] = bytes;
+    const cache = createElementCache((id, entry) => {
+      cachedElements[id] = entry;
     });
     const moduleIdsByPrefetchRegExp: Record<string, string[]> = {};
     const htmlTasks: (() => Promise<void>)[] = [];
@@ -130,7 +127,7 @@ export const createBuildHandler =
                     id === 'route' ? getRouteSlotId(routePath) : id;
                   const cacheId = getElementCacheId(slotId, source);
                   if (!cache.has(cacheId)) {
-                    await cache.set(cacheId, await source.render());
+                    await cache.set(cacheId, source.render);
                   }
                 }
               }),
@@ -143,30 +140,21 @@ export const createBuildHandler =
             undefined,
             {},
             cache,
-            {
-              ...resolved,
-              elements: {
-                ...resolved.elements,
-                route: cacheElementSource(
-                  resolved.elements.route,
-                  getElementCacheId(
-                    getRouteSlotId(routePath),
-                    resolved.elements.route,
-                  ),
-                  cache,
-                ),
-              },
-            },
+            resolved,
+            true,
           );
           if (!entries) {
             return;
           }
           const moduleIds = new Set<string>();
-          const stream = await utils.renderRsc(entries.elements, {
-            etags: entries.etags,
-            unstable_clientModuleCallback: (ids) =>
-              ids.forEach((id) => moduleIds.add(id)),
-          });
+          const stream = await utils.renderRsc(
+            { ...entries.elements, [INTENT_ID]: null },
+            {
+              etags: entries.etags,
+              unstable_clientModuleCallback: (ids) =>
+                ids.forEach((id) => moduleIds.add(id)),
+            },
+          );
           const htmlPath =
             routePath === '/404' ? '404.html' : routePath + '/index.html';
           if (resolved.noSsr) {

@@ -17,6 +17,7 @@ export type {
 
 export {
   HAS404_ID as unstable_HAS404_ID,
+  INTENT_ID as unstable_INTENT_ID,
   IS_STATIC_ID as unstable_IS_STATIC_ID,
   ROUTE_ID as unstable_ROUTE_ID,
   decodeRoutePath as unstable_decodeRoutePath,
@@ -31,13 +32,13 @@ export {
   isSliceSlotId as unstable_isSliceSlotId,
   isStaticFromElements as unstable_isStaticFromElements,
 } from './isomorphic-utils/router-protocol.js';
+export type { RouteIntentData as Unstable_RouteIntentData } from './isomorphic-utils/router-protocol.js';
 
 export {
   MAX_FOLLOWS_PER_NAVIGATION as unstable_MAX_FOLLOWS_PER_NAVIGATION,
-  decideFollow as unstable_decideFollow,
-  isFollowable as unstable_isFollowable,
-} from './client-core-utils/error-route.js';
-export type { FollowDecision as Unstable_FollowDecision } from './client-core-utils/error-route.js';
+  decideRouteIntent as unstable_decideRouteIntent,
+} from './client-core-utils/route-follow.js';
+export type { FollowDecision as Unstable_FollowDecision } from './client-core-utils/route-follow.js';
 
 export { ErrorBoundary as ErrorBoundary_UNSTABLE } from './client-core-utils/error-boundary.js';
 

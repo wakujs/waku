@@ -195,6 +195,31 @@ describe('getEntriesForRoute', () => {
     expect('main' in skipped.elements).toBe(false);
   });
 
+  it('reuses immutable client content without a server cache entry', async () => {
+    const render = vi.fn(() => 'static content');
+    const routeEntries = createRouteEntries(
+      async () => ({
+        elements: {
+          root: { immutable: true, render },
+          route: { immutable: true, render },
+        },
+      }),
+      undefined,
+    );
+    const entries = await routeEntries.getEntriesForRoute(
+      encodeRoutePath('/static'),
+      undefined,
+      { root: 1, 'route:/static': 1 },
+      createElementCache(),
+    );
+
+    expect(entries?.elements).toEqual({
+      [ROUTE_ID]: ['/static', ''],
+      [IS_STATIC_ID]: true,
+    });
+    expect(render).not.toHaveBeenCalled();
+  });
+
   it('caches a static element (renderer runs once) but re-renders a dynamic one', async () => {
     const staticRenderer = vi.fn(() => 'static-el');
     const dynamicRenderer = vi.fn(() => 'dynamic-el');
@@ -277,5 +302,31 @@ describe('getEntriesForElement', () => {
     );
     expect(staticRenderer).toHaveBeenCalledTimes(1);
     expect(dynamicRenderer).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('custom 404 availability', () => {
+  it('does not probe the resolver when no availability callback is supplied', async () => {
+    const resolve = vi.fn(async () => null);
+    const entries = createRouteEntries(resolve, undefined);
+    expect(await entries.getRouteMetadata('/page', '')).toEqual({
+      [ROUTE_ID]: ['/page', ''],
+    });
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
+  it('lets the manifest supply availability without caching a failed lookup', async () => {
+    const getHas404 = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('manifest unavailable'))
+      .mockResolvedValue(true);
+    const resolve = vi.fn(async () => null);
+    const entries = createRouteEntries(resolve, undefined, getHas404);
+    await expect(entries.has404()).rejects.toThrow('manifest unavailable');
+    expect(await entries.getRouteMetadata('/page', '')).toEqual({
+      [ROUTE_ID]: ['/page', ''],
+      [HAS404_ID]: true,
+    });
+    expect(resolve).not.toHaveBeenCalled();
   });
 });

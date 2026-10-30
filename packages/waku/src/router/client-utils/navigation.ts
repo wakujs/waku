@@ -13,7 +13,6 @@ import {
   useRegisterRscReloadListener_UNSTABLE as useRegisterRscReloadListener,
 } from 'waku/minimal/client';
 import { useRouterCache } from '../client-core-utils/caches.js';
-import { isFollowable } from '../client-core-utils/error-route.js';
 import { useHmrRefetch } from '../client-core-utils/hmr.js';
 import { useInitialRoute } from '../client-core-utils/initial-route.js';
 import {
@@ -26,6 +25,7 @@ import type { ServerFunctionRouting } from '../client-core-utils/server-function
 import { useServerFunctionRouting } from '../client-core-utils/server-function-routing.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
+  INTENT_ID,
   IS_STATIC_ID,
   ROUTE_ID,
   getRouteFromElements,
@@ -74,6 +74,7 @@ type Navigation = {
   route: RouteProps;
   changeRoute: ChangeRoute;
   getElements: () => Elements;
+  isCurrentRoute: (source: Elements) => boolean;
   error: NavigationError | undefined;
 };
 
@@ -125,11 +126,17 @@ export const useNavigation = (
   }, [registerRscReloadListener]);
 
   const routerState = getRouterState(elements);
+  const routeData = elements[ROUTE_ID];
+  const isStatic = isStaticFromElements(elements);
   const destination = useMemo(
     () =>
       routerState &&
-      resolveServerRedirect(elements, routerState, initialRoute.path),
-    [elements, routerState, initialRoute],
+      resolveServerRedirect(
+        { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic },
+        routerState,
+        initialRoute.path,
+      ),
+    [routeData, isStatic, routerState, initialRoute.path],
   );
   const route = destination ? destination.route : initialRoute;
   const requestRef = useRef<NavigationRequest>(undefined);
@@ -231,13 +238,16 @@ export const useNavigation = (
         (retainedElements && getRouteFromElements(retainedElements)) ??
         settledRoute;
       const shouldRefetch =
-        options.refetch ??
-        (!isSameRscRoute(nextRoute, settledRoute) ||
-          !isSameRscRoute(
-            nextRoute,
-            getRouteFromElements(base) ?? settledRoute,
-          ));
-      const canReuseStatic = cache.canReuseStaticRoute(nextRoute, base);
+        options.adopt !== undefined ||
+        (options.refetch ??
+          (!isSameRscRoute(nextRoute, settledRoute) ||
+            !isSameRscRoute(
+              nextRoute,
+              getRouteFromElements(base) ?? settledRoute,
+            )));
+      const canReuseStatic =
+        options.adopt === undefined &&
+        cache.canReuseStaticRoute(nextRoute, base);
       if (
         options.pendingTransition &&
         shouldRefetch &&
@@ -280,11 +290,6 @@ export const useNavigation = (
         return;
       }
       setNavigationError(undefined);
-      const finishRequest = () => {
-        if (requestRef.current === request) {
-          requestRef.current = undefined;
-        }
-      };
       if (import.meta.hot) {
         registerRscReloadListener(() => {}, { replace: true });
       }
@@ -314,6 +319,9 @@ export const useNavigation = (
       if (canReuseStatic || !shouldRefetch) {
         const routePatch = {
           [ROUTE_ID]: [nextRoute.path, nextRoute.query],
+          [INTENT_ID]: isSameRscRoute(nextRoute, settledRoute)
+            ? getElements()[INTENT_ID]
+            : null,
           ...(canReuseStatic ? { [IS_STATIC_ID]: true } : {}),
         };
         request.queuedState = initialState;
@@ -333,11 +341,11 @@ export const useNavigation = (
         ? cache.getPrefetchedElements(nextRoute)
         : undefined;
       const loadPatch = async (): Promise<Elements> => {
+        const adopt = options.adopt ?? instantResponse;
         const outcome = await cache.load(nextRoute, {
           signal: controller.signal,
           refetch: shouldRefetch,
           has404,
-          settled: loadedRoute,
           base,
           url: routeUrl,
           follows: initialFollows,
@@ -347,9 +355,13 @@ export const useNavigation = (
               reloadWithUrl(url);
             }
           },
-          ...(instantResponse ? { adopt: instantResponse } : {}),
+          ...(adopt ? { adopt } : {}),
         });
-        if (outcome.type === 'aborted' || requestRef.current !== request) {
+        if (requestRef.current !== request) {
+          return {};
+        }
+        if (outcome.type === 'aborted') {
+          requestRef.current = undefined;
           return {};
         }
         const historyIntent =
@@ -358,11 +370,10 @@ export const useNavigation = (
           options.history !== null
             ? 'replace'
             : options.history;
-        if (outcome.type === 'external') {
-          commitHistory(outcome.from, historyIntent);
-          finishRequest();
-          window.location.replace(outcome.url.href);
-          throw outcome.error;
+        if (outcome.type === 'leave') {
+          commitHistory(outcome.url, historyIntent);
+          window.location.replace(outcome.location.href);
+          return {};
         }
         if (outcome.type === 'failed') {
           const { error } = outcome;
@@ -415,6 +426,7 @@ export const useNavigation = (
           outcome.type === 'reused'
             ? {
                 [ROUTE_ID]: [outcome.route.path, outcome.route.query],
+                [INTENT_ID]: null,
                 [IS_STATIC_ID]:
                   cache.canReuseStaticRoute(outcome.route, base) ||
                   isStaticFromElements(base),
@@ -508,27 +520,41 @@ export const useNavigation = (
   );
 
   const getPendingRoute = useCallback(() => requestRef.current?.target, []);
-  const commitServerFunctionRoute = useCallback(
-    (nextRoute: RouteProps) => {
-      const is404 = nextRoute.path === '/404';
-      dispatchChangeRoute(changeRoute, nextRoute, {
-        refetch: false,
-        shouldScroll: false,
-        // the 404 route renders where the user already is
-        history: is404 ? null : 'push',
-        url: is404 ? new URL(window.location.href) : getRouteUrl(nextRoute),
-      }).catch((error) => {
-        if (!isFollowable(error)) {
-          console.error('Error while handling route updates:', error);
-        }
-      });
+  const isCurrentRoute = useCallback(
+    (source: Elements) => {
+      const committed = getElements();
+      const state = getRouterState(source);
+      const request = requestRef.current;
+      return (
+        getRouterState(committed) === state &&
+        committed[INTENT_ID] === source[INTENT_ID] &&
+        (!request || (!!request.queuedState && request.queuedState === state))
+      );
     },
-    [changeRoute],
+    [getElements],
+  );
+  const applyRouteResponse = useCallback(
+    async (responseElements: Elements) => {
+      const nextRoute = getRouteFromElements(responseElements)!;
+      const current = getSettledRoute();
+      const sameRoute =
+        current.path === nextRoute.path &&
+        (isStaticFromElements(responseElements) ||
+          current.query === nextRoute.query);
+      const is404 = nextRoute.path === '/404';
+      await dispatchChangeRoute(changeRoute, sameRoute ? current : nextRoute, {
+        adopt: Promise.resolve(responseElements),
+        shouldScroll: false,
+        history: sameRoute || is404 ? null : 'push',
+        ...(is404 ? { url: new URL(window.location.href) } : {}),
+      }).catch(() => {});
+    },
+    [changeRoute, getSettledRoute],
   );
   useServerFunctionRouting(serverFunctionRouting, {
     getSettledRoute,
     getPendingRoute,
-    onRouteChange: commitServerFunctionRoute,
+    applyRouteResponse,
   });
 
   useEffect(() => {
@@ -550,9 +576,7 @@ export const useNavigation = (
             ? new URL(window.location.href)
             : getRouteUrl(nextRoute),
         }).catch((err) => {
-          if (!isFollowable(err)) {
-            console.error('Error while navigating back:', err);
-          }
+          console.error('Error while navigating back:', err);
         });
       });
     };
@@ -566,6 +590,7 @@ export const useNavigation = (
     route,
     changeRoute,
     getElements,
+    isCurrentRoute,
     error: navigationError,
   };
 };

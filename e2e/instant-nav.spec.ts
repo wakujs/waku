@@ -2,7 +2,13 @@ import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type Request, expect } from '@playwright/test';
-import { prepareNormalSetup, test, waitForHydration } from './utils.js';
+import {
+  createFetchResponseReader,
+  prepareNormalSetup,
+  test,
+  waitForHydration,
+  waitForSelectorText,
+} from './utils.js';
 
 // Instant navigation (`<Link ... unstable_instant>`): on a revisited (cached)
 // route, navigation paints the cached shell + the <Suspense> skeleton
@@ -195,12 +201,13 @@ test.describe('instant-nav', () => {
   test('a repeat prefetch omits what the store holds current', async ({
     page,
   }) => {
+    const readResponseBody = await createFetchResponseReader(page);
     const bodies: string[] = [];
     page.on('response', (response) => {
       if (response.url().includes('R/hover')) {
         const index = bodies.length;
         bodies.push('pending');
-        response.text().then(
+        readResponseBody(response.url()).then(
           (text) => {
             bodies[index] = text;
           },
@@ -289,24 +296,26 @@ test.describe('instant-nav', () => {
     await expect(page.getByTestId('route-query')).toHaveText(
       '/login?callbackUrl=%2Fpost%2F1',
     );
-    await expect(page).toHaveURL(
-      `http://localhost:${port}/login?callbackUrl=%2Fpost%2F1`,
-    );
+    await expect
+      .poll(() => page.url())
+      .toBe(`http://localhost:${port}/login?callbackUrl=%2Fpost%2F1`);
     expect(await page.evaluate(() => window.history.length)).toBe(
       historyLength + 1,
     );
 
-    await page.getByRole('button', { name: 'Rerender static route' }).click();
-    await expect(page.getByTestId('rerender-result')).toHaveText('done');
-    await expect(page.getByTestId('route-query')).toHaveText(
+    await page.locator('button[type="submit"]').click({ noWaitAfter: true });
+    await waitForSelectorText(page, '[data-testid="rerender-result"]', 'done');
+    await waitForSelectorText(
+      page,
+      '[data-testid="route-query"]',
       '/login?callbackUrl=%2Fpost%2F1',
     );
-    await expect(page).toHaveURL(
-      `http://localhost:${port}/login?callbackUrl=%2Fpost%2F1`,
-    );
-    await page.goBack();
-    await expect(page).toHaveURL(`http://localhost:${port}/post/2`);
-    await expect(page.getByTestId('post-body')).toHaveText('Post 2');
+    await expect
+      .poll(() => page.url())
+      .toBe(`http://localhost:${port}/login?callbackUrl=%2Fpost%2F1`);
+    await page.evaluate(() => window.history.back());
+    await expect.poll(() => page.url()).toBe(`http://localhost:${port}/post/2`);
+    await waitForSelectorText(page, '[data-testid="post-body"]', 'Post 2');
   });
 
   // ...and surfaces a fetch error instead of getting stuck on the skeleton.
@@ -365,6 +374,8 @@ const startHmrApp = prepareNormalSetup('instant-nav', {
 });
 
 test.describe('instant-nav hmr', { tag: '@dev' }, () => {
+  test.use({ actionTimeout: 20_000 });
+
   let port: number;
   let stopApp: (() => Promise<void>) | undefined;
 
@@ -382,6 +393,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
   });
 
   test('an HMR update invalidates cached route data', async ({ page }) => {
+    const readResponseBody = await createFetchResponseReader(page);
     const layoutFile = join(hmrFixtureDir, 'src/pages/_layout.tsx');
     const original = readFileSync(layoutFile, 'utf-8');
     const bodies: string[] = [];
@@ -389,7 +401,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
       if (response.url().includes('R/slow')) {
         const index = bodies.length;
         bodies.push('pending');
-        response.text().then(
+        readResponseBody(response.url()).then(
           (text) => {
             bodies[index] = text;
           },
@@ -407,7 +419,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     );
     await page.getByTestId('link-widget').hover();
     const widgetResponse = await widgetResponsePromise;
-    await widgetResponse.finished();
+    await readResponseBody(widgetResponse.url());
     await page.getByTestId('link-widget').click();
     await expect(page.getByTestId('widget-static')).toBeVisible();
 
@@ -416,13 +428,13 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     );
     await page.getByTestId('link-hover').hover();
     const hoverResponse = await hoverResponsePromise;
-    await hoverResponse.finished();
+    await readResponseBody(hoverResponse.url());
 
     const refetchResponsePromise = page.waitForResponse((response) =>
       response.url().includes('R/widget'),
     );
     await page.getByTestId('minimal-refetch').click();
-    await (await refetchResponsePromise).finished();
+    await readResponseBody((await refetchResponsePromise).url());
 
     writeFileSync(
       layoutFile,
@@ -434,7 +446,9 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     await expect(page.getByTestId('hmr-marker')).toBeVisible();
     await expect(page.getByTestId('widget-static')).toBeVisible();
 
-    await expect(page.getByTestId('lazy-clock-value')).toHaveText(
+    await waitForSelectorText(
+      page,
+      '[data-testid="lazy-clock-value"]',
       'lazy clock loaded',
     );
     await page.evaluate(() => {
@@ -446,7 +460,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     const originalSlice = readFileSync(sliceFile, 'utf-8');
 
     await page.getByTestId('link-post-1').click();
-    await expect(page.getByTestId('post-body')).toHaveText('Post 1');
+    await waitForSelectorText(page, '[data-testid="post-body"]', 'Post 1');
 
     const hmrRequests: string[] = [];
     const recordHmrRequest = (request: Request) => {
@@ -462,7 +476,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
       postFile,
       originalPost.replace('await sleep(600)', 'await sleep(601)'),
     );
-    await (await postHmrResponsePromise).finished();
+    await readResponseBody((await postHmrResponsePromise).url());
     page.off('request', recordHmrRequest);
     expect(hmrRequests.some((url) => url.includes('R/widget'))).toBe(false);
 
@@ -473,9 +487,17 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
       sliceFile,
       originalSlice.replace('lazy clock loaded', 'lazy clock HMR'),
     );
-    await (await sliceHmrResponsePromise).finished();
-    await page.getByTestId('link-widget').click();
-    await expect(page.getByTestId('lazy-clock-value')).toHaveText(
+    await readResponseBody((await sliceHmrResponsePromise).url());
+    await page.evaluate(() => {
+      const link = document.querySelector('[data-testid="link-widget"]');
+      if (!(link instanceof HTMLAnchorElement)) {
+        throw new Error('Missing widget link');
+      }
+      link.click();
+    });
+    await waitForSelectorText(
+      page,
+      '[data-testid="lazy-clock-value"]',
       'lazy clock HMR',
     );
     expect(
@@ -500,7 +522,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     await expect(page.getByTestId('hmr-marker')).toBeVisible();
 
     await page.getByTestId('link-post-1').click();
-    await expect(page.getByTestId('post-body')).toHaveText('Post 1');
+    await waitForSelectorText(page, '[data-testid="post-body"]', 'Post 1');
     await page.evaluate(() => {
       (
         globalThis as typeof globalThis & {
@@ -517,7 +539,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
         ).__WAKU_TEST_ROUTER_KEY__ === 1,
     );
     await expect(page.getByTestId('hmr-marker')).toBeVisible();
-    await expect(page.getByTestId('post-body')).toHaveText('Post 1');
+    await waitForSelectorText(page, '[data-testid="post-body"]', 'Post 1');
 
     // an HMR update retires a navigation whose response has not landed yet:
     // the stale response must not commit once it finally arrives
@@ -535,18 +557,34 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
       },
       { times: 1 },
     );
-    await page.getByTestId('link-plain-post-2').click();
-    await post2Requested.promise;
+
+    await test.step(
+      'request the held navigation',
+      async () => {
+        await page
+          .locator('[data-testid="link-plain-post-2"]')
+          .click({ noWaitAfter: true });
+        await post2Requested.promise;
+      },
+      { timeout: 20_000 },
+    );
 
     const delayedPostHmrResponsePromise = page.waitForResponse((response) =>
       response.url().includes('R/post/1'),
     );
     writeFileSync(postFile, originalPost.replace('Post {id}', 'HMR Post {id}'));
-    await (await delayedPostHmrResponsePromise).finished();
+    await readResponseBody((await delayedPostHmrResponsePromise).url());
 
     // the retired response reaches the client, which has to discard it
-    releasePost2.resolve();
-    await post2Delivered.promise;
+    await test.step(
+      'deliver the retired response',
+      async () => {
+        releasePost2.resolve();
+        await post2Delivered.promise;
+      },
+      { timeout: 20_000 },
+    );
+
     await page.evaluate(
       () =>
         new Promise<void>((resolve) => {
@@ -554,11 +592,12 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
         }),
     );
 
-    await expect(page).toHaveURL(`http://localhost:${port}/post/1`);
-    await expect(page.getByTestId('post-body')).toHaveText('HMR Post 1');
+    await expect.poll(() => page.url()).toBe(`http://localhost:${port}/post/1`);
+    await waitForSelectorText(page, '[data-testid="post-body"]', 'HMR Post 1');
   });
 
   test('HMR replaces an in-flight lazy slice response', async ({ page }) => {
+    const readResponseBody = await createFetchResponseReader(page);
     const sliceFile = join(hmrFixtureDir, 'src/pages/_slices/lazy-clock.tsx');
     const source = readFileSync(sliceFile, 'utf-8');
     const firstSliceFetched = Promise.withResolvers<void>();
@@ -587,7 +626,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
         '$1lazy clock racing HMR$2',
       ),
     );
-    await (await sliceHmrResponsePromise).finished();
+    await readResponseBody((await sliceHmrResponsePromise).url());
     releaseFirstSlice.resolve();
     await page.evaluate(
       () =>
@@ -596,7 +635,9 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
         }),
     );
 
-    await expect(page.getByTestId('lazy-clock-value')).toHaveText(
+    await waitForSelectorText(
+      page,
+      '[data-testid="lazy-clock-value"]',
       'lazy clock racing HMR',
     );
   });

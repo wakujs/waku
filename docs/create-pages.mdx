@@ -10,6 +10,10 @@ The entry point for programmatic routing in Waku projects is `./src/waku.server.
 
 `createPage`, `createLayout`, `createRoot`, `createSlice`, and `createApi` register programmatic routes and renderable entries. Pages, layouts, roots, and slices specify a React component and render method. APIs specify HTTP handlers. Waku currently supports two render options: `'static'` for static prerendering (SSG) or `'dynamic'` for server-side rendering (SSR).
 
+Static React components produce content only. Components that call
+`requestRedirect()` or `requestNotFound()` during rendering must use
+`render: 'dynamic'`; see [Redirects and Not Found](/guides/redirects-and-not-found).
+
 For example, you can statically prerender a global header and footer in the root layout at build time, but dynamically render the rest of a home page at request time for personalized user experiences.
 
 ```tsx
@@ -784,6 +788,11 @@ type HandlerInterceptor = <T>(next: () => Promise<T>) => Promise<T>;
 ```
 
 Register interceptors with `createInterceptor` inside `createPages`. They compose as onion wrappers around `next`: the first registered interceptor is the outermost, so it runs first on the way in and last on the way out.
+
+Registering a handler interceptor does not make a route dynamic. Prerendered files
+and cached static routes can be served or reused without running it. Use a dynamic
+route for checks that must run on each visit. Routing intents are supported in
+runtime interceptors before `next()`, not during build-time rendering.
 
 ```tsx
 // ./src/waku.server.tsx

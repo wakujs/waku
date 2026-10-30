@@ -1,9 +1,13 @@
 /** @vitest-environment happy-dom */
+import { createRequire } from 'node:module';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createCustomError } from '../src/lib/utils-isomorphic/custom-errors.js';
+import { ETAGS_ID } from '../src/lib/utils-isomorphic/etags.js';
+import { adoptElements } from '../src/minimal/client-utils/element-etags.js';
 import type { FetchRsc } from '../src/minimal/client-utils/root-store.js';
 import { getRouterCacheForTest } from '../src/router/client-core-utils/caches.js';
 import {
+  HAS404_ID,
+  INTENT_ID,
   IS_STATIC_ID,
   ROUTE_ID,
   encodeRoutePath,
@@ -12,6 +16,15 @@ import {
 
 type Elements = Record<string, unknown>;
 
+const { createFromReadableStream } = createRequire(import.meta.url)(
+  'react-server-dom-webpack/client.edge',
+) as {
+  createFromReadableStream: (
+    stream: ReadableStream,
+    options: unknown,
+  ) => Promise<Elements>;
+};
+
 const fetchRsc = vi.fn<FetchRsc>();
 const cache = getRouterCacheForTest(fetchRsc);
 
@@ -19,15 +32,12 @@ type LoadOptions = Parameters<typeof cache.load>[1];
 
 const route = (path: string, query = '', hash = '') => ({ path, query, hash });
 
-const settled = route('/start');
-
 const baseOpts = (
   overrides: Partial<LoadOptions> & { signal?: AbortSignal } = {},
 ): LoadOptions => ({
   signal: overrides.signal ?? new AbortController().signal,
-  refetch: true,
   has404: false,
-  settled,
+  refetch: true,
   base: {},
   url: new URL('http://localhost/next'),
   ...overrides,
@@ -42,6 +52,145 @@ describe('load', () => {
     cache.clearCaches();
     fetchRsc.mockReset();
     vi.unstubAllEnvs();
+  });
+
+  it('returns a document redirect without fetching it or updating browser history', async () => {
+    const href = window.location.href;
+    fetchRsc.mockResolvedValue({
+      [ROUTE_ID]: ['/next', ''],
+      [INTENT_ID]: Promise.resolve(
+        JSON.stringify({ status: 307, location: 'https://other.example/done' }),
+      ),
+    });
+    const outcome = await cache.load(route('/next'), baseOpts());
+    expect(outcome).toEqual({
+      type: 'leave',
+      url: new URL('http://localhost/next'),
+      follows: 0,
+      location: new URL('https://other.example/done'),
+    });
+    expect(fetchRsc).toHaveBeenCalledOnce();
+    expect(window.location.href).toBe(href);
+  });
+
+  it.each(['/next', '/next#comments'])(
+    'rejects a redirect to the same server route (%s)',
+    async (location) => {
+      fetchRsc.mockResolvedValue({
+        [ROUTE_ID]: ['/next', ''],
+        [INTENT_ID]: Promise.resolve(JSON.stringify({ status: 307, location })),
+      });
+      const outcome = await cache.load(
+        route('/next'),
+        baseOpts({ url: new URL('/next', window.location.href) }),
+      );
+      expect(outcome).toMatchObject({
+        type: 'failed',
+        error: { message: 'detected a navigation loop' },
+      });
+      expect(fetchRsc).toHaveBeenCalledOnce();
+    },
+  );
+
+  it('follows a different route with a fragment', async () => {
+    const elements = { [ROUTE_ID]: ['/next', ''] };
+    fetchRsc
+      .mockResolvedValueOnce({
+        [ROUTE_ID]: ['/gate', ''],
+        [INTENT_ID]: Promise.resolve(
+          JSON.stringify({ status: 307, location: '/next#comments' }),
+        ),
+      })
+      .mockResolvedValueOnce(elements);
+    const outcome = await cache.load(
+      route('/gate'),
+      baseOpts({ url: new URL('/gate', window.location.href) }),
+    );
+    expect(outcome).toMatchObject({
+      type: 'loaded',
+      elements,
+      route: route('/next', '', '#comments'),
+    });
+    expect(fetchRsc).toHaveBeenCalledTimes(2);
+  });
+
+  it('follows a ready intent decoded from Flight before returning the source route', async () => {
+    const intent = JSON.stringify({
+      status: 307,
+      location: 'https://other.example/done',
+    });
+    const elements = await createFromReadableStream(
+      new Response(
+        '0:{"ROUTE":["/next",""],"INTENT":"$@1"}\n1:' +
+          JSON.stringify(intent) +
+          '\n',
+      ).body!,
+      {
+        serverConsumerManifest: {
+          moduleMap: {},
+          serverModuleMap: {},
+          moduleLoading: null,
+        },
+      },
+    );
+    fetchRsc.mockResolvedValue(elements);
+
+    const outcome = await cache.load(route('/next'), baseOpts());
+
+    expect(outcome).toMatchObject({
+      type: 'leave',
+      location: new URL('https://other.example/done'),
+    });
+    expect(fetchRsc).toHaveBeenCalledOnce();
+  });
+
+  it('redirect follows use the retained base and return only the destination response', async () => {
+    const base = adoptElements({ root: 'root', [ETAGS_ID]: { root: 1 } });
+    const gate = adoptElements({
+      [getRouteSlotId('/gate')]: 'skipped',
+      [ETAGS_ID]: { [getRouteSlotId('/gate')]: 1 },
+      [ROUTE_ID]: ['/gate', ''],
+      [INTENT_ID]: Promise.resolve(
+        JSON.stringify({ status: 307, location: '/done' }),
+      ),
+    });
+    const destination = {
+      [getRouteSlotId('/done')]: 'destination',
+      [ROUTE_ID]: ['/done', ''],
+    };
+    fetchRsc.mockResolvedValueOnce(gate).mockResolvedValueOnce(destination);
+    const options = baseOpts({
+      base,
+      url: new URL('/gate', window.location.href),
+    });
+    const outcome = await cache.load(route('/gate'), options);
+
+    expect(fetchRsc).toHaveBeenNthCalledWith(
+      2,
+      encodeRoutePath('/done'),
+      new URLSearchParams({ query: '' }),
+      { signal: options.signal, unstable_base: base },
+    );
+    expect(outcome).toMatchObject({ type: 'loaded', route: route('/done') });
+    if (outcome.type !== 'loaded') {
+      throw new Error('Expected the redirect destination to load');
+    }
+    expect(outcome.elements).toBe(destination);
+    expect(cache.canReuseStaticRoute(route('/gate'), gate)).toBe(false);
+  });
+
+  it('loads a custom 404 that requests not-found without following it again', async () => {
+    const elements = {
+      [ROUTE_ID]: ['/404', ''],
+      [HAS404_ID]: true,
+      [INTENT_ID]: Promise.resolve(JSON.stringify({ status: 404 })),
+    };
+    fetchRsc.mockResolvedValue(elements);
+
+    const outcome = await cache.load(route('/404'), baseOpts({ has404: true }));
+
+    expect(outcome).toMatchObject({ type: 'loaded', elements });
+    expect(fetchRsc).toHaveBeenCalledOnce();
   });
 
   it('does not reuse a static path when base lacks the route slot', async () => {
@@ -90,6 +239,48 @@ describe('load', () => {
     expect(outcome.type).toBe('reused');
     expect(fetchRsc).not.toHaveBeenCalled();
   });
+
+  it.each([
+    { intent: { status: 307, location: '/done' }, destination: '/done' },
+    { intent: { status: 404 }, destination: '/404' },
+  ])(
+    'follows a redirect through a prefetched $intent intent',
+    async ({ intent, destination }) => {
+      fetchRsc.mockResolvedValueOnce({
+        [ROUTE_ID]: ['/gate', ''],
+        [INTENT_ID]: Promise.resolve(JSON.stringify(intent)),
+      });
+      cache.prefetchRoute(route('/gate'));
+      const elements = { [ROUTE_ID]: [destination, ''] };
+      fetchRsc
+        .mockResolvedValueOnce({
+          [ROUTE_ID]: ['/next', ''],
+          [INTENT_ID]: Promise.resolve(
+            JSON.stringify({ status: 307, location: '/gate' }),
+          ),
+        })
+        .mockResolvedValueOnce(elements);
+      const outcome = await cache.load(
+        route('/next'),
+        baseOpts({
+          has404: true,
+          url: new URL('/next', window.location.href),
+          base: { [getRouteSlotId('/gate')]: 'Cached gate' },
+        }),
+      );
+      expect(outcome).toMatchObject({
+        type: 'loaded',
+        route: route(destination),
+        follows: 2,
+        elements,
+      });
+      expect(fetchRsc.mock.calls.map(([path]) => path)).toEqual([
+        encodeRoutePath('/gate'),
+        encodeRoutePath('/next'),
+        encodeRoutePath(destination),
+      ]);
+    },
+  );
 
   it('fetches by encoded rscPath and returns the loaded attempt', async () => {
     const elements = { [ROUTE_ID]: ['/next', ''] };
@@ -210,56 +401,6 @@ describe('load', () => {
     await expect(pendingA).resolves.toEqual({ type: 'aborted' });
   });
 
-  it.each(['startup', 'pending'] as const)(
-    'retains prefetch invalidation through follow startup, not its pending wait (%s)',
-    async (timing) => {
-      const onInvalidate = vi.fn();
-      let invalidate!: () => void;
-      let finishFollow!: (elements: Elements) => void;
-      let startFollow!: () => void;
-      const following = new Promise<void>((resolve) => {
-        startFollow = resolve;
-      });
-      const elements = { [ROUTE_ID]: ['/final', ''] };
-      fetchRsc
-        .mockImplementationOnce((_path, _params, options) => {
-          invalidate = () => options?.onBuildIdMismatch?.();
-          return Promise.reject(
-            createCustomError('moved', { location: '/final' }),
-          );
-        })
-        .mockImplementationOnce(() => {
-          if (timing === 'startup') {
-            invalidate();
-          }
-          startFollow();
-          return new Promise((resolve) => {
-            finishFollow = resolve;
-          });
-        });
-      cache.prefetchRoute(route('/next'));
-      const pending = cache.load(
-        route('/next'),
-        baseOpts({
-          onInvalidate,
-          url: new URL('/next', window.location.href),
-        }),
-      );
-      await following;
-      if (timing === 'pending') {
-        invalidate();
-      }
-      expect(onInvalidate).toHaveBeenCalledTimes(timing === 'startup' ? 1 : 0);
-      finishFollow(elements);
-      await expect(pending).resolves.toMatchObject({
-        type: 'loaded',
-        route: route('/final'),
-        elements,
-        follows: 1,
-      });
-    },
-  );
-
   it('returns aborted when the signal is already aborted', async () => {
     const controller = new AbortController();
     controller.abort();
@@ -287,69 +428,6 @@ describe('load', () => {
     );
     controller.abort();
     await expect(pending).resolves.toEqual({ type: 'aborted' });
-  });
-
-  it('follows a 404 to /404 when has404 is set', async () => {
-    fetchRsc
-      .mockRejectedValueOnce(createCustomError('nf', { status: 404 }))
-      .mockResolvedValueOnce({ [ROUTE_ID]: ['/404', ''] });
-    const outcome = await cache.load(
-      route('/missing'),
-      baseOpts({
-        has404: true,
-        url: new URL('http://localhost/missing'),
-      }),
-    );
-    expect(outcome).toMatchObject({
-      type: 'loaded',
-      route: route('/404'),
-      follows: 1,
-    });
-    expect(fetchRsc).toHaveBeenCalledTimes(2);
-    expect(fetchRsc).toHaveBeenLastCalledWith(
-      encodeRoutePath('/404'),
-      expect.any(URLSearchParams),
-      expect.any(Object),
-    );
-  });
-
-  it('follows an in-app redirect and loads the target', async () => {
-    fetchRsc
-      .mockRejectedValueOnce(
-        createCustomError('moved', {
-          status: 307,
-          location: `${window.location.origin}/final`,
-        }),
-      )
-      .mockResolvedValueOnce({ [ROUTE_ID]: ['/final', ''] });
-    const outcome = await cache.load(
-      route('/next'),
-      baseOpts({ url: new URL('/next', window.location.href) }),
-    );
-    expect(outcome).toMatchObject({
-      type: 'loaded',
-      route: route('/final'),
-      follows: 1,
-    });
-  });
-
-  it('leaves the app on an external redirect', async () => {
-    const error = createCustomError('gone', {
-      location: 'https://other.example/next',
-      unstable_leave: true,
-    });
-    fetchRsc.mockRejectedValue(error);
-    const outcome = await cache.load(route('/next'), baseOpts());
-    expect(outcome).toMatchObject({
-      type: 'external',
-      error,
-      route: route('/next'),
-      follows: 0,
-    });
-    if (outcome.type === 'external') {
-      expect(outcome.url.href).toBe('https://other.example/next');
-      expect(outcome.from.href).toBe('http://localhost/next');
-    }
   });
 
   it('fails on a non-followable error', async () => {
@@ -381,27 +459,22 @@ describe('load', () => {
     });
   });
 
-  it('follow attempts after an adopted rejection fetch the new route', async () => {
-    fetchRsc.mockResolvedValue({ [ROUTE_ID]: ['/404', ''] });
+  it('adopts fresh elements even when the route is reusable from cache', async () => {
+    const base = {
+      [ROUTE_ID]: ['/next', ''],
+      [IS_STATIC_ID]: true,
+      [getRouteSlotId('/next')]: 'cached',
+    };
+    cache.learnStaticFromElements(base);
+    const elements = { ...base, [getRouteSlotId('/next')]: 'updated' };
+
     const outcome = await cache.load(
-      route('/missing'),
-      baseOpts({
-        has404: true,
-        url: new URL('http://localhost/missing'),
-        adopt: Promise.reject(createCustomError('nf', { status: 404 })),
-      }),
+      route('/next'),
+      baseOpts({ base, adopt: Promise.resolve(elements) }),
     );
-    expect(outcome).toMatchObject({
-      type: 'loaded',
-      route: route('/404'),
-      follows: 1,
-    });
-    expect(fetchRsc).toHaveBeenCalledTimes(1);
-    expect(fetchRsc).toHaveBeenCalledWith(
-      encodeRoutePath('/404'),
-      expect.any(URLSearchParams),
-      expect.any(Object),
-    );
+
+    expect(outcome).toMatchObject({ type: 'loaded', elements });
+    expect(fetchRsc).not.toHaveBeenCalled();
   });
 
   it('an aborted adopt is aborted, not failed', async () => {

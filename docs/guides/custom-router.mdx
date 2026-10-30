@@ -77,11 +77,25 @@ Each source uses Minimal's `Unstable_ElementSource`:
 
 An immutable slot must have the same content for its lifetime. The `root` ID is shared across routes, while `route` is mapped internally to a path-specific slot. Additional IDs are shared wherever they appear, so use distinct IDs for different content.
 
-The server caches immutable named elements. It reuses immutable `route` content from build output, but does not cache new route content by requested pathname at runtime. Give a route source a `cacheKey` to share its cached content across pathnames, such as a reusable route shell. Sources with the same key must render the same content; use a bounded set of keys rather than arbitrary requested URLs.
+The server caches immutable named elements. It reuses immutable `route` content from build output, but does not cache new route content by requested pathname at runtime. Give a route source a `cacheKey` to share its cached content across pathnames, such as a reusable route shell. Sources with the same key must render the same content; use a bounded set of keys rather than arbitrary requested URLs. The cache reuses the serialized outcome, including any nested cancellation.
+
+Immutable and cached sources produce content only. Their factories and nested
+components must not call `requestRedirect()` or `requestNotFound()`. Put routing
+decisions in dynamic sources, server functions, or runtime handler interceptors
+before `next()`.
+
+If a source factory throws, including calling `unstable_cancelRender()`, its
+result is not cached. A factory cancellation during a build fails the build.
+Use dynamic sources for request-dependent or retryable rendering.
+
+A route whose sources are all immutable can be reused by the client without a
+request, whether or not those sources have a `cacheKey`. Handler interceptors do
+not prevent this reuse. A decision that must run on each visit requires a dynamic
+route.
 
 Additional IDs must not start with `_`, a capital letter, or `route:`; these names are reserved for Minimal and Router metadata.
 
-Set `noSsr: true` on a router definition to return Waku's client-rendered document fallback; its RSC response remains available. Resolving `/404` supplies a custom not-found route. Its availability is checked once per router instance; the content is resolved on each visit. Supply `getHas404: async () => boolean` when your manifest can answer this without resolving a route, or when a catch-all also matches `/404`. See [Redirects and Not Found](/guides/redirects-and-not-found) for streaming behavior.
+Set `noSsr: true` on a router definition to return Waku's client-rendered document fallback; its RSC response remains available. To supply a custom not-found route, resolve `/404` and provide `getHas404: async () => true`. Without `getHas404`, the router assumes there is no custom page; it does not probe the resolver. The callback supplies availability when needed, and the content is resolved on each visit. `createPages` and `fsRouter` provide availability from their route registry. See [Redirects and Not Found](/guides/redirects-and-not-found) for streaming behavior.
 
 For typed search, parse `query` with an application-owned codec inside `resolve`. Share that independent codec with a local `unstable_createRouteHref` factory and the client search hooks; `defineRouter` requires no codec map or browser registration. Navigation and redirects consume the resulting URL strings. See [Typed Routes](/guides/typed-routes) for examples and [migration steps](/guides/typed-routes#migration).
 
@@ -111,6 +125,13 @@ if ((globalThis as any).__WAKU_HYDRATE__) {
 
 Return an async function from `resolve` for an API endpoint. The function receives the real request, including its method, headers, and body, with the pathname relative to Waku's base path. It runs only for HTTP requests, not when the client tries to fetch a route payload.
 
+The handler owns its returned `Response`, including its status and headers. Return
+`Response.redirect()` for a redirect or a response with status `404` for missing
+data. `requestRedirect()` and `requestNotFound()` are not supported inside API
+handlers; they serve dynamic React rendering and server function calls. An intent
+recorded during runtime route resolution, or by a handler interceptor before
+`next()`, is applied before starting the API handler.
+
 Route params are caller-owned: match and capture them in `resolve`, then close over them in the handler or element source. Use `getRequest` from `waku/router/server` to inspect the request during resolution or rendering.
 
 The request body can be read only once. If resolution needs to inspect it before returning an HTTP handler, read `getRequest().clone()` so the handler can still read the original body.
@@ -127,6 +148,10 @@ The optional `getBuildPaths` returns pathname strings, without queries or fragme
 For explicit build planning, return `{ pathname, routerDefinition?, prerender?, prefetchRegExp? }` targets. `routerDefinition` supplies a build-specific router definition or an HTTP handler rather than calling `resolve`. `prerender: false` caches only immutable sources without emitting a page, even when every source is immutable. `prefetchRegExp` is a regular expression matching paths that share the target's client modules.
 
 Omit a path to skip its build output. Omit `getBuildPaths` entirely for runtime-only routes. Custom routers do not need `PathSpec` or component source-file metadata.
+
+Build-time sources render content without route intents. Exclude invalid static
+paths from the build plan or render fallback content. On static-only deployments,
+configure redirects at the host; see [Redirect Maps](/guides/redirect-maps).
 
 Include `/404` in `getBuildPaths` to emit a static `404.html`.
 
