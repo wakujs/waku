@@ -374,8 +374,18 @@ export const useNavigation = (
           commitHistory(outcome.url, historyIntent);
           window.location.replace(outcome.location.href);
           if (instantResponse) {
-            request.queuedState = initialState;
-            return { [ROUTER_STATE_ID]: initialState, [INTENT_ID]: null };
+            const state = createRouterState(initialAttempt.route, outcome.url, {
+              history: null,
+              scroll: false,
+              pathChanged: false,
+              follows: outcome.follows,
+            });
+            request.queuedState = state;
+            return {
+              [ROUTER_STATE_ID]: state,
+              [INTENT_ID]: null,
+              [IS_STATIC_ID]: false,
+            };
           }
           requestRef.current = undefined;
           return {};
