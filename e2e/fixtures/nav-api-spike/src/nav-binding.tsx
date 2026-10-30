@@ -39,6 +39,7 @@ import {
   unstable_getRouteSlotId as getRouteSlotId,
   unstable_getRouteUrl as getRouteUrl,
   unstable_has404FromElements as has404FromElements,
+  unstable_isStaticFromElements as isStaticFromElements,
   unstable_parseRoute as parseRoute,
   useInitialRoute_UNSTABLE as useInitialRoute,
   useInitialRscParams_UNSTABLE as useInitialRscParams,
@@ -52,6 +53,7 @@ type FollowRun = (
   signal: AbortSignal,
   follows: number,
   url?: URL,
+  adopt?: Promise<Readonly<Record<string | symbol, unknown>>>,
 ) => Promise<void>;
 
 type LastFollow = { href: string; follows: number };
@@ -272,24 +274,39 @@ const NavBinding = ({
         : undefined,
     [ownsNavigation],
   );
-  const commitActionRoute = useCallback(
-    (next: RouteProps) => {
-      // the 404 route renders where the user already is
-      if (ownsNavigation && next.path !== '/404') {
-        void window.navigation.navigate(getRouteUrl(next).href, {
-          info: { fromAction: true },
+  const applyRouteResponse = useCallback(
+    async (responseElements: Readonly<Record<string | symbol, unknown>>) => {
+      const next = getRouteFromElements(responseElements)!;
+      const current = getSettledRoute();
+      const sameRoute =
+        current.path === next.path &&
+        (isStaticFromElements(responseElements) ||
+          current.query === next.query);
+      const target = sameRoute ? current : next;
+      const url =
+        next.path === '/404'
+          ? new URL(window.location.href)
+          : getRouteUrl(target);
+      const adopt = Promise.resolve(responseElements);
+      if (ownsNavigation) {
+        const result = window.navigation.navigate(url.href, {
+          history: sameRoute || next.path === '/404' ? 'replace' : 'push',
+          info: { scroll: false, target, adopt },
         });
+        await settleNavigateFinished(result.finished);
+        return;
       }
+      await runRef.current(target, new AbortController().signal, 0, url, adopt);
     },
-    [ownsNavigation],
+    [getSettledRoute, ownsNavigation, runRef],
   );
   useServerFunctionRouting(serverFunctionRouting, {
     getSettledRoute,
     getPendingRoute,
-    onRouteChange: commitActionRoute,
+    applyRouteResponse,
   });
 
-  const runImpl: FollowRun = async (next, signal, followCount, url) => {
+  const runImpl: FollowRun = async (next, signal, followCount, url, adopt) => {
     setFailure(undefined);
     const base = resolvedRef.current;
     const settled = getRouteFromElements(base) ?? routeFallback;
@@ -299,8 +316,9 @@ const NavBinding = ({
       base,
       follows: followCount,
       ...(url ? { url } : {}),
+      ...(adopt ? { adopt } : {}),
     });
-    if (outcome.type === 'aborted') {
+    if (outcome.type === 'aborted' || signal.aborted) {
       return;
     }
     if (outcome.type === 'leave') {
@@ -308,24 +326,24 @@ const NavBinding = ({
       return;
     }
     setFollows(outcome.follows);
-    if (
-      ownsNavigation &&
-      outcome.url.href !== window.location.href &&
-      outcome.url.href !== getRouteUrl(next).href
-    ) {
-      const entry = window.navigation.currentEntry;
-      void window.navigation.transition!.finished.then(
-        () => {
-          if (window.navigation.currentEntry !== entry) {
-            return;
-          }
-          void window.navigation.navigate(outcome.url.href, {
-            history: 'replace',
-            info: { fromAction: true, follows: outcome.follows },
-          });
-        },
-        () => {},
-      );
+    if (ownsNavigation && outcome.url.href !== window.location.href) {
+      const navigation = window.navigation;
+      const entry = navigation.currentEntry;
+      const transition = navigation.transition;
+      const commitUrl = () => {
+        if (signal.aborted || navigation.currentEntry !== entry) {
+          return;
+        }
+        void navigation.navigate(outcome.url.href, {
+          history: transition ? 'replace' : 'push',
+          info: { urlOnly: true, follows: outcome.follows },
+        });
+      };
+      if (transition) {
+        void transition.finished.then(commitUrl, () => {});
+      } else {
+        commitUrl();
+      }
     }
     if (outcome.type === 'failed') {
       setFailure({ error: outcome.error });
@@ -373,8 +391,9 @@ const NavBinding = ({
         | {
             scroll?: boolean;
             follows?: number;
-            fromAction?: boolean;
+            urlOnly?: boolean;
             target?: RouteProps;
+            adopt?: Promise<Readonly<Record<string | symbol, unknown>>>;
           }
         | undefined;
       // replace is not "redirect"; only our follow metadata continues a chain.
@@ -385,14 +404,17 @@ const NavBinding = ({
         setFollows(0);
         lastFollowRef.current = null;
       }
-      if (info?.fromAction) {
-        // the action's response carries the route's elements
+      if (info?.urlOnly) {
         event.intercept({ scroll: 'manual', focusReset: 'manual' });
         return;
       }
       const next = info?.target ?? parseRoute(dest);
       const current = parseRoute(new URL(window.location.href));
-      if (next.path === current.path && next.query === current.query) {
+      if (
+        !info?.adopt &&
+        next.path === current.path &&
+        next.query === current.query
+      ) {
         return;
       }
       event.intercept({
@@ -402,9 +424,11 @@ const NavBinding = ({
             event.signal,
             typeof info?.follows === 'number' ? info.follows : 0,
             dest,
+            info?.adopt,
           ),
         // useSetSearch passes scroll: false; intercept defaults to after-transition
         ...(info?.scroll === false ? { scroll: 'manual' } : {}),
+        ...(info?.adopt ? { focusReset: 'manual' } : {}),
       });
     };
     navigation.addEventListener('navigate', onNavigate);

@@ -18,7 +18,7 @@ const createConnection = (path: string) => ({
   cache: getRouterCacheForTest(async () => ({})),
   getSettledRoute: () => ({ path, query: 'q=1', hash: '' }),
   getPendingRoute: () => undefined,
-  onRouteChange: vi.fn(),
+  applyRouteResponse: vi.fn(),
 });
 
 test('an installed controller passes RSC through and rejects actions before connection', async () => {
@@ -68,18 +68,11 @@ test('in-flight actions use committed callbacks and an old cleanup cannot clear 
       ACTION_LOCATION_HEADER,
     ),
   ).toBe('/first?q=1');
-  expect(first.onRouteChange).not.toHaveBeenCalled();
-  expect(second.onRouteChange).toHaveBeenCalledExactlyOnceWith({
-    path: '/destination',
-    query: '',
-    hash: '',
+  expect(first.applyRouteResponse).not.toHaveBeenCalled();
+  expect(second.applyRouteResponse).toHaveBeenCalledExactlyOnceWith({
+    [ROUTE_ID]: ['/destination', ''],
+    [IS_STATIC_ID]: true,
   });
-  expect(
-    second.cache.canReuseStaticRoute(
-      { path: '/destination', query: '', hash: '' },
-      { [getRouteSlotId('/destination')]: 'destination' },
-    ),
-  ).toBe(true);
   disconnectSecond();
   await expect(
     request('F/action', [], { type: 'call', fetch: transport }),
@@ -100,12 +93,14 @@ test('controllers own independent connections', async () => {
       type: 'call',
       fetch: globalThis.fetch,
     }),
-  ).toBe(result);
-  expect(firstConnection.onRouteChange).not.toHaveBeenCalled();
-  expect(secondConnection.onRouteChange).toHaveBeenCalledOnce();
+  ).toEqual({ elements: {}, value: 42 });
+  expect(firstConnection.applyRouteResponse).not.toHaveBeenCalled();
+  expect(secondConnection.applyRouteResponse).toHaveBeenCalledExactlyOnceWith(
+    result.elements,
+  );
 });
 
-test('an in-flight action reconciles its origin rerender after disconnection', async () => {
+test('a disconnected binding drops an in-flight origin rerender but keeps its value', async () => {
   const controller = createServerFunctionRouting();
   const connection = createConnection('/origin');
   const disconnect = controller.connect(connection);
@@ -124,14 +119,8 @@ test('an in-flight action reconciles its origin rerender after disconnection', a
   })('F/action', [], { type: 'call', fetch: globalThis.fetch });
   disconnect();
   resolve();
-  expect(await response).toEqual({
-    elements: {
-      [getRouteSlotId('/origin')]: 'updated',
-      [ROUTE_ID]: ['/origin', 'q=1'],
-    },
-    value: 'done',
-  });
-  expect(connection.onRouteChange).not.toHaveBeenCalled();
+  expect(await response).toEqual({ elements: {}, value: 'done' });
+  expect(connection.applyRouteResponse).not.toHaveBeenCalled();
 });
 
 test('an origin rerender is dropped after a newer connection disconnects', async () => {
@@ -158,11 +147,11 @@ test('an origin rerender is dropped after a newer connection disconnects', async
   disconnectSecond();
   resolve();
   expect(await response).toEqual({ elements: {}, value: 'done' });
-  expect(first.onRouteChange).not.toHaveBeenCalled();
-  expect(second.onRouteChange).not.toHaveBeenCalled();
+  expect(first.applyRouteResponse).not.toHaveBeenCalled();
+  expect(second.applyRouteResponse).not.toHaveBeenCalled();
 });
 
-test('an in-flight route change uses the latest connection after cleanup', async () => {
+test('a disconnected binding drops an in-flight named rerender but keeps its value', async () => {
   const controller = createServerFunctionRouting();
   const first = createConnection('/first');
   const second = createConnection('/second');
@@ -182,17 +171,39 @@ test('an in-flight route change uses the latest connection after cleanup', async
   const disconnectSecond = controller.connect(second);
   disconnectSecond();
   resolve();
-  expect(await response).toBe(result);
-  expect(first.onRouteChange).not.toHaveBeenCalled();
-  expect(second.onRouteChange).toHaveBeenCalledExactlyOnceWith({
-    path: '/destination',
-    query: '',
-    hash: '',
+  expect(await response).toEqual({ elements: {}, value: 'done' });
+  expect(first.applyRouteResponse).not.toHaveBeenCalled();
+  expect(second.applyRouteResponse).not.toHaveBeenCalled();
+});
+
+test('a same-route response is applied once before its call resolves', async () => {
+  const controller = createServerFunctionRouting();
+  const connection = createConnection('/origin');
+  let applied!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    applied = resolve;
   });
-  expect(
-    second.cache.canReuseStaticRoute(
-      { path: '/destination', query: '', hash: '' },
-      { [getRouteSlotId('/destination')]: 'destination' },
-    ),
-  ).toBe(true);
+  connection.applyRouteResponse.mockImplementation(() => pending);
+  controller.connect(connection);
+  const elements = {
+    [ROUTE_ID]: ['/origin', 'q=1'],
+    [getRouteSlotId('/origin')]: 'updated',
+  };
+  const complete = vi.fn();
+  const response = controller.enhancer(async () => ({
+    elements,
+    value: 'saved',
+  }))('F/action', [], { type: 'call', fetch: globalThis.fetch });
+  const result = response.then(complete);
+  await Promise.resolve();
+  expect(connection.applyRouteResponse).toHaveBeenCalledExactlyOnceWith(
+    elements,
+  );
+  expect(complete).not.toHaveBeenCalled();
+  applied();
+  await result;
+  expect(complete).toHaveBeenCalledExactlyOnceWith({
+    elements: {},
+    value: 'saved',
+  });
 });

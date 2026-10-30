@@ -27,6 +27,26 @@ export default function RerenderActionPage() {
           Render static
         </button>
       </form>
+      <form
+        action={async () => {
+          'use server';
+          rerenderRoute('/old');
+        }}
+      >
+        <button type="submit" data-testid="render-redirect">
+          Render redirect
+        </button>
+      </form>
+      <form
+        action={async () => {
+          'use server';
+          rerenderRoute('/rerender-action');
+        }}
+      >
+        <button type="submit" data-testid="render-same">
+          Render same route
+        </button>
+      </form>
     </div>
   );
 }

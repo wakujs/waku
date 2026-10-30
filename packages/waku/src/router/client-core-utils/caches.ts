@@ -21,9 +21,8 @@ import { createSliceCache } from './slice-cache.js';
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
 type RouteIntentObserver = (
-  type: 'rsc' | 'call',
   signal: AbortSignal | undefined,
-) => (elements: Elements) => Elements | Promise<Elements>;
+) => (elements: Elements) => Elements;
 
 type CachedLoadOptions = LoadOptions & {
   /** `false` reuses the initial attempt without fetching. */
@@ -49,13 +48,11 @@ export const createRscParams = (query: string): URLSearchParams =>
 
 const createRouterCache = (fetchRsc: FetchRsc) => {
   let intentObserver: RouteIntentObserver | undefined;
-  const captureRouteIntentScope = (
-    type: 'rsc' | 'call',
-    signal?: AbortSignal,
-  ) => intentObserver?.(type, signal);
+  const captureRouteIntentScope = (signal?: AbortSignal) =>
+    intentObserver?.(signal);
   const fetchRouteElements: FetchRsc = async (...args) => {
     const [, , options] = args;
-    const applyIntent = captureRouteIntentScope('rsc', options?.signal);
+    const applyIntent = captureRouteIntentScope(options?.signal);
     const elements = await fetchRsc(...args);
     return applyIntent?.(elements) ?? elements;
   };
