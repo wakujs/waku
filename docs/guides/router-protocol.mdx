@@ -534,9 +534,10 @@ useServerFunctionRouting_UNSTABLE(serverFunctionRouting, {
 
 `applyRouteResponse(elements)` replaces the former `onRouteChange(route)`
 callback. A custom binding must apply all response elements, not just update its URL. It can pass `adopt: Promise.resolve(elements)` to `cache.load` and use its
-ordinary navigation outcome handler. To match the built-in Router, resolve ready
-intents before committing the source response and observe pending intents after
-commit.
+ordinary navigation outcome handler. To match the built-in Router, adopted
+responses use the same navigation and cancellation path as ordinary navigation:
+they supersede older work and yield to newer navigation. Resolve ready intents
+before committing the source response and observe pending intents after commit.
 
 The controller preserves the server function's return value after the callback
 resolves. If the callback rejects, the call rejects. The built-in binding shows

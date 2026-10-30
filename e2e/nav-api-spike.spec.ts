@@ -107,9 +107,7 @@ test.describe('nav-api-spike imports', () => {
     expect(src).toContain("typeof info?.follows === 'number'");
     expect(src).not.toContain("event.navigationType !== 'replace'");
     const chainIdx = src.indexOf("typeof info?.follows === 'number'");
-    const samePathIdx = src.indexOf(
-      'next.path === current.path && next.query === current.query',
-    );
+    const samePathIdx = src.indexOf('next.path === current.path');
     expect(chainIdx).toBeGreaterThan(-1);
     expect(chainIdx).toBeLessThan(samePathIdx);
     expect(src).toContain('last.href === href && last.follows === follows');
@@ -427,5 +425,82 @@ test.describe('nav-api-spike', () => {
     await page.getByTestId('render-static').click();
     await expect(page.getByTestId('static')).toHaveText('Static');
     await expect(page).toHaveURL(/\/static$/);
+  });
+
+  test('a newer navigation supersedes an action redirect that is loading', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/rerender-action`);
+    await waitForHydration(page);
+    const requested = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const sent = Promise.withResolvers<void>();
+    await page.route('**/RSC/R/new.txt*', async (route) => {
+      const response = await route.fetch();
+      requested.resolve();
+      await release.promise;
+      await route.fulfill({ response });
+      sent.resolve();
+    });
+    try {
+      await page
+        .getByTestId('render-redirect')
+        .evaluate((button: HTMLButtonElement) => button.click());
+      await requested.promise;
+      const cancelled = page.waitForEvent('requestfailed', {
+        predicate: (request) => request.url().includes('/RSC/R/new.txt'),
+      });
+      await page.evaluate(
+        () => window.navigation.navigate('/hello/latest').finished,
+      );
+      await cancelled;
+      release.resolve();
+      await sent.promise;
+      await expect(page).toHaveURL(/\/hello\/latest$/);
+      await expect(page.getByTestId('hello')).toHaveText('Hello latest');
+    } finally {
+      release.resolve();
+    }
+  });
+
+  test('an action response supersedes an older navigation that is loading', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/rerender-action`);
+    await waitForHydration(page);
+    const requested = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const sent = Promise.withResolvers<void>();
+    await page.route('**/RSC/R/hello/older.txt*', async (route) => {
+      const response = await route.fetch();
+      requested.resolve();
+      await release.promise;
+      await route.fulfill({ response });
+      sent.resolve();
+    });
+    try {
+      await page.evaluate(() => {
+        void window.navigation
+          .navigate('/hello/older')
+          .finished?.catch(() => {});
+      });
+      await requested.promise;
+      const cancelled = page.waitForEvent('requestfailed', {
+        predicate: (request) =>
+          request.url().includes('/RSC/R/hello/older.txt'),
+      });
+      await page
+        .getByTestId('render-static')
+        .evaluate((button: HTMLButtonElement) => button.click());
+      await cancelled;
+      await expect(page.getByTestId('static')).toHaveText('Static');
+      release.resolve();
+      await sent.promise;
+      await page.evaluate(() => window.navigation.transition?.finished);
+      await expect(page).toHaveURL(/\/static$/);
+      await expect(page.getByTestId('static')).toHaveText('Static');
+    } finally {
+      release.resolve();
+    }
   });
 });

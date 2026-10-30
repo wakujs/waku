@@ -286,15 +286,19 @@ const NavBinding = ({
         sameRoute || next.path === '/404'
           ? new URL(window.location.href)
           : getRouteUrl(next);
-      await runRef.current(
-        sameRoute ? current : next,
-        new AbortController().signal,
-        0,
-        url,
-        Promise.resolve(responseElements),
-      );
+      const target = sameRoute ? current : next;
+      const adopt = Promise.resolve(responseElements);
+      if (ownsNavigation) {
+        const result = window.navigation.navigate(url.href, {
+          history: sameRoute || next.path === '/404' ? 'replace' : 'push',
+          info: { scroll: false, target, adopt },
+        });
+        await settleNavigateFinished(result.finished);
+        return;
+      }
+      await runRef.current(target, new AbortController().signal, 0, url, adopt);
     },
-    [getSettledRoute, runRef],
+    [getSettledRoute, ownsNavigation, runRef],
   );
   useServerFunctionRouting(serverFunctionRouting, {
     getSettledRoute,
@@ -327,12 +331,12 @@ const NavBinding = ({
       const entry = navigation.currentEntry;
       const transition = navigation.transition;
       const commitUrl = () => {
-        if (navigation.currentEntry !== entry) {
+        if (signal.aborted || navigation.currentEntry !== entry) {
           return;
         }
         void navigation.navigate(outcome.url.href, {
           history: transition ? 'replace' : 'push',
-          info: { fromAction: true, follows: outcome.follows },
+          info: { urlOnly: true, follows: outcome.follows },
         });
       };
       if (transition) {
@@ -387,8 +391,9 @@ const NavBinding = ({
         | {
             scroll?: boolean;
             follows?: number;
-            fromAction?: boolean;
+            urlOnly?: boolean;
             target?: RouteProps;
+            adopt?: Promise<Readonly<Record<string | symbol, unknown>>>;
           }
         | undefined;
       // replace is not "redirect"; only our follow metadata continues a chain.
@@ -399,14 +404,17 @@ const NavBinding = ({
         setFollows(0);
         lastFollowRef.current = null;
       }
-      if (info?.fromAction) {
-        // the action's response carries the route's elements
+      if (info?.urlOnly) {
         event.intercept({ scroll: 'manual', focusReset: 'manual' });
         return;
       }
       const next = info?.target ?? parseRoute(dest);
       const current = parseRoute(new URL(window.location.href));
-      if (next.path === current.path && next.query === current.query) {
+      if (
+        !info?.adopt &&
+        next.path === current.path &&
+        next.query === current.query
+      ) {
         return;
       }
       event.intercept({
@@ -416,9 +424,11 @@ const NavBinding = ({
             event.signal,
             typeof info?.follows === 'number' ? info.follows : 0,
             dest,
+            info?.adopt,
           ),
         // useSetSearch passes scroll: false; intercept defaults to after-transition
         ...(info?.scroll === false ? { scroll: 'manual' } : {}),
+        ...(info?.adopt ? { focusReset: 'manual' } : {}),
       });
     };
     navigation.addEventListener('navigate', onNavigate);
