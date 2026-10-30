@@ -2111,7 +2111,7 @@ describe('Router integration', () => {
     }
   });
 
-  test('a server function route update commits synchronously in the dispatch', async () => {
+  test('a server function route response renders its payload at the destination', async () => {
     const view = await renderRouter(
       { initialRoute: { path: '/start', query: '', hash: '' } },
       {
@@ -2123,14 +2123,15 @@ describe('Router integration', () => {
     );
     try {
       expect(testHoisted.enhancerCount()).toBe(2);
-      testHoisted.mergeTypes.length = 0;
       await act(async () => {
         await testHoisted.emitActionElements({
           [ROUTE_ID]: ['/next', ''],
           [IS_STATIC_ID]: false,
+          [unstable_getRouteSlotId('/next')]: <div>updated destination</div>,
         });
-        expect(testHoisted.mergeTypes).toEqual(['sync']);
       });
+      expect(view.container.textContent).toContain('updated destination');
+      expect(window.location.pathname).toBe('/next');
     } finally {
       view.unmount();
     }

@@ -373,21 +373,6 @@ export const useNavigation = (
         if (outcome.type === 'leave') {
           commitHistory(outcome.url, historyIntent);
           window.location.replace(outcome.location.href);
-          if (instantResponse) {
-            const state = createRouterState(initialAttempt.route, outcome.url, {
-              history: null,
-              scroll: false,
-              pathChanged: false,
-              follows: outcome.follows,
-            });
-            request.queuedState = state;
-            return {
-              [ROUTER_STATE_ID]: state,
-              [INTENT_ID]: null,
-              [IS_STATIC_ID]: false,
-            };
-          }
-          requestRef.current = undefined;
           return {};
         }
         if (outcome.type === 'failed') {
@@ -548,25 +533,28 @@ export const useNavigation = (
     },
     [getElements],
   );
-  const commitServerFunctionRoute = useCallback(
-    (nextRoute: RouteProps) => {
+  const applyRouteResponse = useCallback(
+    async (responseElements: Elements) => {
+      const nextRoute = getRouteFromElements(responseElements)!;
+      const current = getSettledRoute();
+      const sameRoute =
+        current.path === nextRoute.path &&
+        (isStaticFromElements(responseElements) ||
+          current.query === nextRoute.query);
       const is404 = nextRoute.path === '/404';
-      dispatchChangeRoute(changeRoute, nextRoute, {
-        refetch: false,
+      await dispatchChangeRoute(changeRoute, sameRoute ? current : nextRoute, {
+        adopt: Promise.resolve(responseElements),
         shouldScroll: false,
-        // the 404 route renders where the user already is
-        history: is404 ? null : 'push',
-        url: is404 ? new URL(window.location.href) : getRouteUrl(nextRoute),
-      }).catch((error) => {
-        console.error('Error while handling route updates:', error);
-      });
+        history: sameRoute || is404 ? null : 'push',
+        ...(is404 ? { url: new URL(window.location.href) } : {}),
+      }).catch(() => {});
     },
-    [changeRoute],
+    [changeRoute, getSettledRoute],
   );
   useServerFunctionRouting(serverFunctionRouting, {
     getSettledRoute,
     getPendingRoute,
-    onRouteChange: commitServerFunctionRoute,
+    applyRouteResponse,
   });
 
   useEffect(() => {

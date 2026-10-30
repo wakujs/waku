@@ -213,6 +213,28 @@ If an application needs different behavior, return a destination as the server
 function's result and let the client decide whether to call `router.replace()`.
 The return value remains available even when Waku discards a stale intent.
 
+Use Router's `push` or `replace` to coordinate query and hash changes with route
+rendering. A full route response can replace URL changes made directly with the
+History API; a partial response leaves them alone.
+
+## Document Navigation Handoff
+
+An absolute redirect hands control to the browser. Router does not detect
+whether the document actually leaves. If a `beforeunload` prompt or embedding
+policy prevents departure, Waku does not guarantee URL rollback, removal of an
+instant preview, or continued processing of old intents and origin rerenders.
+Start a fresh Router navigation or reload to recover.
+
+Use a native anchor for flows that need the browser's cancelable document
+navigation and history behavior:
+
+```tsx
+<a href="/account/logout">Log out</a>
+```
+
+The server can redirect that document request to another origin without starting
+a client Router transition.
+
 ## Status and Streaming Notes
 
 Ready intents are followed before the source route commits during client

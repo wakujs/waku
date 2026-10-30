@@ -20,6 +20,34 @@ Minimal owns Flight transport, element storage, and etags. It does not interpret
 Router's IDs or decide which URL to display. Router uses public Minimal APIs.
 Its control entries are reserved by Router; Minimal treats them as application data.
 
+## Client Navigation Contract
+
+The built-in Router uses the following contract. Custom bindings own their
+navigation policy; the controller's apply-once boundary applies to every binding.
+
+| Case                                       | Supported behavior                                                                                                                                                                       |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ordinary client navigation                 | Follow ready intents before committing their source route. Initial client rendering observes intents after commit; instant navigation explicitly permits a preview.                      |
+| A pending intent                           | Apply it only while its response or captured navigation scope is current. A newer navigation can make it stale.                                                                          |
+| A server function response with `ROUTE`    | After origin checks, pass all response elements to `applyRouteResponse` once, including same-route updates. The binding owns its elements and intent; Minimal does not merge them again. |
+| A server function response without `ROUTE` | Observe its intent in the request's navigation scope and let Minimal merge its partial elements. The return value is separate from those elements.                                       |
+| An absolute redirect                       | Hand control to the browser. Recovery after a cancelled or blocked departure is outside Router's contract; use a native anchor for flows needing native unload cancellation.             |
+
+Completing a navigation or response callback does not mean React has painted.
+The number and scheduling of element merges are implementation details. See
+[Document Navigation Handoff](/guides/redirects-and-not-found#document-navigation-handoff)
+for the application alternative when unloading can be cancelled.
+
+Route responses are authoritative for the represented route. A full route
+response may reconcile query or hash changes made directly with the History API;
+a partial response does not navigate. Use Router's `push`, `replace`, or search
+hooks when URL changes must stay coordinated with route rendering. Custom
+bindings own any additional History API synchronization.
+
+If a server function response arrives without a connected binding, its return
+value remains available and its elements and intents are discarded. A callback
+that has already started belongs to the binding's navigation lifecycle.
+
 ## Requests and Slots
 
 These are different identities:
@@ -447,8 +475,14 @@ redirect or not-found intent, Router skips that work and returns the function's
 value with its intent. A render failure after the function finishes follows normal
 request error or cancellation handling.
 
-The built-in Router passes route-bearing function responses to the navigation
-loader as the initial response. Ready intents are followed before that route is
+The server-function controller passes each accepted route-bearing response to
+the binding's `applyRouteResponse` callback and waits for it. This includes
+same-route rerenders. The callback receives all response elements, including
+`INTENT`, and owns applying them. The controller returns empty elements to Minimal
+so the payload is not applied again.
+
+The built-in Router applies these responses through its navigation loader.
+Ready intents are followed before that route is
 committed; the current page stays visible while the destination loads. Pending
 intents remain attached to the committed route and use its normal observer.
 The function call stays pending while the loader follows a ready intent and
@@ -494,9 +528,20 @@ The binding calls:
 useServerFunctionRouting_UNSTABLE(serverFunctionRouting, {
   getSettledRoute,
   getPendingRoute,
-  onRouteChange,
+  applyRouteResponse,
 });
 ```
+
+`applyRouteResponse(elements)` replaces the former `onRouteChange(route)`
+callback. A custom binding must apply all response elements, not just update its URL. It can pass `adopt: Promise.resolve(elements)` to `cache.load` and use its
+ordinary navigation outcome handler. To match the built-in Router, resolve ready
+intents before committing the source response and observe pending intents after
+commit.
+
+The controller preserves the server function's return value after the callback
+resolves. If the callback rejects, the call rejects. The built-in binding shows
+navigation failures through its error boundary while preserving the return
+value; custom bindings own their error policy.
 
 See [Rerender After Actions](/guides/rerender-after-actions).
 

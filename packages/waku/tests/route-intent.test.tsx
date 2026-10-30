@@ -979,43 +979,9 @@ test.each(['push', 'replace'] as const)(
   },
 );
 
-test('a cancelled external redirect leaves the current page intent active', async () => {
-  const pending = deferIntent();
-  mocks.queue.push(payload('/one', pending.promise));
-  const view = await mount();
-  const leave = vi
-    .spyOn(window.location, 'replace')
-    .mockImplementation(() => {});
-  mocks.queue.push(
-    payload(
-      '/gate',
-      Promise.resolve(
-        JSON.stringify({
-          status: 307,
-          location: 'https://other.example/done',
-        }),
-      ),
-    ),
-  );
-  await act(async () => {
-    await controls.router.push('/gate');
-    await flush();
-  });
-  expect(leave).toHaveBeenCalledExactlyOnceWith('https://other.example/done');
-  expect(view.textContent).toContain('Page /one');
-  mocks.queue.push(payload('/done'));
-  await act(async () => {
-    pending.resolve({ status: 307, location: '/done' });
-    await flush();
-  });
-  expect(view.textContent).toContain('Page /done');
-  expect(window.location.pathname).toBe('/done');
-});
-
-test('an instant redirect preserves history and can resume if leaving is cancelled', async () => {
+test('an instant redirect chain replaces its already committed entry before leaving', async () => {
   mocks.queue.push({
     ...payload('/one'),
-    [HAS404_ID]: true,
     [getRouteSlotId('/gate')]: <p>Cached gate</p>,
     [ETAGS_ID]: { root: 1, [getRouteSlotId('/gate')]: 1 },
   });
@@ -1066,89 +1032,6 @@ test('an instant redirect preserves history and can resume if leaving is cancell
     length: initialLength + 1,
   });
   expect(leave).toHaveBeenCalledExactlyOnceWith('https://other.example/done');
-  mocks.queue.push(
-    { [INTENT_ID]: Promise.resolve(JSON.stringify({ status: 404 })) },
-    payload('/404'),
-  );
-  await act(async () => {
-    await controls.fetch(encodeSliceId('sidebar'));
-    await flush();
-  });
-  expect(view.textContent).toContain('Page /404');
-  expect(window.location.pathname).toBe('/relay');
-  mocks.queue.push(
-    {
-      [INTENT_ID]: Promise.resolve(
-        JSON.stringify({ status: 307, location: '/done' }),
-      ),
-    },
-    payload('/done'),
-  );
-  await act(async () => {
-    await controls.fetch(encodeSliceId('sidebar'));
-    await flush();
-  });
-  expect(view.textContent).toContain('Page /done');
-  expect(window.location.pathname).toBe('/done');
-});
-
-test('a cancelled instant external redirect does not cache its dynamic route as static', async () => {
-  mocks.queue.push({
-    ...payload('/one', Promise.resolve(undefined), true),
-    [getRouteSlotId('/gate')]: <p>Cached gate</p>,
-    [ETAGS_ID]: {
-      root: 1,
-      [getRouteSlotId('/one')]: 1,
-      [getRouteSlotId('/gate')]: 1,
-    },
-  });
-  const view = await mount();
-  const leave = vi
-    .spyOn(window.location, 'replace')
-    .mockImplementation(() => {});
-  const incoming = defer<Elements>();
-  mocks.queue.push(incoming.promise);
-  let navigating!: Promise<void>;
-  await act(async () => {
-    navigating = controls.router.push('/gate', { unstable_instant: true });
-    await flush();
-  });
-  expect(view.textContent).toContain('Cached gate');
-  await act(async () => {
-    startTransition(() => {
-      void controls.merge({ 'slice:sidebar': <p>updated sidebar</p> });
-    });
-    await flush();
-  });
-  await act(async () => {
-    incoming.resolve(
-      payload(
-        '/gate',
-        Promise.resolve(
-          JSON.stringify({
-            status: 307,
-            location: 'https://other.example/done',
-          }),
-        ),
-      ),
-    );
-    await navigating;
-    await flush();
-  });
-  expect(leave).toHaveBeenCalledExactlyOnceWith('https://other.example/done');
-  mocks.queue.push(payload('/two'));
-  await act(async () => {
-    await controls.router.push('/two');
-    await flush();
-  });
-  const requests = vi.mocked(fetch).mock.calls.length;
-  mocks.queue.push(payload('/gate'));
-  await act(async () => {
-    await controls.router.push('/gate');
-    await flush();
-  });
-  expect(vi.mocked(fetch).mock.calls).toHaveLength(requests + 1);
-  expect(view.textContent).toContain('Page /gate');
 });
 
 test('partial intent observers belong to their Root and survive another Router unmounting', async () => {

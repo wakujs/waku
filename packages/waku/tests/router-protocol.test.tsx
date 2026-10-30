@@ -27,6 +27,7 @@ import {
 } from '../src/minimal/client.js';
 import { unstable_parseRequest as parseRequest } from '../src/minimal/server.js';
 import {
+  unstable_ROUTE_ID as ROUTE_ID,
   unstable_createServerFunctionRouting as createServerFunctionRouting,
   unstable_decideRouteIntent as decideRouteIntent,
   unstable_encodeRoutePath as encodeRoutePath,
@@ -150,7 +151,9 @@ const mount = async (
     mergeElements: ReturnType<typeof useMergeElements>;
     cache: ReturnType<typeof useRouterCache>;
   };
-  const onRouteChange = vi.fn();
+  const applyRouteResponse = vi.fn(async (responseElements: Elements) => {
+    await view.mergeElements(responseElements);
+  });
   const serverFunctionRouting = createServerFunctionRouting();
   const Probe = () => {
     const elements = use(useElementsPromise());
@@ -165,7 +168,7 @@ const mount = async (
     useServerFunctionRouting(serverFunctionRouting, {
       getSettledRoute,
       getPendingRoute: noPendingRoute,
-      onRouteChange,
+      applyRouteResponse,
     });
     useLayoutEffect(() => {
       settled.current = elements;
@@ -191,7 +194,13 @@ const mount = async (
       </Suspense>,
     );
   });
-  return { getView: () => view, container, fetch, payloads, onRouteChange };
+  return {
+    getView: () => view,
+    container,
+    fetch,
+    payloads,
+    applyRouteResponse,
+  };
 };
 
 test('immutable route identities do not collide across paths or imply a static page', async () => {
@@ -349,15 +358,13 @@ test('origin refreshes are dropped after navigating away, but explicit action de
     expect(await action).toBe('returned');
   });
   expect(binding.container.textContent).toBe('/second');
-  expect(binding.onRouteChange).not.toHaveBeenCalled();
+  expect(binding.applyRouteResponse).not.toHaveBeenCalled();
   explicit = true;
   await act(async () => {
     expect(await callServerRsc('action#refresh', [])).toBe('returned');
   });
   expect(binding.container.textContent).toBe('/first');
-  expect(binding.onRouteChange).toHaveBeenCalledExactlyOnceWith({
-    path: '/first',
-    query: '',
-    hash: '',
-  });
+  expect(binding.applyRouteResponse).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ [ROUTE_ID]: ['/first', ''] }),
+  );
 });
