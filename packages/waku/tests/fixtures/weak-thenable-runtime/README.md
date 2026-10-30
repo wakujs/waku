@@ -26,9 +26,12 @@ with undefined.
 Length-prefixed records pass through without inspecting their contents.
 The filter reads React's output eagerly and buffers it for the consumer. Output
 from each input chunk is batched to avoid queuing individual Flight records;
-weak values resolved while the source is idle publish immediately. Each render
-stops observing weak resolutions on completion or failure, even while output
-consumption is paused.
+weak values resolved while the source is idle publish immediately. The filter
+unsubscribes when its read loop observes source completion or failure, even while
+output consumption is paused. That observation is asynchronous: a value resolved
+in the same turn as source termination can still be published. Delivery is not
+guaranteed for values racing with termination. Use an awaited render dependency
+when rendering must wait for a value.
 
 The filter takes ownership of React's output buffers and may transfer them to
 its byte stream. Upstream transforms must give each chunk its own backing buffer;
