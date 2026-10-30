@@ -1,6 +1,13 @@
 // @vitest-environment happy-dom
 
-import { Component, Suspense, act, use, useLayoutEffect } from 'react';
+import {
+  Component,
+  Suspense,
+  act,
+  startTransition,
+  use,
+  useLayoutEffect,
+} from 'react';
 import type { ReactNode } from 'react';
 import { createRequire } from 'node:module';
 import { createRoot } from 'react-dom/client';
@@ -972,7 +979,40 @@ test.each(['push', 'replace'] as const)(
   },
 );
 
-test('an instant redirect chain replaces its already committed entry before leaving', async () => {
+test('a cancelled external redirect leaves the current page intent active', async () => {
+  const pending = deferIntent();
+  mocks.queue.push(payload('/one', pending.promise));
+  const view = await mount();
+  const leave = vi
+    .spyOn(window.location, 'replace')
+    .mockImplementation(() => {});
+  mocks.queue.push(
+    payload(
+      '/gate',
+      Promise.resolve(
+        JSON.stringify({
+          status: 307,
+          location: 'https://other.example/done',
+        }),
+      ),
+    ),
+  );
+  await act(async () => {
+    await controls.router.push('/gate');
+    await flush();
+  });
+  expect(leave).toHaveBeenCalledExactlyOnceWith('https://other.example/done');
+  expect(view.textContent).toContain('Page /one');
+  mocks.queue.push(payload('/done'));
+  await act(async () => {
+    pending.resolve({ status: 307, location: '/done' });
+    await flush();
+  });
+  expect(view.textContent).toContain('Page /done');
+  expect(window.location.pathname).toBe('/done');
+});
+
+test('an instant redirect preserves history and can resume if leaving is cancelled', async () => {
   mocks.queue.push({
     ...payload('/one'),
     [getRouteSlotId('/gate')]: <p>Cached gate</p>,
@@ -1025,6 +1065,20 @@ test('an instant redirect chain replaces its already committed entry before leav
     length: initialLength + 1,
   });
   expect(leave).toHaveBeenCalledExactlyOnceWith('https://other.example/done');
+  mocks.queue.push(
+    {
+      [INTENT_ID]: Promise.resolve(
+        JSON.stringify({ status: 307, location: '/done' }),
+      ),
+    },
+    payload('/done'),
+  );
+  await act(async () => {
+    await controls.fetch(encodeSliceId('sidebar'));
+    await flush();
+  });
+  expect(view.textContent).toContain('Page /done');
+  expect(window.location.pathname).toBe('/done');
 });
 
 test('partial intent observers belong to their Root and survive another Router unmounting', async () => {
@@ -1409,7 +1463,9 @@ test.each([404, 500])(
     expect(attempts).toBeGreaterThan(0);
     expect(failures).toBeGreaterThan(0);
     await act(async () => {
-      await controls.merge({ 'slice:sidebar': <p>updated sidebar</p> });
+      startTransition(() => {
+        void controls.merge({ 'slice:sidebar': <p>updated sidebar</p> });
+      });
       await flush();
     });
     expect(controls.elements['slice:sidebar']).toBeDefined();
@@ -1418,6 +1474,12 @@ test.each([404, 500])(
     expect(view.textContent).toContain(
       status === 404 ? 'Not Found' : 'Caught an unexpected error',
     );
+    mocks.queue.push({ ...payload('/two'), root: appRoot });
+    await act(async () => {
+      await controls.router.reload();
+      await flush();
+    });
+    expect(view.textContent).toContain('Page /two');
   },
 );
 
@@ -1450,7 +1512,9 @@ test.each(['not-found', 'invalid'] as const)(
     const failures = caught.mock.calls.length;
     expect(failures).toBeGreaterThan(0);
     await act(async () => {
-      await controls.merge({ 'slice:sidebar': <p>updated sidebar</p> });
+      startTransition(() => {
+        void controls.merge({ 'slice:sidebar': <p>updated sidebar</p> });
+      });
       await flush();
     });
     expect(controls.elements['slice:sidebar']).toBeDefined();
