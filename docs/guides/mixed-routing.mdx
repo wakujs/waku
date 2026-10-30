@@ -46,7 +46,5 @@ Application middleware remains an adapter option through `middlewareModules`.
 
 ## Known Limitations
 
-1. For mixed routing, type generation only exports types for the file-based routes, while config routes are not included in the generated types. As a result, you might see type errors when referencing config routes in the `<Link>` component. However, you can still use `unstable_createRouteHref`(See [Typed Routes](./typed-routes.mdx)) to achieve fully type-safe navigation.
-2. Type generation only supports the standard `pages` directory structure and file conventions. Custom or non-standard page locations may not be included in the generated types.
-   - That's to say, if your pages are located in a custom directory like `src/custom-pages` and added via `await unstable_createFileRoutes(fns, import.meta.glob('./custom-pages/**/*.{tsx,ts}'));`, the generated types will not include these pages.
-3. `unstable_createFileRoutes` does not accept `unstable_skipBuild`. Set that option on `createPages` to control build output for both sources.
+1. For mixed routing, there is no automatic type generation such as `pages.gen.ts` (just like with config routes). However, you can still use `unstable_createRouteHref`(See [Typed Routes](./typed-routes.mdx)) to achieve fully type-safe navigation.
+2. `unstable_createFileRoutes` does not accept `unstable_skipBuild`. Set that option on `createPages` to control build output for both sources.

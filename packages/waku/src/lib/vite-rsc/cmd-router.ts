@@ -41,9 +41,7 @@ async function runTypegen() {
   }
 
   if (!(await detectFsRouterUsage(srcDir))) {
-    console.error(
-      'fsRouter or unstable_createFileRoutes usage not detected in waku.server.ts',
-    );
+    console.error('fsRouter usage not detected in waku.server.ts');
     process.exit(1);
   }
 

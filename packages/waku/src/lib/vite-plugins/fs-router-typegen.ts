@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
-import { Visitor, parse, transformWithOxc } from 'vite';
+import { parse, transformWithOxc } from 'vite';
 import type { ParseResult, Plugin } from 'vite';
 // Layering rule: src/lib must not import src modules outside src/lib.
 // Exception: typegen must share fsRouter's path conventions.
@@ -79,7 +79,7 @@ const getImportModuleNames = (
 };
 export const getImportModuleNamesForTest = getImportModuleNames;
 
-const parseModule = async (filePath: string): Promise<ProgramNode> => {
+const parseModule = async (filePath: string) => {
   const source = await readFile(filePath, 'utf8');
   const lang: 'jsx' | 'ts' | 'tsx' = filePath.endsWith('.tsx')
     ? 'tsx'
@@ -103,36 +103,6 @@ const getExportedName = (specifier: ExportSpecifier) =>
     ? specifier.exported.name
     : String(specifier.exported.value);
 
-const isFunctionImported = ({
-  program,
-  name,
-}: {
-  program: ProgramNode;
-  name: string;
-}): boolean => {
-  return program.body.some((node) => {
-    if (node.type !== 'ImportDeclaration') {
-      return false;
-    }
-    if (
-      node.source.type !== 'Literal' ||
-      typeof node.source.value !== 'string' ||
-      !node.source.value.startsWith('waku')
-    ) {
-      return false;
-    }
-    return node.specifiers.some((specifier) => {
-      if (
-        specifier.type !== 'ImportSpecifier' ||
-        specifier.local.type !== 'Identifier'
-      ) {
-        return false;
-      }
-      return getImportedName(specifier) === name;
-    });
-  });
-};
-
 export const fsRouterTypegenPlugin = (opts: { srcDir: string }): Plugin => {
   return {
     name: 'waku:vite-plugins:fs-router-typegen',
@@ -147,11 +117,8 @@ export const fsRouterTypegenPlugin = (opts: { srcDir: string }): Plugin => {
         if (file && outputFile.endsWith(file)) {
           return;
         }
-        if (!existsSync(pagesDir)) {
-          return;
-        }
-        const usage = await detectFsRouterUsage(srcDir);
-        if (!usage) {
+        // skip when the entries file exists or pages dir does not exist
+        if (!existsSync(pagesDir) || !(await detectFsRouterUsage(srcDir))) {
           return;
         }
         const generation = await generateFsRouterTypes(pagesDir);
@@ -176,48 +143,6 @@ export const fsRouterTypegenPlugin = (opts: { srcDir: string }): Plugin => {
   };
 };
 
-/**
- * Checks if the given server entry file imports the fsRouter from waku.
- */
-async function isFsRouterUsed(serverEntry: string): Promise<boolean> {
-  const file = await parseModule(serverEntry);
-  return isFunctionImported({ program: file, name: 'fsRouter' });
-}
-
-/**
- * Walks through the program AST to check if `unstable_createFileRoutes` is called.
- */
-const hasUnstableCreateFileRoutesCalled = (
-  program: ParseResult['program'],
-): boolean => {
-  let called = false;
-
-  const visitor = new Visitor({
-    CallExpression(node) {
-      if (
-        node.callee.type === 'Identifier' &&
-        node.callee.name === 'unstable_createFileRoutes'
-      ) {
-        called = true;
-      }
-    },
-  });
-  visitor.visit(program);
-
-  return called;
-};
-
-async function isUnstableCreateFileRoutesUsed(
-  serverEntry: string,
-): Promise<boolean> {
-  const file = await parseModule(serverEntry);
-  const createPagesImported = isFunctionImported({
-    program: file,
-    name: 'createPages',
-  });
-  return createPagesImported && hasUnstableCreateFileRoutesCalled(file);
-}
-
 export async function detectFsRouterUsage(srcDir: string): Promise<boolean> {
   const existingServerEntry = EXTENSIONS.map((ext) =>
     joinPath(srcDir, SRC_SERVER_ENTRY + ext),
@@ -229,13 +154,29 @@ export async function detectFsRouterUsage(srcDir: string): Promise<boolean> {
   }
 
   try {
-    if (await isFsRouterUsed(existingServerEntry)) {
-      return true;
-    } else if (await isUnstableCreateFileRoutesUsed(existingServerEntry)) {
-      return true;
-    } else {
-      return false;
-    }
+    const file = await parseModule(existingServerEntry);
+    const usesFsRouter = file.body.some((node) => {
+      if (node.type !== 'ImportDeclaration') {
+        return false;
+      }
+      if (
+        node.source.type !== 'Literal' ||
+        typeof node.source.value !== 'string' ||
+        !node.source.value.startsWith('waku')
+      ) {
+        return false;
+      }
+      return node.specifiers.some((specifier) => {
+        if (
+          specifier.type !== 'ImportSpecifier' ||
+          specifier.local.type !== 'Identifier'
+        ) {
+          return false;
+        }
+        return getImportedName(specifier) === 'fsRouter';
+      });
+    });
+    return usesFsRouter;
   } catch {
     return false;
   }

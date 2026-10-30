@@ -1,5 +1,3 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test, vi } from 'vitest';
@@ -148,87 +146,6 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
       ),
     ).toMatchInlineSnapshot(`false`);
   });
-
-  test('detects mixed routing with different globs without warnings', async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), 'waku-mixed-typegen-'));
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    try {
-      const entry = path.join(dir, 'waku.server.tsx');
-      await writeFile(
-        entry,
-        `import { createPages } from 'waku/router/server';
-        export default createPages(async ({ unstable_createFileRoutes }) => {
-          await unstable_createFileRoutes(import.meta.glob('./pages/**/*.{tsx,ts}'));
-          return [];
-        });`,
-      );
-      expect(await detectFsRouterUsage(dir)).toBe(true);
-      await writeFile(
-        entry,
-        `import { createPages } from 'waku/router/server';
-        export default createPages(async ({ unstable_createFileRoutes }) => {
-          await unstable_createFileRoutes(import.meta.glob('./pages/**/*.tsx'));
-          await unstable_createFileRoutes(import.meta.glob('./other/**/*.tsx'));
-          return [];
-        });`,
-      );
-      expect(await detectFsRouterUsage(dir)).toBe(true);
-      expect(warning).not.toHaveBeenCalled();
-    } finally {
-      warning.mockRestore();
-      await rm(dir, { recursive: true, force: true });
-    }
-  });
-
-  test('detects unstable_createFileRoutes but not called', async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), 'waku-mixed-typegen-'));
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    try {
-      const entry = path.join(dir, 'waku.server.tsx');
-      await writeFile(
-        entry,
-        `import { createPages } from 'waku/router/server';
-        export default createPages(async ({ unstable_createFileRoutes }) => {
-          return [];
-        });`,
-      );
-      expect(await detectFsRouterUsage(dir)).toBe(false);
-    } finally {
-      warning.mockRestore();
-      await rm(dir, { recursive: true, force: true });
-    }
-  });
-
-  test.each([
-    "import.meta.glob('./other/**/*.tsx')",
-    "import.meta.glob('./pages/**/*.tsx'), {}",
-    "import.meta.glob('./pages/**/*.tsx'), { pagesDir: 'pages', apiDir: 'api', slicesDir: 'slices', interceptorsDir: 'interceptors' }",
-    'modules',
-    'modules, options',
-  ])(
-    'detects mixed routing without restricting arguments: %s',
-    async (args) => {
-      const dir = await mkdtemp(path.join(tmpdir(), 'waku-mixed-typegen-'));
-      const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      try {
-        await writeFile(
-          path.join(dir, 'waku.server.tsx'),
-          `
-        import { createPages as pages } from 'waku';
-        export default pages(async ({ unstable_createFileRoutes }) => {
-          await unstable_createFileRoutes(${args});
-          return [];
-        });
-      `,
-        );
-        expect(await detectFsRouterUsage(dir)).toBe(true);
-        expect(warning).not.toHaveBeenCalled();
-      } finally {
-        warning.mockRestore();
-        await rm(dir, { recursive: true, force: true });
-      }
-    },
-  );
 
   test('skips built-in Waku plugin when user plugin overrides it', async () => {
     const pluginName = 'waku:vite-plugins:build-id';
