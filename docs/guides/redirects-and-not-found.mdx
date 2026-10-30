@@ -205,11 +205,21 @@ route belong to the navigation state where the request started. A later Router
 navigation, including a hash-only change, makes these pending intents stale.
 A navigation already in flight also takes precedence.
 
+Start mount-time slice requests and server function calls in `useEffect`, after
+the Router has committed the route. Requests started from `useLayoutEffect` can
+capture the previous navigation state.
+
 If an application needs different behavior, return a destination as the server
 function's result and let the client decide whether to call `router.replace()`.
 The return value remains available even when Waku discards a stale intent.
 
 ## Status and Streaming Notes
+
+Ready intents are followed before the source route commits during client
+navigation. Initial client rendering, including [No SSR](/guides/no-ssr), handles
+intents after the source tree commits. To redirect before source content mounts
+on a direct load, record the intent during route resolution or in a handler
+interceptor before `next()`, or use middleware.
 
 When not-found is requested before the document response is returned, a direct request server-renders the custom `/404` page and returns status 404. Handler interceptors must request it before calling `next()`, then return `next()` to render the response. If it is requested from inside a Suspense boundary after the shell has already been sent, the response keeps status 200 and the browser completes the not-found handling after hydration. This late path requires JavaScript; without it, the Suspense fallback remains.
 

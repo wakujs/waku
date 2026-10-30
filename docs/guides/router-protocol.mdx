@@ -127,13 +127,17 @@ Weak-promise listeners run synchronously so React can emit the intent before
 the component's render task completes. Deferring notification to a promise
 microtask can let Flight finish its last task and close the stream first.
 
-The loader subscribes and yields one microtask to read an available intent,
-allowing React to initialize lazy Flight values and deliver its callbacks. It
-follows ready intents before committing the response, preserving the active
+During client navigation, the loader subscribes and yields one microtask to read
+an available intent, allowing React to initialize lazy Flight values and deliver
+its callbacks. It follows ready intents before committing the response, preserving the active
 content while the destination loads. An intent that arrives after commit follows
 from the displayed route. The destination uses an existing route cache when
 possible; otherwise it needs its own request so that rendering uses the
 destination request's URL and context.
+
+Initial client rendering observes intents after commit. See
+[Status and Streaming Notes](/guides/redirects-and-not-found#status-and-streaming-notes)
+for redirects before source content mounts.
 
 An app-relative redirect must change the path or query. Fragment-only changes
 belong to client navigation. After committing a response, the Router handles

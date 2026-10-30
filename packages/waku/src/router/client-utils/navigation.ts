@@ -126,11 +126,17 @@ export const useNavigation = (
   }, [registerRscReloadListener]);
 
   const routerState = getRouterState(elements);
+  const routeData = elements[ROUTE_ID];
+  const isStatic = isStaticFromElements(elements);
   const destination = useMemo(
     () =>
       routerState &&
-      resolveServerRedirect(elements, routerState, initialRoute.path),
-    [elements, routerState, initialRoute],
+      resolveServerRedirect(
+        { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic },
+        routerState,
+        initialRoute.path,
+      ),
+    [routeData, isStatic, routerState, initialRoute.path],
   );
   const route = destination ? destination.route : initialRoute;
   const requestRef = useRef<NavigationRequest>(undefined);
@@ -367,6 +373,21 @@ export const useNavigation = (
         if (outcome.type === 'leave') {
           commitHistory(outcome.url, historyIntent);
           window.location.replace(outcome.location.href);
+          if (instantResponse) {
+            const state = createRouterState(initialAttempt.route, outcome.url, {
+              history: null,
+              scroll: false,
+              pathChanged: false,
+              follows: outcome.follows,
+            });
+            request.queuedState = state;
+            return {
+              [ROUTER_STATE_ID]: state,
+              [INTENT_ID]: null,
+              [IS_STATIC_ID]: false,
+            };
+          }
+          requestRef.current = undefined;
           return {};
         }
         if (outcome.type === 'failed') {
