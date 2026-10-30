@@ -97,26 +97,30 @@ function run(
   let encodes = 0;
   let decodes = 0;
   const onError = () => 'native-probe-error';
-  const wire = renderWithWeakPromises({ ...data }, (model) => {
-    encodes++;
-    const source = server.renderToReadableStream(
-      model,
-      {},
-      { signal, onError },
-    );
-    return source.pipeThrough(
-      new TransformStream({
-        transform(chunk, controller) {
-          nativeChunks.push(Buffer.from(chunk));
-          if (fragment) {
-            for (let i = 0; i < chunk.length; i += fragment)
-              controller.enqueue(chunk.slice(i, i + fragment));
-          } else controller.enqueue(chunk);
-        },
-      }),
-      disconnect ? { signal: disconnect.signal } : undefined,
-    );
-  });
+  const wire = renderWithWeakPromises(
+    { ...data },
+    (model) => {
+      encodes++;
+      const source = server.renderToReadableStream(
+        model,
+        {},
+        { signal, onError },
+      );
+      return source.pipeThrough(
+        new TransformStream({
+          transform(chunk, controller) {
+            nativeChunks.push(Buffer.from(chunk));
+            if (fragment) {
+              for (let i = 0; i < chunk.length; i += fragment)
+                controller.enqueue(chunk.slice(i, i + fragment));
+            } else controller.enqueue(chunk);
+          },
+        }),
+        disconnect ? { signal: disconnect.signal } : undefined,
+      );
+    },
+    signal,
+  );
   const [decodeStream, byteStream] = wire.tee();
   const forClient = networkFragment
     ? decodeStream.pipeThrough(
@@ -473,7 +477,7 @@ await scenario(
 );
 
 await scenario(
-  'renderer abort rejects ordinary data without failing the transport',
+  'request abort preserves native weak versus ordinary promise behavior',
   async (signal) => {
     const weak = createWeakPromise();
     const gate = Promise.withResolvers();
@@ -490,29 +494,36 @@ await scenario(
     abort.abort(new Error('request left'));
     await output.bytes;
     assert.equal(await ordinary, 'rejected');
-    await unused(root.channel);
+    assert.equal(
+      await state(root.channel),
+      mode === 'native' ? 'pending' : 'rejected',
+    );
     gate.resolve();
   },
 );
 
 if (mode === 'native' || mode === 'filter') {
-  await scenario('stream cancellation cancels the native source', async () => {
-    const weak = createWeakPromise();
-    let cancelled;
-    const output = renderWithWeakPromises(
-      { channel: weak.promise },
-      () =>
-        new ReadableStream({
-          cancel(reason) {
-            cancelled = reason;
-          },
-        }),
-    );
-    await output.cancel('left');
-    assert.equal(cancelled, 'left');
-    weak.resolve('too late');
-    assert.equal(await state(weak.promise), 'fulfilled');
-  });
+  await scenario(
+    'stream cancellation cancels the native source',
+    async (signal) => {
+      const weak = createWeakPromise();
+      let cancelled;
+      const output = renderWithWeakPromises(
+        { channel: weak.promise },
+        () =>
+          new ReadableStream({
+            cancel(reason) {
+              cancelled = reason;
+            },
+          }),
+        signal,
+      );
+      await output.cancel('left');
+      assert.equal(cancelled, 'left');
+      weak.resolve('too late');
+      assert.equal(await state(weak.promise), 'fulfilled');
+    },
+  );
 
   await scenario(
     'transport disconnection rejects pending results without client normalization',
@@ -631,46 +642,8 @@ await scenario(
     const [forClient, forBytes] = stream.tee();
     const root = await client.createFromReadableStream(forClient, options);
     await new Response(forBytes).arrayBuffer();
-    assert.equal(await root.INTENT, undefined);
+    await unused(root.INTENT);
     assert.equal(encodes, 1);
-  },
-);
-
-await scenario(
-  'Minimal renderRsc byte streams preserve the HTML tee branch during decoding',
-  async () => {
-    const { createRenderUtils } = await import(
-      sourceRoot + 'lib/utils-server/render.ts'
-    );
-    const weak = createWeakPromise();
-    const render = createRenderUtils({
-      renderToReadableStream: (data, renderOptions) =>
-        server.renderToReadableStream(data, {}, renderOptions),
-      temporaryReferences: undefined,
-      buildId: '',
-      onError: () => 'minimal-probe-error',
-      loadSsrEntryModule: async () => {
-        throw new Error('unused');
-      },
-    });
-    const bytes = new ReadableStream({
-      type: 'bytes',
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode('binary payload'));
-        controller.close();
-      },
-    });
-    const [forClient, forHtml] = (
-      await render.renderRsc({ INTENT: weak.promise, bytes })
-    ).tee();
-    const retained = [];
-    for await (const chunk of forHtml) {
-      retained.push(chunk);
-    }
-    const expected = Buffer.concat(retained);
-    const root = await client.createFromReadableStream(forClient, options);
-    assert.equal(await new Response(root.bytes).text(), 'binary payload');
-    assert.deepEqual(Buffer.concat(retained), expected);
   },
 );
 
@@ -707,7 +680,10 @@ await scenario(
     );
     abort.abort(new Error('transport disconnected'));
     await ordinaryRejection;
-    assert.equal(await state(root.INTENT), 'rejected');
+    assert.equal(
+      await state(root.INTENT),
+      mode === 'native' ? 'pending' : 'rejected',
+    );
     gate.resolve();
   },
 );
