@@ -15,11 +15,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link to="/about">About</Link>
             </li>
             <li>
-              {/* @ts-expect-error known typing issue for configured static route */}
               <Link to="/configured">Configured static</Link>
             </li>
             <li>
-              {/* @ts-expect-error known typing issue for configured static route */}
               <Link to="/hello/Waku">Configured dynamic</Link>
             </li>
           </ul>
