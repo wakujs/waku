@@ -498,9 +498,7 @@ export const createPages = <
 ) => {
   let configured = false;
 
-  // A path key is the groupless path a page or API is registered under, so
-  // duplicates are easy to detect: its declared pattern, or each concrete path
-  // its static paths expand to. Layout lookups use the grouped path.
+  // A path key is a declared pattern or a concrete path from staticPaths.
   const groupedPathByPathKey = new Map<string, string>();
   const staticPageEntryByRoutePath = new Map<
     string,
