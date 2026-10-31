@@ -201,7 +201,8 @@ Paths and URLs:
 - `routePath` is a `pathname` normalized for routing, without a trailing slash
   or `/index.html`.
 - `pathPattern` is a declared path template, such as `/posts/[id]` or
-  `/(group)/about`.
+  `/(group)/about`. Declaration options take it as `path`, as in
+  `createPage({ path })`.
 - `pathSpec` is a parsed path or path pattern, as an array of segments.
 - `rscPath` identifies an RSC request, such as `R/posts/1`. It is not a URL
   path. `formatRscUrl` builds the URL that requests it.
