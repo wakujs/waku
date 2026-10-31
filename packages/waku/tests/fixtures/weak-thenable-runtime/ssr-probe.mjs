@@ -14,7 +14,6 @@ const React = require('react');
 const client = require('react-server-dom-webpack/client.edge');
 const dom = require('react-dom/server.edge');
 const version = require('react/package.json').version;
-const native = version.startsWith('0.0.0-experimental-');
 const options = {
   serverConsumerManifest: {
     moduleMap: {},
@@ -149,7 +148,7 @@ async function scenario(kind, observeCompletion) {
     child.send('continue');
     await done.promise;
     await exited;
-    if (kind === 'unused' && !observeCompletion && native) {
+    if (kind === 'unused' && !observeCompletion) {
       let completed = false;
       void html.allReady.then(() => {
         completed = true;
@@ -169,7 +168,7 @@ async function scenario(kind, observeCompletion) {
       assert.ok(text.includes('0;url=/late-target'));
     } else if (kind === 'not-found')
       assert.ok(text.includes('<h1>Not Found</h1>'));
-    else if (observeCompletion || !native)
+    else if (observeCompletion)
       assert.ok(!text.includes('http-equiv="refresh"'));
   }
 }
@@ -181,7 +180,7 @@ console.log(
   JSON.stringify(
     {
       version,
-      mode: native ? 'native' : 'filter',
+      mode: 'native',
       nodeEnv: process.env.NODE_ENV,
       results,
     },

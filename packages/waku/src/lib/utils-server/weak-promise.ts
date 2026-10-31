@@ -1,16 +1,3 @@
-type WeakPromiseState = {
-  value: string | undefined;
-  subscribe: (listener: (value: string) => void) => () => void;
-};
-
-const weakPromiseStatesByPromise = new WeakMap<object, WeakPromiseState>();
-
-export function getWeakPromise(value: unknown) {
-  return typeof value === 'object' && value !== null
-    ? weakPromiseStatesByPromise.get(value)
-    : undefined;
-}
-
 /**
  * Creates a fulfill-only weak thenable for a top-level `renderRsc` element.
  * It does not keep rendering open. Values must be strings; callers encode data.
@@ -28,28 +15,16 @@ export function createWeakPromise<T extends string = string>(): {
   promise: PromiseLike<T | undefined>;
   resolve: (value: T) => void;
 } {
-  const listeners = new Set<(value: string) => void>();
-  const state: WeakPromiseState = {
-    value: undefined,
-    subscribe(listener) {
-      if (state.value !== undefined) {
-        listener(state.value);
-      } else {
-        listeners.add(listener);
-      }
-      return () => {
-        listeners.delete(listener);
-      };
-    },
-  };
+  let value: T | undefined;
+  const listeners = new Set<(value: T) => void>();
   const promise = {
     get status() {
-      return state.value !== undefined
+      return value !== undefined
         ? ('fulfilled' as const)
         : ('pending_weak' as const);
     },
     get value() {
-      return state.value as T | undefined;
+      return value;
     },
     then<TResult1 = T | undefined, TResult2 = never>(
       onFulfilled?:
@@ -58,28 +33,30 @@ export function createWeakPromise<T extends string = string>(): {
         ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
     ): Promise<TResult1 | TResult2> {
       return new Promise((resolve, reject) => {
-        state.subscribe((value) => {
+        const fulfill = (value: T) => {
           try {
             resolve(
-              onFulfilled
-                ? onFulfilled(value as T)
-                : (value as unknown as TResult1),
+              onFulfilled ? onFulfilled(value) : (value as unknown as TResult1),
             );
           } catch (error) {
             reject(error);
           }
-        });
+        };
+        if (value !== undefined) {
+          fulfill(value);
+        } else {
+          listeners.add(fulfill);
+        }
       });
     },
   };
-  weakPromiseStatesByPromise.set(promise, state);
   return {
     promise,
     resolve(next) {
-      if (state.value !== undefined) {
+      if (value !== undefined) {
         return;
       }
-      state.value = next;
+      value = next;
       for (const listener of listeners) {
         listener(next);
       }

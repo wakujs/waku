@@ -32,8 +32,7 @@ test.describe('weak promises', () => {
     );
     expect(response.ok()).toBe(true);
     const payload = await response.text();
-    expect(payload).not.toContain('waku-weak-');
-    expect(payload).toContain('"$undefined"');
+    expect(payload).toMatch(/"INTENT":"\$w[0-9a-f]+"/);
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(`http://localhost:${port}/weak?kind=unused`);

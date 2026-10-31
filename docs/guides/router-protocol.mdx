@@ -153,11 +153,9 @@ before other components finish, so a later intent cannot replace it. Concurrent
 components have no guaranteed ordering; redirect and not-found intents have no
 priority over each other.
 
-Weak-promise listeners notify the transport synchronously during rendering.
-The stable React transport publishes resolved values at Flight record boundaries
-and stops observing them when its read loop observes EOF or a source error.
-React's experimental native weak references also need synchronous notification
-to emit an intent before the last render task completes and closes the stream.
+Weak-promise listeners run synchronously so React can emit the intent before
+the component's render task completes. Deferring notification to a promise
+microtask can let Flight finish its last task and close the stream first.
 
 During client navigation, the loader subscribes and yields one microtask to read
 an available intent, allowing React to initialize lazy Flight values and deliver
