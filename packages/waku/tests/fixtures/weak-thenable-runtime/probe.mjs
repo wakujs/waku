@@ -34,9 +34,6 @@ registerHooks({
 });
 const require = createRequire(import.meta.url);
 const expectedVersion = require('react/package.json').version;
-const mode = expectedVersion.startsWith('0.0.0-experimental-')
-  ? 'native'
-  : 'filter';
 const artifact = process.env.WAKU_WEAK_ARTIFACT;
 const sourceRoot = fileURLToPath(new URL('../../../src/', import.meta.url));
 const React = require('react');
@@ -48,10 +45,6 @@ const client = require(join(vendor, 'client.edge.js'));
 const { createWeakPromise } = await import(
   sourceRoot + 'lib/utils-server/weak-promise.ts'
 );
-const { renderWithWeakPromises } =
-  mode === 'native'
-    ? { renderWithWeakPromises: (data, render) => render(data) }
-    : await import(sourceRoot + 'lib/utils-server/weak-promise-stream.ts');
 const versions = Object.fromEntries(
   ['react', 'react-dom', 'react-server-dom-webpack'].map((name) => [
     name,
@@ -82,44 +75,27 @@ async function state(promise) {
   return value;
 }
 async function unused(promise) {
-  if (mode === 'native') {
-    assert.equal(await state(promise), 'pending');
-  } else {
-    assert.equal(await promise, undefined);
-    assert.equal(await state(promise), 'fulfilled');
-  }
+  assert.equal(await state(promise), 'pending');
 }
 function run(
   data,
   { signal, fragment = 0, networkFragment = 0, disconnect } = {},
 ) {
-  const nativeChunks = [];
-  let encodes = 0;
-  let decodes = 0;
-  const onError = () => 'native-probe-error';
-  const wire = renderWithWeakPromises(
+  const source = server.renderToReadableStream(
     { ...data },
-    (model) => {
-      encodes++;
-      const source = server.renderToReadableStream(
-        model,
-        {},
-        { signal, onError },
-      );
-      return source.pipeThrough(
-        new TransformStream({
-          transform(chunk, controller) {
-            nativeChunks.push(Buffer.from(chunk));
-            if (fragment) {
-              for (let i = 0; i < chunk.length; i += fragment)
-                controller.enqueue(chunk.slice(i, i + fragment));
-            } else controller.enqueue(chunk);
-          },
-        }),
-        disconnect ? { signal: disconnect.signal } : undefined,
-      );
-    },
-    signal,
+    {},
+    { signal, onError: () => 'native-probe-error' },
+  );
+  const wire = source.pipeThrough(
+    new TransformStream({
+      transform(chunk, controller) {
+        if (fragment) {
+          for (let i = 0; i < chunk.length; i += fragment)
+            controller.enqueue(chunk.slice(i, i + fragment));
+        } else controller.enqueue(chunk);
+      },
+    }),
+    disconnect ? { signal: disconnect.signal } : undefined,
   );
   const [decodeStream, byteStream] = wire.tee();
   const forClient = networkFragment
@@ -132,28 +108,15 @@ function run(
         }),
       )
     : decodeStream;
-  const nativeDecode = (stream) => {
-    decodes++;
-    return client.createFromReadableStream(stream, options);
-  };
-  // React decodes the response directly, with no Waku client normalizer.
-  const root = Promise.resolve(nativeDecode(forClient));
-  const bytes = new Response(byteStream).arrayBuffer().then((bytes) => {
-    if (mode === 'native')
-      assert.deepEqual(Buffer.from(bytes), Buffer.concat(nativeChunks));
-    return Buffer.from(bytes);
-  });
+  const root = Promise.resolve(
+    client.createFromReadableStream(forClient, options),
+  );
+  const bytes = new Response(byteStream)
+    .arrayBuffer()
+    .then((bytes) => Buffer.from(bytes));
   void root.catch(() => {});
   void bytes.catch(() => {});
-  return {
-    root,
-    bytes,
-    nativeChunks,
-    async assertSinglePass() {
-      assert.equal(encodes, 1);
-      assert.equal(decodes, 1);
-    },
-  };
+  return { root, bytes };
 }
 const results = [];
 async function scenario(name, fn) {
@@ -192,20 +155,14 @@ await scenario(
     );
     const root = await output.root;
     const bytes = await output.bytes;
-    await output.assertSinglePass();
     await unused(root.channel);
     assert.equal(await root.ordinary, 'done');
     weak.resolve('too late');
     await unused(root.channel);
-    if (mode === 'native' || mode === 'filter') {
-      assert.ok(!Object.hasOwn(root, '_weak'));
-      assert.ok(!bytes.includes('waku-weak-'));
-      assert.ok(!bytes.includes('"_weak"'));
-      assert.ok(bytes.includes(mode === 'native' ? '"$w' : '"$undefined"'));
-    }
+    assert.ok(bytes.includes('"$w'));
     if (artifact)
       writeFileSync(
-        join(artifact, `sample-${mode}-${process.env.NODE_ENV}.bin`),
+        join(artifact, `sample-native-${process.env.NODE_ENV}.bin`),
         bytes,
       );
   },
@@ -494,63 +451,33 @@ await scenario(
     abort.abort(new Error('request left'));
     await output.bytes;
     assert.equal(await ordinary, 'rejected');
-    assert.equal(
-      await state(root.channel),
-      mode === 'native' ? 'pending' : 'rejected',
-    );
+    assert.equal(await state(root.channel), 'pending');
     gate.resolve();
   },
 );
 
-if (mode === 'native' || mode === 'filter') {
-  await scenario(
-    'stream cancellation cancels the native source',
-    async (signal) => {
-      const weak = createWeakPromise();
-      let cancelled;
-      const output = renderWithWeakPromises(
-        { channel: weak.promise },
-        () =>
-          new ReadableStream({
-            cancel(reason) {
-              cancelled = reason;
-            },
-          }),
-        signal,
-      );
-      await output.cancel('left');
-      assert.equal(cancelled, 'left');
-      weak.resolve('too late');
-      assert.equal(await state(weak.promise), 'fulfilled');
-    },
-  );
-
-  await scenario(
-    'transport disconnection rejects pending results without client normalization',
-    async (signal) => {
-      const weak = createWeakPromise();
-      const gate = Promise.withResolvers();
-      const disconnect = new AbortController();
-      const output = run(
-        { channel: weak.promise, ordinary: gate.promise },
-        { signal, disconnect },
-      );
-      const root = await output.root;
-      const ordinaryState = Promise.resolve(root.ordinary).then(
-        () => 'fulfilled',
-        () => 'rejected',
-      );
-      disconnect.abort(new Error('connection lost'));
-      await assert.rejects(output.bytes);
-      assert.equal(
-        await state(root.channel),
-        mode === 'native' ? 'pending' : 'rejected',
-      );
-      assert.equal(await ordinaryState, 'rejected');
-      gate.resolve();
-    },
-  );
-}
+await scenario(
+  'transport disconnection rejects pending results without client normalization',
+  async (signal) => {
+    const weak = createWeakPromise();
+    const gate = Promise.withResolvers();
+    const disconnect = new AbortController();
+    const output = run(
+      { channel: weak.promise, ordinary: gate.promise },
+      { signal, disconnect },
+    );
+    const root = await output.root;
+    const ordinaryState = Promise.resolve(root.ordinary).then(
+      () => 'fulfilled',
+      () => 'rejected',
+    );
+    disconnect.abort(new Error('connection lost'));
+    await assert.rejects(output.bytes);
+    assert.equal(await state(root.channel), 'pending');
+    assert.equal(await ordinaryState, 'rejected');
+    gate.resolve();
+  },
+);
 
 await scenario(
   'the matched Flight runtime has the expected native weak capability',
@@ -566,14 +493,8 @@ await scenario(
       .tee();
     const root = await client.createFromReadableStream(forClient, options);
     const bytes = new Response(forBytes).arrayBuffer();
-    if (mode === 'native') {
-      await bytes;
-      await unused(root.INTENT);
-    } else {
-      assert.equal(await state(bytes), 'pending');
-      abort.abort(new Error('clean up expected unsupported weak thenable'));
-      await bytes;
-    }
+    await bytes;
+    await unused(root.INTENT);
   },
 );
 
@@ -680,10 +601,7 @@ await scenario(
     );
     abort.abort(new Error('transport disconnected'));
     await ordinaryRejection;
-    assert.equal(
-      await state(root.INTENT),
-      mode === 'native' ? 'pending' : 'rejected',
-    );
+    assert.equal(await state(root.INTENT), 'pending');
     gate.resolve();
   },
 );
@@ -930,7 +848,7 @@ try {
 
 console.log(
   JSON.stringify(
-    { mode, versions, nodeEnv: process.env.NODE_ENV, results },
+    { mode: 'native', versions, nodeEnv: process.env.NODE_ENV, results },
     null,
     2,
   ),
