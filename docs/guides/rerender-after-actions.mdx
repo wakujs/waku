@@ -10,15 +10,13 @@ order: 35
 
 When a server action settles, Waku returns its value and leaves the page as it was last rendered. After a mutation, that means the page shows stale data. It also undoes `useOptimistic`: React drops the optimistic value when the action settles, expecting the page to show the change by then, so the update appears and then disappears.
 
-The API in this guide currently uses an `unstable_` name and may change.
-
 ## Rerender the Page the Action Came From
 
-Call `unstable_rerenderRoute` with no arguments. Waku renders the route the action was called from into the action's response, so the page and the optimistic value settle on the same data.
+Call `requestRefresh()` from `waku/router/server`. Waku renders the route the action was called from into the action's response, so the page and the optimistic value settle on the same data. The call does not terminate execution or change the action's return value.
 
 ```tsx
 // src/pages/cart.tsx
-import { unstable_rerenderRoute as rerenderRoute } from 'waku/router/server';
+import { requestRefresh } from 'waku/router/server';
 import { AddToCart } from '../components/add-to-cart';
 import { addItem, getCart } from '../lib/cart';
 
@@ -32,7 +30,7 @@ export default async function CartPage() {
         'use server';
 
         await addItem(String(formData.get('id')));
-        rerenderRoute();
+        requestRefresh();
       }}
     />
   );
@@ -75,37 +73,40 @@ export const AddToCart = ({
 };
 ```
 
-The rerender runs after the action finishes, so it reads the completed mutation.
-Only the last rerender requested by one server function is applied. Finish all
-mutations, then schedule the single view that should show their results. Refetch
+The refresh runs after the action succeeds, so it reads the completed mutation.
+Repeated calls to `requestRefresh()` coalesce into one refresh. Finish all
+mutations, then request a refresh to show their results. Refetch
 independent slices from the client when several views need updating.
 The page has to render dynamically for the rerender to read the new data. If the
 action requests a redirect or not-found view, Waku skips its scheduled rerenders
 and returns the action's value with that intent.
 
-Use `unstable_rerenderRoute()` to update the route the action was called from, or `requestRedirect()` to navigate. Do not combine rerender requests with `requestRedirect()` or `requestNotFound()` in the same action: the client can discard an origin rerender response, including its intent, while navigation is pending.
-
 If the user moves to another page or a navigation is pending when the action returns, Waku drops the origin rerender. This includes a reload of the same route. The action still returns its value.
 
-Overlapping actions that request origin rerenders can also have a rerender dropped while another is waiting to commit. Do not rely on every concurrent action's result appearing on screen.
+Overlapping actions that request refreshes can also have a refresh dropped while another is waiting to commit. Do not rely on every concurrent action's result appearing on screen.
 
-## Render a Specific Route
+## Deprecated Rerender API
 
-Pass a path, and optionally a query, to render that route instead:
+`unstable_rerenderRoute()` is deprecated and will be removed in a future release.
+Replace it with `requestRefresh()`. The named-route overload,
+`unstable_rerenderRoute(pathname, query)`, is also deprecated. Both forms retain
+their existing behavior until removal.
+
+Use `requestRedirect()` to navigate after a mutation:
 
 ```tsx
-rerenderRoute('/cart', 'tab=saved');
+requestRedirect('/cart?tab=saved');
 ```
 
-If that is not the route on screen, the router moves to it. To send the user to another page after a mutation, a redirect is usually the better fit; see [Redirects and Not Found](/guides/redirects-and-not-found).
+See [Redirects and Not Found](/guides/redirects-and-not-found).
 
 ## Forms Without JavaScript
 
-Without JavaScript, the form posts to the page and Waku renders that page after the action runs, so the document already includes the change. Calling `unstable_rerenderRoute()` there still works; it renders the same page.
+Without JavaScript, the form posts to the page and Waku renders that page after the action runs, so the document already includes the change. Calling `requestRefresh()` there also works; it renders the same page.
 
 ## Avoid Rerendering From an Effect
 
-Do not call `unstable_rerenderRoute()` in an action that a client component calls from an effect with the action in its dependencies:
+Do not call `requestRefresh()` in an action that a client component calls from an effect with the action in its dependencies:
 
 ```tsx
 useEffect(() => {
@@ -117,4 +118,4 @@ Every rerender gives the client a new `track` function, which runs the effect ag
 
 ## Router Requirement
 
-The no-argument form needs a router on the client that tells the server which route the action came from. Waku's router does, and a router built on `waku/router/client-core` does by installing an `unstable_createServerFunctionRouting()` controller's enhancer on Root and connecting it with `useServerFunctionRouting_UNSTABLE(controller, callbacks)`. In an action that did not come through such a router, `unstable_rerenderRoute()` throws.
+`requestRefresh()` needs a router on the client that tells the server which route the action came from. Waku's router does, and a router built on `waku/router/client-core` does by installing an `unstable_createServerFunctionRouting()` controller's enhancer on Root and connecting it with `useServerFunctionRouting_UNSTABLE(controller, callbacks)`. In an action that did not come through such a router, `requestRefresh()` throws.
