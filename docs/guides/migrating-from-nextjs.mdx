@@ -166,15 +166,15 @@ emitted as written rather than replaced; and `charset` and `viewport` belong in
 
 ## Routing APIs
 
-| Next.js                                       | Waku                                                                                                                                                                                                                                                                                                                                                                                        |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `import Link from 'next/link'`, `<Link href>` | `import { Link } from 'waku'`, `<Link to>`                                                                                                                                                                                                                                                                                                                                                  |
-| `useRouter()` from `next/navigation`          | `useRouter()` from `waku`                                                                                                                                                                                                                                                                                                                                                                   |
-| `usePathname()`                               | `useRouter().path`                                                                                                                                                                                                                                                                                                                                                                          |
-| `useSearchParams()`                           | `new URLSearchParams(useRouter().query)`                                                                                                                                                                                                                                                                                                                                                    |
-| `redirect()`                                  | `requestRedirect()` from `waku/router/server`, then return from the component or server function                                                                                                                                                                                                                                                                                            |
-| `notFound()`                                  | `requestNotFound()` from `waku/router/server`, then return from the component or server function                                                                                                                                                                                                                                                                                            |
-| `revalidatePath()`                            | from a server action, `unstable_rerenderRoute()` for the route the action came from, or `unstable_rerenderRoute(path, query)` for another one; on the client, `useRouter().reload()`; from a route handler there is no equivalent — `unstable_rerenderRoute` throws `Rerender is not available.` outside an action — see [Rerendering After Server Actions](/guides/rerender-after-actions) |
+| Next.js                                       | Waku                                                                                                                                                                                                         |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `import Link from 'next/link'`, `<Link href>` | `import { Link } from 'waku'`, `<Link to>`                                                                                                                                                                   |
+| `useRouter()` from `next/navigation`          | `useRouter()` from `waku`                                                                                                                                                                                    |
+| `usePathname()`                               | `useRouter().path`                                                                                                                                                                                           |
+| `useSearchParams()`                           | `new URLSearchParams(useRouter().query)`                                                                                                                                                                     |
+| `redirect()`                                  | `requestRedirect()` from `waku/router/server`, then return from the component or server function                                                                                                             |
+| `notFound()`                                  | `requestNotFound()` from `waku/router/server`, then return from the component or server function                                                                                                             |
+| `revalidatePath()`                            | from a server function, `requestRefresh()` for the calling route; on the client, `useRouter().reload()`; unavailable in API handlers; see [Rerendering After Server Actions](/guides/rerender-after-actions) |
 
 Waku's `requestRedirect()` and `requestNotFound()` record intent without throwing.
 Components that call them during rendering must be dynamic; static rendering
@@ -255,12 +255,11 @@ flow. Either way, removing the call should not turn "fresh within a minute" into
 Two exceptions:
 
 - An action that stays on the page and expects the screen to update needs
-  `unstable_rerenderRoute()` — an action that calls `requestRedirect()` and
+  `requestRefresh()` — an action that calls `requestRedirect()` and
   returns does not.
-  Called with no arguments it renders the route the action came from, query
-  included, which is also what stops a `useOptimistic` value from snapping back
-  when the action settles; pass `(pathname, query)` only to render a different
-  route. A re-render carries the route's own elements, not a lazy `<Slice>`: a
+  It refreshes the route the action came from, query included, which is also
+  what stops a `useOptimistic` value from snapping back when the action settles.
+  A refresh carries the route's own elements, not a lazy `<Slice>`: a
   mounted slice keeps what it fetched, so a mutation that changes slice data
   needs the slice remounted with a `key` or refetched on its own. See
   [Rerendering After Server Actions](/guides/rerender-after-actions).

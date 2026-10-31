@@ -1,4 +1,4 @@
-import { unstable_rerenderRoute } from 'waku/router/server';
+import { requestRefresh } from 'waku/router/server';
 import { OptimisticActionForm } from './optimistic-action-form.js';
 
 let submittedName = '';
@@ -6,7 +6,7 @@ let submittedName = '';
 async function submit(formData: FormData) {
   'use server';
   submittedName = String(formData.get('name') || '');
-  unstable_rerenderRoute();
+  requestRefresh();
 }
 
 export function OptimisticActionPage() {

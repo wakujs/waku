@@ -1,4 +1,7 @@
-import { unstable_rerenderRoute as rerenderRoute } from 'waku/router/server';
+import {
+  requestRefresh,
+  unstable_rerenderRoute as rerenderRoute,
+} from 'waku/router/server';
 
 let count = 0;
 
@@ -10,7 +13,7 @@ export default function RerenderActionPage() {
         action={async () => {
           'use server';
           count += 1;
-          rerenderRoute();
+          requestRefresh();
         }}
       >
         <button type="submit" data-testid="rerender">

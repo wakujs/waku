@@ -38,10 +38,29 @@ const encodePathname = (pathname: string) => {
 };
 
 /**
+ * Requests a refresh of the calling route after the current server function
+ * succeeds. Does not terminate execution or change the function's return value.
+ * Repeated calls coalesce; redirect and not-found intents skip the refresh.
+ * The route must render dynamically to read updated data. The client drops the
+ * refresh if the user has left that route or any navigation is pending, while
+ * keeping the function's return value.
+ * Throws outside a Router server function or when its calling route is unknown.
+ *
+ * @example
+ * const result = await saveChanges();
+ * requestRefresh();
+ * return result;
+ */
+export function requestRefresh(): void {
+  getRerender()();
+}
+
+/**
  * Schedules the calling route to render after the server function finishes,
  * unless a route intent was recorded. The client drops the rerender if the user
  * has left that route or any navigation is pending.
  * Only the last rerender requested by a server function is applied.
+ * @deprecated Use `requestRefresh()`. Will be removed in a future release.
  */
 export function rerenderRoute(): void;
 /**
@@ -51,11 +70,12 @@ export function rerenderRoute(): void;
  * non-ASCII characters are percent-encoded. `query` is the search string
  * without `?`, serialized as URL search params, so `q=a b` becomes `q=a+b`.
  * Only the last rerender requested by a server function is applied.
+ * @deprecated Use `requestRedirect()` to navigate. Will be removed in a future release.
  */
 export function rerenderRoute(pathname: string, query?: string): void;
 export function rerenderRoute(pathname?: string, query?: string) {
   if (pathname === undefined) {
-    getRerender()();
+    requestRefresh();
     return;
   }
   const rscPath = encodeRoutePath(
