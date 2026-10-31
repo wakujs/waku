@@ -1,15 +1,15 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   getNonce,
   getRequest,
-  getRerender,
   getRscParams,
   getRscPath,
+  getServerFunctionContext,
   runWithRouterStore,
   setNonce,
-  setRerender,
   setRscParams,
   setRscPath,
+  setServerFunctionContext,
 } from '../src/router/define-router-utils/request-store.js';
 
 const makeRequest = (url = 'http://localhost:3000/', init?: RequestInit) =>
@@ -75,14 +75,22 @@ describe('request-store', () => {
     expect(b).toBe('B');
   });
 
-  it('getRerender throws until a rerender is set, then returns it', () => {
+  it('server function context is only available until it is cleared', () => {
     const req = makeRequest();
     runWithRouterStore({ req }, () => {
-      expect(() => getRerender()).toThrow('Rerender is not available.');
-      const rerender = vi.fn();
-      setRerender(rerender);
-      getRerender()('R/x');
-      expect(rerender).toHaveBeenCalledWith('R/x');
+      expect(() => getServerFunctionContext()).toThrow(
+        'Server function context is not available.',
+      );
+      const context = {
+        origin: ['R/x', undefined] as const,
+        refreshRequested: false,
+      };
+      setServerFunctionContext(context);
+      expect(getServerFunctionContext()).toBe(context);
+      setServerFunctionContext(undefined);
+      expect(() => getServerFunctionContext()).toThrow(
+        'Server function context is not available.',
+      );
     });
   });
 

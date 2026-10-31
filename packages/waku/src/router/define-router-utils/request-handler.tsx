@@ -24,7 +24,12 @@ import {
 import { ROUTER_METADATA } from './build-metadata.js';
 import { getRouterPrefetchCode } from './client-code.js';
 import { createElementCache } from './element-cache.js';
-import { getNonce, getRouteIntent, setRerender } from './request-store.js';
+import {
+  getNonce,
+  getRouteIntent,
+  setServerFunctionContext,
+} from './request-store.js';
+import type { ServerFunctionContext } from './request-store.js';
 import type {
   Resolve,
   RouterDefinition,
@@ -159,38 +164,31 @@ export function createRequestHandler({
 
       // html has to carry every slot, so a client etag must not omit one
       const clientEtags = (input.type !== 'http' && input.etags) || {};
-      const withRerender = async <T,>(
+      const runServerFunction = async <T,>(
         fn: () => Promise<T>,
-        getOrigin: () =>
-          readonly [rscPath: string, rscParams: unknown] | undefined,
+        origin: readonly [rscPath: string, rscParams: unknown] | undefined,
       ) => {
-        let rerender:
-          | { rscPath: string; rscParams: unknown; isOrigin: boolean }
-          | undefined;
-        setRerender((rscPath, rscParams) => {
-          const isOrigin = rscPath === undefined;
-          if (rscPath === undefined) {
-            const origin = getOrigin();
-            if (!origin) {
-              throw new Error(
-                'The route this server function was called from is unknown',
-              );
-            }
-            [rscPath, rscParams] = origin;
-          }
-          rerender = { rscPath, rscParams, isOrigin };
-        });
+        const context: ServerFunctionContext = {
+          origin,
+          refreshRequested: false,
+        };
+        setServerFunctionContext(context);
         let value: T;
         try {
           value = await fn();
         } finally {
-          setRerender(undefined);
+          setServerFunctionContext(undefined);
         }
-        const target = intent.value ? undefined : rerender;
+        const target = intent.value
+          ? undefined
+          : context.refreshRequested
+            ? context.origin
+            : context.legacyTarget;
+        const isOrigin = !!target && context.refreshRequested;
         const entries = target
           ? await routeEntries.getEntriesForRoute(
-              target.rscPath,
-              target.rscParams,
+              target[0],
+              target[1],
               clientEtags,
               requestElementCache,
             )
@@ -201,7 +199,7 @@ export function createRequestHandler({
         return {
           value,
           entries: entries ?? { elements: {}, etags: {} },
-          isOrigin: target?.isOrigin ?? false,
+          isOrigin,
         };
       };
 
@@ -248,9 +246,9 @@ export function createRequestHandler({
         fn,
         args,
       }: Extract<HandlerInput, { type: 'call' }>) => {
-        const { value, entries, isOrigin } = await withRerender(
+        const { value, entries, isOrigin } = await runServerFunction(
           () => fn(...args),
-          () => parseServerFunctionOrigin(input.req),
+          parseServerFunctionOrigin(input.req),
         );
         return renderRscWithIntent(
           isOrigin
@@ -314,9 +312,9 @@ export function createRequestHandler({
             return renderIntentResponse(pathname) ?? null;
           }
           if (action && !intent.value) {
-            const { value, entries: rerendered } = await withRerender(
+            const { value, entries: rerendered } = await runServerFunction(
               action,
-              () => [rscPath, rscParams] as const,
+              [rscPath, rscParams],
             );
             formState = value?.action ? value.formState : undefined;
             entries = {

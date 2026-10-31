@@ -1080,31 +1080,70 @@ describe('request dispatch', () => {
     },
   );
 
-  it('does not start scheduled renders when the server function fails', async () => {
-    const render = vi.fn(() => {
-      throw new Error('render failed');
-    });
+  it('keeps the origin marker when a refreshed render records an intent', async () => {
     const router = unstable_defineRouter({
-      resolve: async () => ({
-        elements: {
-          root: { render: () => 'root' },
-          route: { render },
-        },
-      }),
+      resolve: async () => {
+        requestRedirect('/login');
+        return {
+          elements: {
+            root: { render: () => 'root' },
+            route: { render: () => 'route' },
+          },
+        };
+      },
       getHas404: async () => false,
     });
-    await expect(
-      router.handleRequest(
-        callInput(async () => {
-          unstable_rerenderRoute('/unused');
-          await new Promise((resolve) => setTimeout(resolve, 0));
-          throw new Error('function failed');
-        }),
-        makeUtils(),
-      ),
-    ).rejects.toThrow('function failed');
-    expect(render).not.toHaveBeenCalled();
+    const utils = makeUtils();
+    await router.handleRequest(
+      callInput(async () => {
+        requestRefresh();
+        return 'saved';
+      }, '/origin'),
+      utils,
+    );
+    const [elements, options] = utils.renderRsc.mock.calls[0]!;
+    expect(elements[ROUTE_ID]).toEqual(['/origin', '']);
+    expect(elements[IS_ORIGIN_ID]).toBe(true);
+    await expect(elements[INTENT_ID]).resolves.toBe(
+      JSON.stringify({ status: 307, location: '/login' }),
+    );
+    expect(options?.value).toBe('saved');
   });
+
+  it.each([
+    { name: 'requestRefresh', request: requestRefresh },
+    {
+      name: 'unstable_rerenderRoute',
+      request: () => unstable_rerenderRoute('/unused'),
+    },
+  ])(
+    'does not render for $name when the server function fails',
+    async ({ request }) => {
+      const render = vi.fn(() => {
+        throw new Error('render failed');
+      });
+      const router = unstable_defineRouter({
+        resolve: async () => ({
+          elements: {
+            root: { render: () => 'root' },
+            route: { render },
+          },
+        }),
+        getHas404: async () => false,
+      });
+      await expect(
+        router.handleRequest(
+          callInput(async () => {
+            request();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            throw new Error('function failed');
+          }, '/unused'),
+          makeUtils(),
+        ),
+      ).rejects.toThrow('function failed');
+      expect(render).not.toHaveBeenCalled();
+    },
+  );
 
   it('renders only the last scheduled target', async () => {
     const rendered: string[] = [];
@@ -1336,14 +1375,17 @@ describe('request dispatch', () => {
     expect(assertTypes).toBeTypeOf('function');
   });
 
-  it('does not mark a response whose last rerender names a route', async () => {
+  it.each([
+    { name: 'requestRefresh', request: requestRefresh },
+    { name: 'unstable_rerenderRoute', request: unstable_rerenderRoute },
+  ])('lets a later named rerender supersede $name', async ({ request }) => {
     const { handleRequest } = createConfiguredRouter({
       getConfigs: async () => [dynamicRoute('/'), dynamicRoute('/dest')],
     });
     const utils = makeUtils();
     await handleRequest(
       callInput(async () => {
-        unstable_rerenderRoute();
+        request();
         unstable_rerenderRoute('/dest');
         return 'fn-value';
       }, '/'),
@@ -1354,7 +1396,10 @@ describe('request dispatch', () => {
     expect(elements).not.toHaveProperty(IS_ORIGIN_ID);
   });
 
-  it('marks a response whose last rerender is the route a server function was called from', async () => {
+  it.each([
+    { name: 'requestRefresh', request: requestRefresh },
+    { name: 'unstable_rerenderRoute', request: unstable_rerenderRoute },
+  ])('lets $name supersede a named rerender', async ({ request }) => {
     const { handleRequest } = createConfiguredRouter({
       getConfigs: async () => [dynamicRoute('/'), dynamicRoute('/dest')],
     });
@@ -1362,7 +1407,7 @@ describe('request dispatch', () => {
     await handleRequest(
       callInput(async () => {
         unstable_rerenderRoute('/dest');
-        unstable_rerenderRoute();
+        request();
         return 'fn-value';
       }, '/'),
       utils,

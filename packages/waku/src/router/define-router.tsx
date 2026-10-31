@@ -8,10 +8,10 @@ import type {
 import { createRequestHandler } from './define-router-utils/request-handler.js';
 import {
   getRequest,
-  getRerender,
   getRouteIntent,
   getRscParams,
   getRscPath,
+  getServerFunctionContext,
   runWithRouterStore,
   setNonce,
 } from './define-router-utils/request-store.js';
@@ -52,7 +52,13 @@ const encodePathname = (pathname: string) => {
  * return result;
  */
 export function requestRefresh(): void {
-  getRerender()();
+  const context = getServerFunctionContext();
+  if (!context.origin) {
+    throw new Error(
+      'The route this server function was called from is unknown',
+    );
+  }
+  context.refreshRequested = true;
 }
 
 /**
@@ -82,10 +88,12 @@ export function rerenderRoute(pathname?: string, query?: string) {
     pathnameToRoutePath(encodePathname(pathname)),
   );
   const encodedQuery = new URLSearchParams(query).toString();
-  getRerender()(
+  const context = getServerFunctionContext();
+  context.legacyTarget = [
     rscPath,
     encodedQuery && new URLSearchParams({ query: encodedQuery }),
-  );
+  ];
+  context.refreshRequested = false;
 }
 
 /**
