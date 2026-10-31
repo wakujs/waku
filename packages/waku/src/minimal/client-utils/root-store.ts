@@ -50,16 +50,17 @@ export type RootStore = {
 
 const mountedRootStores: RootStore[] = [];
 
-export const getDefaultRootStore = (): RootStore | undefined =>
-  mountedRootStores.at(-1);
+export function getDefaultRootStore(): RootStore | undefined {
+  return mountedRootStores.at(-1);
+}
 
-export const clearRootCachedEtags = (): void => {
+export function clearRootCachedEtags(): void {
   mountedRootStores.forEach((store) => {
     store.etags = {};
   });
-};
+}
 
-export const registerRootStore = (store: RootStore) => {
+export function registerRootStore(store: RootStore) {
   mountedRootStores.push(store);
   return () => {
     const index = mountedRootStores.lastIndexOf(store);
@@ -67,4 +68,4 @@ export const registerRootStore = (store: RootStore) => {
       mountedRootStores.splice(index, 1);
     }
   };
-};
+}

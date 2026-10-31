@@ -30,9 +30,9 @@ export type Resolve = (
 
 export type ResolveElement = (id: string) => Promise<ElementSource | null>;
 
-export const validateRouteElementIds = (
+export function validateRouteElementIds(
   elements: RouterDefinition['elements'],
-) => {
+) {
   for (const id of Object.keys(elements)) {
     if (
       id !== 'root' &&
@@ -42,20 +42,21 @@ export const validateRouteElementIds = (
       throw new Error('Reserved router element ID: ' + id);
     }
   }
-};
+}
 
-export const getQuery = (params: unknown): string =>
-  params instanceof URLSearchParams
+export function getQuery(params: unknown): string {
+  return params instanceof URLSearchParams
     ? params.get('query') || ''
     : typeof (params as { query?: unknown } | undefined)?.query === 'string'
       ? (params as { query: string }).query
       : '';
+}
 
-export const createRouteEntries = (
+export function createRouteEntries(
   resolve: Resolve,
   resolveElement: ResolveElement | undefined,
   getHas404?: () => Promise<boolean>,
-) => {
+) {
   const has404 = getHas404 ?? (async () => false);
 
   const getRouteMetadata = async (pathname: string, query: string) => ({
@@ -127,4 +128,4 @@ export const createRouteEntries = (
   };
 
   return { getEntriesForRoute, getEntriesForElement, getRouteMetadata, has404 };
-};
+}

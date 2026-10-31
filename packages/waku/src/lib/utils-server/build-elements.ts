@@ -18,10 +18,10 @@ type BuiltElements = {
  * render; a previously advertised validator is then cleared. Source errors
  * propagate without producing an elements record.
  */
-export const buildElements = async (
+export async function buildElements(
   clientEtags: Etags,
   elementSources: Record<string, ElementSource>,
-): Promise<BuiltElements> => {
+): Promise<BuiltElements> {
   const elements: Record<string, unknown> = {};
   const etags: Etags = {};
   await Promise.all(
@@ -44,4 +44,4 @@ export const buildElements = async (
     }),
   );
   return { elements, etags };
-};
+}

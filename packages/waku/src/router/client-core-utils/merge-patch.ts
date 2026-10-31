@@ -10,12 +10,12 @@ import { isSameRscRoute } from './route-url.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
-export const buildMergePatch = (
+export function buildMergePatch(
   outcome: Pick<Loaded, 'route' | 'elements'>,
   current: Elements,
   base: Elements,
   opts: { settled: RouteProps },
-): Elements => {
+): Elements {
   const { elements } = outcome;
   const responseRoute = getRouteFromElements(elements) ?? outcome.route;
   const routeSlotId = getRouteSlotId(responseRoute.path);
@@ -29,4 +29,4 @@ export const buildMergePatch = (
         (Object.hasOwn(current, key) === Object.hasOwn(base, key) &&
           current[key] === base[key])),
   });
-};
+}

@@ -5,7 +5,7 @@ import { joinPath } from '../utils-isomorphic/path.js';
 
 const DO_NOT_BUNDLE = '';
 
-async function resolveModuleId(moduleId: string, rootDir: string) {
+const resolveModuleId = async (moduleId: string, rootDir: string) => {
   if (moduleId.startsWith('file://')) {
     return moduleId;
   }
@@ -22,7 +22,7 @@ async function resolveModuleId(moduleId: string, rootDir: string) {
   const require = createRequire(joinPath(rootDir, 'DUMMY.js'));
   const resolved = require.resolve(moduleId);
   return pathToFileURL(resolved).href;
-}
+};
 
 export async function INTERNAL_runBuild({
   rootDir,

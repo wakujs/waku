@@ -1,6 +1,6 @@
-export const getRouterPrefetchCode = (
+export function getRouterPrefetchCode(
   moduleIdsByPrefetchRegExp: Record<string, string[]>,
-) => {
+) {
   const moduleIdSet = new Set<string>();
   Object.values(moduleIdsByPrefetchRegExp).forEach((ids) =>
     ids.forEach((id) => moduleIdSet.add(id)),
@@ -20,4 +20,4 @@ globalThis.__WAKU_ROUTER_PREFETCH__ = (path, callback) => {
   }
 };
 `;
-};
+}

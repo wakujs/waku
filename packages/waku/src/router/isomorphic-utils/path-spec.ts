@@ -6,8 +6,8 @@ export type PathSpec = readonly PathSpecItem[];
 
 const SLUG_PATTERN = /^(.*?)\[([^\]]+)\](.*)$/;
 
-export const parsePathWithSlug = (path: string): PathSpec =>
-  path
+export function parsePathWithSlug(path: string): PathSpec {
+  return path
     .split('/')
     .filter(Boolean)
     .map((name) => {
@@ -29,8 +29,9 @@ export const parsePathWithSlug = (path: string): PathSpec =>
         ...(suffix ? { suffix } : {}),
       };
     });
+}
 
-export const pathSpecAsString = (pathSpec: PathSpec) => {
+export function pathSpecAsString(pathSpec: PathSpec) {
   return (
     '/' +
     pathSpec
@@ -47,7 +48,7 @@ export const pathSpecAsString = (pathSpec: PathSpec) => {
       })
       .join('/')
   );
-};
+}
 
 const matchSpecSegment = (
   spec: Exclude<PathSpecItem, { type: 'wildcard' }>,
@@ -82,10 +83,10 @@ const matchSpecSegment = (
   return true;
 };
 
-export const getPathMapping = (
+export function getPathMapping(
   pathSpec: PathSpec,
   pathname: string,
-): Record<string, string | string[]> | null => {
+): Record<string, string | string[]> | null {
   const actual = pathname.split('/').filter(Boolean);
   if (pathSpec.length > actual.length) {
     const wildcardIndex = pathSpec.findIndex(
@@ -153,11 +154,11 @@ export const getPathMapping = (
     );
   }
   return mapping;
-};
+}
 
 const escapeRegExp = (s: string) => s.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
 
-export const pathSpecToRegExpSource = (pathSpec: PathSpec) => {
+export function pathSpecToRegExpSource(pathSpec: PathSpec) {
   const parts = pathSpec.map((item) => {
     if (item.type === 'literal') {
       return escapeRegExp(item.name);
@@ -170,4 +171,4 @@ export const pathSpecToRegExpSource = (pathSpec: PathSpec) => {
     }
   });
   return `^/${parts.join('/')}$`;
-};
+}

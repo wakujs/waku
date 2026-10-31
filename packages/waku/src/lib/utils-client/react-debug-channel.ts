@@ -85,11 +85,11 @@ const createWsDebugChannel = (debugId: string) => {
   return { readable, writable };
 };
 
-export const setupDebugChannel = (
+export function setupDebugChannel(
   baseFetchFn: typeof fetch,
   prefetched: boolean,
   debugId?: string,
-) => {
+) {
   if (prefetched) {
     if (debugId) {
       const debugChannel = createWsDebugChannel(debugId);
@@ -109,4 +109,4 @@ export const setupDebugChannel = (
     });
   }) as typeof fetch;
   return { fetchFn, debugChannel };
-};
+}

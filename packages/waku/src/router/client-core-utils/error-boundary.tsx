@@ -3,12 +3,15 @@ import type { ContextType, ErrorInfo, ReactNode } from 'react';
 import { unstable_hasRenderCancellationDigest as hasRenderCancellationDigest } from 'waku/minimal/client';
 import { RouterHostContext } from './host.js';
 
-export const isNotFoundError = (error: unknown) =>
-  error instanceof Error &&
-  error.cause instanceof Response &&
-  error.cause.status === 404;
+export function isNotFoundError(error: unknown) {
+  return (
+    error instanceof Error &&
+    error.cause instanceof Response &&
+    error.cause.status === 404
+  );
+}
 
-function renderError(message: string, notFound: boolean) {
+const renderError = (message: string, notFound: boolean) => {
   return (
     <html>
       <head>
@@ -32,7 +35,7 @@ function renderError(message: string, notFound: boolean) {
       </body>
     </html>
   );
-}
+};
 
 /**
  * Catches errors from its children and shows a fallback page. Used by the

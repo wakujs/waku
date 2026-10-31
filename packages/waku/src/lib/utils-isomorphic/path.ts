@@ -36,7 +36,7 @@ export const fileURLToFilePath = (fileURL: string) => {
 };
 
 // for filePath
-export const joinPath = (...paths: string[]) => {
+export function joinPath(...paths: string[]) {
   const isAbsolute = paths[0]?.startsWith('/');
   const items = ([] as string[]).concat(
     ...paths.map((path) => path.split('/')),
@@ -54,7 +54,7 @@ export const joinPath = (...paths: string[]) => {
     }
   }
   return (isAbsolute ? '/' : '') + stack.join('/') || '.';
-};
+}
 
 export const extname = (filePath: string) => {
   const index = filePath.lastIndexOf('.');

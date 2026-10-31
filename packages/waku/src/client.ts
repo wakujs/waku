@@ -1,7 +1,9 @@
 import { hasRenderCancellationDigest } from './lib/utils-isomorphic/render-cancellation.js';
 
 // Experimental, the name and the behavior might change.
-export const unstable_allowServer = <T>(x: T) => x;
+export function unstable_allowServer<T>(x: T) {
+  return x;
+}
 
 // Unsure if this is going to be a public API in the future.
 export const unstable_defaultRootOptions = {

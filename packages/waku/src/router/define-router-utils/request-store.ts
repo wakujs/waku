@@ -35,16 +35,17 @@ const createRouteIntent = (signal: AbortSignal) => {
   };
 };
 
-export const getRouteIntent = () => {
+export function getRouteIntent() {
   const store = routerStorage.getStore();
   if (!store) {
     throw new Error('Route intent is not available.');
   }
   return (store.intent ??= createRouteIntent(store.req.signal));
-};
+}
 
-export const runWithRouterStore = <T>(store: RouterStore, fn: () => T): T =>
-  routerStorage.run(store, fn);
+export function runWithRouterStore<T>(store: RouterStore, fn: () => T): T {
+  return routerStorage.run(store, fn);
+}
 
 /**
  * Access the request being handled. Available while the router handles a
@@ -77,19 +78,19 @@ export function getRequest(): Request {
   return store.req;
 }
 
-export const setRscPath = (rscPath: string) => {
+export function setRscPath(rscPath: string) {
   const store = routerStorage.getStore();
   if (store) {
     store.rscPath = rscPath;
   }
-};
+}
 
-export const setRscParams = (rscParams: unknown) => {
+export function setRscParams(rscParams: unknown) {
   const store = routerStorage.getStore();
   if (store) {
     store.rscParams = rscParams;
   }
-};
+}
 
 export function getRscPath(): string | undefined {
   return routerStorage.getStore()?.rscPath;
@@ -99,20 +100,20 @@ export function getRscParams(): unknown {
   return routerStorage.getStore()?.rscParams;
 }
 
-export const setRerender = (rerender: Rerender | undefined) => {
+export function setRerender(rerender: Rerender | undefined) {
   const store = routerStorage.getStore();
   if (store) {
     store.rerender = rerender;
   }
-};
+}
 
-export const getRerender = (): Rerender => {
+export function getRerender(): Rerender {
   const rerender = routerStorage.getStore()?.rerender;
   if (!rerender) {
     throw new Error('Rerender is not available.');
   }
   return rerender;
-};
+}
 
 /**
  * Set the nonce applied to framework inline scripts for the current request.
@@ -126,5 +127,6 @@ export function setNonce(nonce: string): void {
   }
 }
 
-export const getNonce = (): string | undefined =>
-  routerStorage.getStore()?.nonce;
+export function getNonce(): string | undefined {
+  return routerStorage.getStore()?.nonce;
+}

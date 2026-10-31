@@ -16,11 +16,11 @@ type Entry = {
   unsubscribe?: () => void;
 };
 
-function createFlightRecordScanner(
+const createFlightRecordScanner = (
   emit: (bytes: Uint8Array) => void,
   consumeMarker: (id: string, row: string) => boolean,
   onBoundary: () => void,
-) {
+) => {
   let buffered = new Uint8Array(0);
   let rowParts: Uint8Array[] = [];
   let remaining = 0;
@@ -97,7 +97,7 @@ function createFlightRecordScanner(
       buffered = input.slice(offset);
     },
   };
-}
+};
 
 /**
  * Input buffers may be transferred; upstream transforms must give each chunk

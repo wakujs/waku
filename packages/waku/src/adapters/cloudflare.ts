@@ -29,12 +29,12 @@ const createEmptyStream = () =>
     },
   });
 
-function isProductionWorker(req: Request): boolean {
+const isProductionWorker = (req: Request): boolean => {
   // This header seems to only be set for production cloudflare workers
   return !!req.headers.get('cf-visitor');
-}
+};
 
-function isLoopbackRequest(req: Request): boolean {
+const isLoopbackRequest = (req: Request): boolean => {
   const { hostname } = new URL(req.url);
   return (
     hostname === 'localhost' ||
@@ -42,9 +42,9 @@ function isLoopbackRequest(req: Request): boolean {
     hostname === '::1' ||
     hostname === '[::1]'
   );
-}
+};
 
-function removeGzipEncoding(res: Response): Response {
+const removeGzipEncoding = (res: Response): Response => {
   const contentType = res.headers.get('content-type');
   if (
     !contentType ||
@@ -60,7 +60,7 @@ function removeGzipEncoding(res: Response): Response {
     });
   }
   return res;
-}
+};
 
 export default createServerEntryAdapter(
   (
