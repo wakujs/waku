@@ -30,7 +30,7 @@ Subcommands:
   }
 }
 
-async function runTypegen() {
+const runTypegen = async () => {
   const config = await loadConfig();
   const srcDir = join(process.cwd(), config.srcDir);
   const pagesDir = join(srcDir, SRC_PAGES);
@@ -54,4 +54,4 @@ async function runTypegen() {
   const outputFile = join(srcDir, 'pages.gen.ts');
   await writeFile(outputFile, result, 'utf-8');
   console.log(`Generated ${outputFile}`);
-}
+};

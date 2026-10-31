@@ -28,12 +28,12 @@ export const RouterContext = createContext<{
   ) => boolean;
 } | null>(null);
 
-export const dispatchChangeRoute = (
+export function dispatchChangeRoute(
   changeRoute: ChangeRoute,
   route: RouteProps,
   options: ChangeRouteOptions,
   startTransitionFn: (fn: TransitionFunction) => void = startTransition,
-): Promise<void> => {
+): Promise<void> {
   if (options.instant) {
     // skip the outer wrap until changeRoute knows it will actually paint
     return changeRoute(route, {
@@ -52,4 +52,4 @@ export const dispatchChangeRoute = (
       }
     });
   });
-};
+}

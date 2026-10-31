@@ -4,10 +4,10 @@ export type InitialRscEntry = {
   debugId?: string;
 };
 
-export const consumeInitialRscEntry = (): InitialRscEntry | undefined => {
+export function consumeInitialRscEntry(): InitialRscEntry | undefined {
   const entry = globalThis.__WAKU_INITIAL_RSC__;
   if (entry) {
     globalThis.__WAKU_INITIAL_RSC__ = undefined;
   }
   return entry;
-};
+}

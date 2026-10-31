@@ -30,13 +30,13 @@ import { stringToStream } from '../utils-isomorphic/stream.js';
 import { createRenderUtils } from '../utils-server/render.js';
 import { getInput } from '../utils-server/request.js';
 
-function loadSsrEntryModule() {
+const loadSsrEntryModule = () => {
   // This is an API to communicate between two server environments `rsc` and `ssr`.
   // https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-rsc/README.md#importmetaviterscloadmodule
   return import.meta.viteRsc.loadModule<
     typeof import('../vite-entries/entry.ssr.js')
   >('ssr', 'index');
-}
+};
 
 const toProcessRequest =
   (handleRequest: HandleRequest): ProcessRequest =>

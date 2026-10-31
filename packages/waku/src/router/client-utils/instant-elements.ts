@@ -12,7 +12,7 @@ import {
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
-export const useMergeInstantElements = () => {
+export function useMergeInstantElements() {
   const mergeElements = useMergeElements();
   return useCallback(
     (
@@ -105,4 +105,4 @@ export const useMergeInstantElements = () => {
     },
     [mergeElements],
   );
-};
+}

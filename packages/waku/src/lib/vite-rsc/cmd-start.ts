@@ -31,7 +31,7 @@ export async function runStart(flags: { host?: string; port?: string }) {
   console.log(`ready: Listening on http://${host || '0.0.0.0'}:${port}/`);
 }
 
-async function getFreePort(startPort: number): Promise<number> {
+const getFreePort = async (startPort: number): Promise<number> => {
   for (let port = startPort; ; port++) {
     try {
       await new Promise<void>((resolve, reject) => {
@@ -48,4 +48,4 @@ async function getFreePort(startPort: number): Promise<number> {
       }
     }
   }
-}
+};

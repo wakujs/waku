@@ -25,50 +25,60 @@ export type RouteData = readonly [path: string, query: string];
  * without metadata. The route can differ from the request; cached and instant
  * paints also carry it, so this does not imply a fetch has settled.
  */
-export const getRouteFromElements = (
+export function getRouteFromElements(
   elements: Record<string, unknown>,
-): RouteProps | undefined => {
+): RouteProps | undefined {
   const routeData = elements[ROUTE_ID] as RouteData | undefined;
   return routeData
     ? { path: routeData[0], query: routeData[1], hash: '' }
     : undefined;
-};
+}
 
 /**
  * Returns whether the represented route can be reused without a request. Its
  * sources must be immutable. Returns false without metadata; unrelated to
  * prerendering.
  */
-export const isStaticFromElements = (
+export function isStaticFromElements(
   elements: Record<string, unknown>,
-): boolean => !!elements[IS_STATIC_ID];
+): boolean {
+  return !!elements[IS_STATIC_ID];
+}
 
 /** Returns whether a custom `/404` route is available; false without metadata. */
-export const has404FromElements = (
-  elements: Record<string, unknown>,
-): boolean => !!elements[HAS404_ID];
+export function has404FromElements(elements: Record<string, unknown>): boolean {
+  return !!elements[HAS404_ID];
+}
 
-export const isMetaKey = (key: string) =>
-  key === ROUTE_ID ||
-  key === HAS404_ID ||
-  key === IS_STATIC_ID ||
-  key === INTENT_ID;
+export function isMetaKey(key: string) {
+  return (
+    key === ROUTE_ID ||
+    key === HAS404_ID ||
+    key === IS_STATIC_ID ||
+    key === INTENT_ID
+  );
+}
 
 const ROUTE_SLOT_ID_PREFIX = 'route:';
 const SLICE_SLOT_ID_PREFIX = 'slice:';
 
 /** Returns `route:<path>` for a normalized pathname without query or hash. */
-export const getRouteSlotId = (path: string): string =>
-  ROUTE_SLOT_ID_PREFIX + path;
+export function getRouteSlotId(path: string): string {
+  return ROUTE_SLOT_ID_PREFIX + path;
+}
 
 /** Returns `slice:<id>` for both bundled and independently fetched slices. */
-export const getSliceSlotId = (id: string): string => SLICE_SLOT_ID_PREFIX + id;
+export function getSliceSlotId(id: string): string {
+  return SLICE_SLOT_ID_PREFIX + id;
+}
 
-export const isRouteSlotId = (slotId: string): boolean =>
-  slotId.startsWith(ROUTE_SLOT_ID_PREFIX);
+export function isRouteSlotId(slotId: string): boolean {
+  return slotId.startsWith(ROUTE_SLOT_ID_PREFIX);
+}
 
-export const isSliceSlotId = (slotId: string): boolean =>
-  slotId.startsWith(SLICE_SLOT_ID_PREFIX);
+export function isSliceSlotId(slotId: string): boolean {
+  return slotId.startsWith(SLICE_SLOT_ID_PREFIX);
+}
 
 const ROUTE_PREFIX = 'R';
 const SLICE_PREFIX = 'S/';

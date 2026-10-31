@@ -7,7 +7,7 @@ type Elements = Readonly<Record<string | symbol, unknown>>;
 
 type SliceRequest = [promise: Promise<Elements>, replace: boolean];
 
-export const createSliceCache = (fetchRsc: FetchRsc) => {
+export function createSliceCache(fetchRsc: FetchRsc) {
   const fetchingSlices = new Map<string, SliceRequest>();
   const registeredLazySlices = new Set<string>();
   return {
@@ -47,4 +47,4 @@ export const createSliceCache = (fetchRsc: FetchRsc) => {
     },
     getInFlightSliceCount: (): number => fetchingSlices.size,
   };
-};
+}

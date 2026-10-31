@@ -15,7 +15,7 @@ type RouterDefinition = Extract<
   { elements: unknown }
 >;
 
-export const createRouteResolver = (registry: ConfigRegistry) => {
+export function createRouteResolver(registry: ConfigRegistry) {
   const resolveElement = async (
     id: string,
     preResolved?: NonNullable<ReturnType<ConfigRegistry['findSliceConfig']>>,
@@ -85,4 +85,4 @@ export const createRouteResolver = (registry: ConfigRegistry) => {
     return resolveRoute(config, pathname, query);
   };
   return { resolve, resolveElement, resolveRoute };
-};
+}

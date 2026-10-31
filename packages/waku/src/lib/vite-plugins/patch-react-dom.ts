@@ -11,17 +11,19 @@ const isReactDomClient = (id: string) =>
     id.split('?')[0]!,
   );
 
-export const patchReactDomPlugin = (): Plugin => ({
-  name: 'waku:vite-plugins:patch-react-dom',
-  enforce: 'pre',
-  transform(code, id) {
-    if (!isReactDomClient(id)) {
-      return;
-    }
-    const patched = code.replace(PRELOAD_SEARCH, PRELOAD_REPLACE);
-    if (patched === code) {
-      return;
-    }
-    return patched;
-  },
-});
+export function patchReactDomPlugin(): Plugin {
+  return {
+    name: 'waku:vite-plugins:patch-react-dom',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!isReactDomClient(id)) {
+        return;
+      }
+      const patched = code.replace(PRELOAD_SEARCH, PRELOAD_REPLACE);
+      if (patched === code) {
+        return;
+      }
+      return patched;
+    },
+  };
+}

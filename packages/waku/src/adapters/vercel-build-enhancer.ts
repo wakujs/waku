@@ -13,7 +13,7 @@ export type BuildOptions = {
   serverless: boolean;
 };
 
-async function postBuild({
+const postBuild = async ({
   assetsDir,
   distDir,
   rscBase,
@@ -21,7 +21,7 @@ async function postBuild({
   basePath,
   DIST_PUBLIC,
   serverless,
-}: BuildOptions) {
+}: BuildOptions) => {
   const SERVE_JS = 'serve-vercel.js';
   const serveCode = `
 import { INTERNAL_runFetch } from './server/index.js';
@@ -91,7 +91,7 @@ export default getRequestListener(
     path.join(outputDir, 'config.json'),
     JSON.stringify(configJson, null, 2),
   );
-}
+};
 
 export default async function buildEnhancer(
   build: (utils: unknown, options: BuildOptions) => Promise<void>,

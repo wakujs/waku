@@ -103,7 +103,7 @@ const getExportedName = (specifier: ExportSpecifier) =>
     ? specifier.exported.name
     : String(specifier.exported.value);
 
-export const fsRouterTypegenPlugin = (opts: { srcDir: string }): Plugin => {
+export function fsRouterTypegenPlugin(opts: { srcDir: string }): Plugin {
   return {
     name: 'waku:vite-plugins:fs-router-typegen',
     apply: 'serve',
@@ -141,7 +141,7 @@ export const fsRouterTypegenPlugin = (opts: { srcDir: string }): Plugin => {
       void updateGeneratedFile(undefined);
     },
   };
-};
+}
 
 export async function detectFsRouterUsage(srcDir: string): Promise<boolean> {
   const existingServerEntry = EXTENSIONS.map((ext) =>

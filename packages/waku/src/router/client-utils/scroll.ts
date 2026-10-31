@@ -30,11 +30,11 @@ const getHashElement = (hash: string): HTMLElement | null => {
 };
 export const getHashElementForTest = getHashElement;
 
-export const scrollToHash = (
+export function scrollToHash(
   hash: string,
   behavior: ScrollBehavior,
   scrollTopForMissingHash: boolean,
-) => {
+) {
   if (hash) {
     const element = getHashElement(hash);
     if (!element) {
@@ -63,14 +63,16 @@ export const scrollToHash = (
     top: 0,
     behavior,
   });
-};
+}
 
-export const shouldScrollByDefault = (url: URL) =>
-  pathnameToCurrentRoutePath(url.pathname) !==
-    pathnameToCurrentRoutePath(window.location.pathname) ||
-  url.hash !== window.location.hash;
+export function shouldScrollByDefault(url: URL) {
+  return (
+    pathnameToCurrentRoutePath(url.pathname) !==
+      pathnameToCurrentRoutePath(window.location.pathname) ||
+    url.hash !== window.location.hash
+  );
+}
 
-export const shouldScrollForRouteChange = (
-  next: RouteProps,
-  prev: RouteProps,
-) => next.path !== prev.path || next.hash !== prev.hash;
+export function shouldScrollForRouteChange(next: RouteProps, prev: RouteProps) {
+  return next.path !== prev.path || next.hash !== prev.hash;
+}

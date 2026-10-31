@@ -13,16 +13,16 @@ type InitialRscEntry = [
 const INITIAL_RSC_ENTRY_LIMIT = 32;
 const initialRscEntries: InitialRscEntry[] = [];
 
-export const clearInitialRscEntries = (): void => {
+export function clearInitialRscEntries(): void {
   initialRscEntries.length = 0;
-};
+}
 
-export const getInitialRscEntry = (
+export function getInitialRscEntry(
   rscPath: string,
   rscParams: unknown,
   create: () => Promise<Elements>,
   rscEnhancers?: readonly RscEnhancer[],
-): Promise<Elements> => {
+): Promise<Elements> {
   const index = initialRscEntries.findIndex(
     (item) =>
       item[0] === rscPath && item[1] === rscParams && item[3] === rscEnhancers,
@@ -39,13 +39,13 @@ export const getInitialRscEntry = (
   }
   initialRscEntries.push([rscPath, rscParams, elements, rscEnhancers]);
   return elements;
-};
+}
 
-export const releaseInitialRscEntry = (
+export function releaseInitialRscEntry(
   rscPath: string,
   rscParams: unknown,
   elements: Promise<Elements>,
-): void => {
+): void {
   const index = initialRscEntries.findIndex(
     (item) =>
       item[0] === rscPath && item[1] === rscParams && item[2] === elements,
@@ -53,4 +53,4 @@ export const releaseInitialRscEntry = (
   if (index !== -1) {
     initialRscEntries.splice(index, 1);
   }
-};
+}

@@ -12,7 +12,7 @@ const DEFAULT_COMPATIBILITY_DATE = '2025-11-17';
 const DEFAULT_COMPATIBILITY_FLAGS = ['nodejs_als'];
 const DEFAULT_HTML_HANDLING = 'drop-trailing-slash';
 
-function readRootWranglerConfig(): Record<string, unknown> | null {
+const readRootWranglerConfig = (): Record<string, unknown> | null => {
   for (const file of ['wrangler.json', 'wrangler.jsonc', 'wrangler.toml']) {
     try {
       const filePath = path.resolve(file);
@@ -48,9 +48,11 @@ function readRootWranglerConfig(): Record<string, unknown> | null {
     }
   }
   return null;
-}
+};
 
-function readProjectName(rootConfig: Record<string, unknown> | null): string {
+const readProjectName = (
+  rootConfig: Record<string, unknown> | null,
+): string => {
   if (typeof rootConfig?.name === 'string') {
     return rootConfig.name;
   }
@@ -64,13 +66,13 @@ function readProjectName(rootConfig: Record<string, unknown> | null): string {
     // Fall back to default
   }
   return 'waku-project';
-}
+};
 
-function getWranglerConfig(
+const getWranglerConfig = (
   serverless: boolean,
   assetsDirectory: string,
   main?: string,
-): string {
+): string => {
   const rootConfig = readRootWranglerConfig();
   const config: Record<string, unknown> = {
     $schema: 'node_modules/wrangler/config-schema.json',
@@ -92,14 +94,14 @@ function getWranglerConfig(
     no_bundle: true,
   };
   return JSON.stringify(config, null, 2) + '\n';
-}
+};
 
-async function preBuild({
+const preBuild = async ({
   srcDir,
   distDir,
   DIST_PUBLIC,
   serverless,
-}: BuildOptions) {
+}: BuildOptions) => {
   const mainEntry = path.resolve(path.join(srcDir, 'waku.server'));
   const wranglerTomlFile = path.resolve('wrangler.toml');
   const wranglerJsonFile = path.resolve('wrangler.json');
@@ -120,9 +122,13 @@ async function preBuild({
       ),
     );
   }
-}
+};
 
-async function postBuild({ distDir, DIST_PUBLIC, serverless }: BuildOptions) {
+const postBuild = async ({
+  distDir,
+  DIST_PUBLIC,
+  serverless,
+}: BuildOptions) => {
   if (!serverless) {
     return;
   }
@@ -148,7 +154,7 @@ async function postBuild({ distDir, DIST_PUBLIC, serverless }: BuildOptions) {
     );
     fs.writeFileSync(deployConfigFile, JSON.stringify({ configPath }));
   }
-}
+};
 
 export default async function buildEnhancer(
   build: (utils: unknown, options: BuildOptions) => Promise<void>,

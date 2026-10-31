@@ -17,9 +17,9 @@ const base64ToBytes = (base64: string) =>
 
 export type CacheId = string;
 
-export const createElementCache = (
+export function createElementCache(
   onSerialize?: (cacheId: CacheId, data: string) => void,
-) => {
+) {
   const cache = new Map<CacheId, Promise<Uint8Array>>();
   return {
     preload: (cacheId: CacheId, data: string) => {
@@ -47,17 +47,17 @@ export const createElementCache = (
       onSerialize?.(cacheId, bytesToBase64(result));
     },
   };
-};
+}
 
 export type ElementCache = ReturnType<typeof createElementCache>;
 
-export const cacheElementSource = (
+export function cacheElementSource(
   source: ElementSource,
   cacheId: CacheId,
   cache: ElementCache,
   populate = true,
-): ElementSource =>
-  source.immutable
+): ElementSource {
+  return source.immutable
     ? {
         ...source,
         render: async () => {
@@ -71,14 +71,16 @@ export const cacheElementSource = (
         },
       }
     : source;
+}
 
 const getSlotCacheId = (slotId: string): CacheId => `slot/${slotId}`;
 export const getSlotCacheIdForTest = getSlotCacheId;
 
-export const getElementCacheId = (
+export function getElementCacheId(
   slotId: string,
   source: ElementSource & { cacheKey?: string },
-) =>
-  source.cacheKey === undefined
+) {
+  return source.cacheKey === undefined
     ? getSlotCacheId(slotId)
     : `key/${source.cacheKey}`;
+}

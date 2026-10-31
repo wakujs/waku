@@ -11,7 +11,7 @@ import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import { getRouteFromElements } from '../isomorphic-utils/router-protocol.js';
 import { createRscParams } from './caches.js';
 
-export const useInitialRoute = (proposed: RouteProps): RouteProps => {
+export function useInitialRoute(proposed: RouteProps): RouteProps {
   const elementsPromise = useElementsPromise();
   const elements = use(elementsPromise);
   const routeFromElements = getRouteFromElements(elements);
@@ -33,7 +33,7 @@ export const useInitialRoute = (proposed: RouteProps): RouteProps => {
     () => ({ ...initialRoute, hash: restoredHash }),
     [initialRoute, restoredHash],
   );
-};
+}
 
 // A suspended mount has no cleanup, so keep this aligned with Minimal's cache.
 const INITIAL_RSC_PARAMS_LIMIT = 32;
@@ -75,10 +75,10 @@ const releaseInitialRscParams = (rscParams: URLSearchParams) => {
  * The same `rscPath` and `query` reuse one object until this mount commits. A
  * suspended mount has no cleanup.
  */
-export const useInitialRscParams = (
+export function useInitialRscParams(
   rscPath: string,
   query: string,
-): URLSearchParams => {
+): URLSearchParams {
   const [initialRscParams] = useState(() =>
     createInitialRscParams(rscPath, query),
   );
@@ -87,4 +87,4 @@ export const useInitialRscParams = (
     releaseInitialRscParams(initialRscParams);
   }, [initialRscParams]);
   return initialRscParams;
-};
+}

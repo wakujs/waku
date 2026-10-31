@@ -5,10 +5,11 @@ import {
 } from '../isomorphic-utils/router-protocol.js';
 import { getPathSpecKey } from './config.js';
 
-export const getPathSpecCacheId = (pathSpec: PathSpec) =>
-  `pathSpec/${getPathSpecKey(pathSpec)}`;
+export function getPathSpecCacheId(pathSpec: PathSpec) {
+  return `pathSpec/${getPathSpecKey(pathSpec)}`;
+}
 
-export const assertNonReservedSlotId = (slotId: string) => {
+export function assertNonReservedSlotId(slotId: string) {
   if (
     slotId === 'root' ||
     isRouteSlotId(slotId) ||
@@ -19,4 +20,4 @@ export const assertNonReservedSlotId = (slotId: string) => {
       'Element ID cannot be "root", "route:*", "slice:*", or start with a capital letter',
     );
   }
-};
+}

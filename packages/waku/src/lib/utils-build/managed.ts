@@ -1,6 +1,6 @@
 import { EXTENSIONS, SRC_MIDDLEWARE, SRC_PAGES } from '../constants.js';
 
-export const getManagedServerEntry = (srcDir: string) => {
+export function getManagedServerEntry(srcDir: string) {
   const exts = EXTENSIONS.map((ext) => ext.slice(1)).join(',');
   const globPattern = `/${srcDir}/${SRC_PAGES}/**/*.{${exts}}`;
   const srcDirPrefix = `/${srcDir}/`;
@@ -23,9 +23,9 @@ export default adapter(fsRouter(modules), {
   middlewareModules: import.meta.glob(${JSON.stringify(middlewareGlob)}),
 });
 `;
-};
+}
 
-export const getManagedClientEntry = () => {
+export function getManagedClientEntry() {
   return `
 import { StrictMode, createElement } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
@@ -40,4 +40,4 @@ if (globalThis.__WAKU_HYDRATE__) {
   createRoot(document, defaultRootOptions).render(rootElement);
 }
 `;
-};
+}
