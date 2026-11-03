@@ -9,6 +9,7 @@ export {
   redirect as unstable_redirect,
   requestNotFound,
   requestRedirect,
+  requestRefresh,
 } from './define-router.js';
 export type { HandlerInterceptor } from './define-router.js';
 export { createPages } from './create-pages.js';

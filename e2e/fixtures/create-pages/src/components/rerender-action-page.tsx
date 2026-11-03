@@ -1,11 +1,11 @@
-import { unstable_rerenderRoute } from 'waku/router/server';
+import { requestRefresh } from 'waku/router/server';
 
 let submittedName = '';
 
 async function submit(formData: FormData) {
   'use server';
   submittedName = String(formData.get('name') || '');
-  unstable_rerenderRoute('/rerender-action');
+  requestRefresh();
 }
 
 export function RerenderActionPage() {
