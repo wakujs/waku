@@ -4,13 +4,17 @@ import type { RouteIntentData } from '../isomorphic-utils/router-protocol.js';
 
 export type HandlerInterceptor = <T>(next: () => Promise<T>) => Promise<T>;
 
-export type Rerender = (rscPath?: string, rscParams?: unknown) => void;
+export type ServerFunctionContext = {
+  origin: readonly [rscPath: string, rscParams: unknown] | undefined;
+  refreshRequested: boolean;
+  legacyTarget?: readonly [rscPath: string, rscParams: unknown];
+};
 
 export type RouterStore = {
   req: Request;
   rscPath?: string;
   rscParams?: unknown;
-  rerender?: Rerender | undefined;
+  serverFunction?: ServerFunctionContext | undefined;
   nonce?: string;
   intent?: ReturnType<typeof createRouteIntent>;
 };
@@ -100,19 +104,21 @@ export function getRscParams(): unknown {
   return routerStorage.getStore()?.rscParams;
 }
 
-export function setRerender(rerender: Rerender | undefined) {
+export function setServerFunctionContext(
+  context: ServerFunctionContext | undefined,
+) {
   const store = routerStorage.getStore();
   if (store) {
-    store.rerender = rerender;
+    store.serverFunction = context;
   }
 }
 
-export function getRerender(): Rerender {
-  const rerender = routerStorage.getStore()?.rerender;
-  if (!rerender) {
-    throw new Error('Rerender is not available.');
+export function getServerFunctionContext(): ServerFunctionContext {
+  const context = routerStorage.getStore()?.serverFunction;
+  if (!context) {
+    throw new Error('Server function context is not available.');
   }
-  return rerender;
+  return context;
 }
 
 /**
