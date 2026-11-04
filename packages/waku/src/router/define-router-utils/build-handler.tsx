@@ -33,7 +33,7 @@ export type BuildPath =
 
 export type BuildElementId = string | { id: string; source: ElementSource };
 
-export const createTaskRunner = (limit: number) => {
+const createTaskRunner = (limit: number) => {
   let running = 0;
   const waiting: (() => void)[] = [];
   const tasks: Promise<void>[] = [];

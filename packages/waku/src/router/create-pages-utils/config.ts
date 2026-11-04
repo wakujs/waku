@@ -15,14 +15,14 @@ export type HandlerInterceptor = NonNullable<
   Parameters<typeof defineRouter>[0]['unstable_interceptors']
 >[number];
 
-export type SlotId = string;
+type SlotId = string;
 
 export type RendererOptions = { routePath: string; query: string | undefined };
 
-export type GetEtagFromOptions = (
+type GetEtagFromOptions = (
   options: RendererOptions,
 ) => Promise<string | undefined>;
-export type GetEtagFromParams = (
+type GetEtagFromParams = (
   params?: Record<string, string | string[]>,
 ) => Promise<string | undefined>;
 
@@ -96,9 +96,9 @@ type SerializableRouteConfig = Omit<
 };
 export type SerializableRouteConfigForTest = SerializableRouteConfig;
 
-export type SerializableApiConfig = Omit<ApiConfig, 'handler'>;
+type SerializableApiConfig = Omit<ApiConfig, 'handler'>;
 
-export type SerializableSliceConfig = Omit<
+type SerializableSliceConfig = Omit<
   SliceConfig,
   'renderer' | 'getEtagFromParams'
 >;

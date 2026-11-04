@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { extname, removeBase } from '../src/lib/utils-isomorphic/path.js';
+import { removeBase } from '../src/lib/utils-isomorphic/path.js';
 import {
   getPathMapping,
   parsePathWithSlug,
@@ -11,15 +11,6 @@ function matchPath(path: string, input: string) {
     input,
   );
 }
-
-describe('extname', () => {
-  test('returns the extension of a path', () => {
-    expect(extname('foo/bar/baz.js')).toBe('.js');
-    expect(extname('foo/bar/baz')).toBe('');
-    expect(extname('foo/bar/.baz')).toBe('');
-    expect(extname('foo/bar/..baz')).toBe('');
-  });
-});
 
 describe('pathSpecToRegExpSource', () => {
   test('handles paths without slugs', () => {

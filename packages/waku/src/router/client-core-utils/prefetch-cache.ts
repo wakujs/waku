@@ -2,7 +2,7 @@ import { unstable_combineElements as combineElements } from 'waku/minimal/client
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
-export type PrefetchMode = 'always' | 'once';
+type PrefetchMode = 'always' | 'once';
 
 export type PrefetchOptions = {
   /** Default: dedupe by TTL only. `'once'` also skips if this path was already stored. */
