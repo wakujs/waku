@@ -43,7 +43,7 @@ export type ServerFunctionRouting = {
  * requests pass through. Server function calls before connection fail; start
  * mount-time calls in `useEffect`, not descendant layout effects.
  */
-export const createServerFunctionRouting = (): ServerFunctionRouting => {
+export function createServerFunctionRouting(): ServerFunctionRouting {
   let connection: Parameters<ServerFunctionRouting['connect']>[0] | undefined;
   return {
     connect: (nextConnection) => {
@@ -107,7 +107,7 @@ export const createServerFunctionRouting = (): ServerFunctionRouting => {
         : { ...response, elements };
     },
   };
-};
+}
 
 /**
  * Connects a declaratively installed server-function-routing controller to this Root.
@@ -122,14 +122,14 @@ export const createServerFunctionRouting = (): ServerFunctionRouting => {
  * without replacing the enhancer. A response arriving without a connected
  * binding retains its return value and discards its elements.
  */
-export const useServerFunctionRouting = (
+export function useServerFunctionRouting(
   serverFunctionRouting: ServerFunctionRouting,
   {
     getSettledRoute,
     getPendingRoute,
     applyRouteResponse,
   }: ServerFunctionRoutingCallbacks,
-): void => {
+): void {
   const cache = useRouterCache();
   useLayoutEffect(
     () =>
@@ -147,4 +147,4 @@ export const useServerFunctionRouting = (
       applyRouteResponse,
     ],
   );
-};
+}

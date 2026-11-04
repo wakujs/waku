@@ -19,9 +19,9 @@ import {
   getBootstrapPreamble,
 } from '../utils-server/ssr.js';
 
-function createFromReadableStream<T>(
+const createFromReadableStream = <T,>(
   stream: ReadableStream<Uint8Array>,
-): Promise<T> {
+): Promise<T> => {
   // DEV: hold the stream ~5s so React's late debug-channel chunks settle before close. https://github.com/wakujs/waku/pull/2154
   return createFromReadableStreamBase<T>(
     import.meta.env.DEV
@@ -32,7 +32,7 @@ function createFromReadableStream<T>(
         )
       : stream,
   );
-}
+};
 
 type RenderHtmlStream = (
   rscStream: ReadableStream<Uint8Array>,
@@ -66,7 +66,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
   let htmlPromise: Promise<RscHtmlPayload>;
 
   // deserialize RSC stream back to React VDOM
-  function SsrRoot() {
+  const SsrRoot = () => {
     // RSC stream needs to be deserialized inside SSR component.
     // This is for ReactDomServer preinit/preload (e.g. client reference modulepreload, css)
     // https://github.com/facebook/react/pull/31799#discussion_r1886166075
@@ -79,7 +79,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
         {use(htmlPromise)}
       </INTERNAL_ServerRoot>
     );
-  }
+  };
 
   // render html
   const bootstrapScriptContent =

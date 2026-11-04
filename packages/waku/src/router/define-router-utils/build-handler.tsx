@@ -57,21 +57,20 @@ export const createTaskRunner = (limit: number) => {
   };
 };
 
-export const createBuildHandler =
-  ({
-    resolve,
-    getBuildPaths,
-    getBuildElementIds,
-    routeEntries,
-    runHandled,
-  }: {
-    resolve: Resolve;
-    getBuildPaths: (() => Promise<Iterable<BuildPath>>) | undefined;
-    getBuildElementIds: (() => Promise<Iterable<BuildElementId>>) | undefined;
-    routeEntries: ReturnType<typeof createRouteEntries>;
-    runHandled: <T>(req: Request, fn: () => Promise<T>) => Promise<T>;
-  }): HandleBuild =>
-  async (utils) => {
+export function createBuildHandler({
+  resolve,
+  getBuildPaths,
+  getBuildElementIds,
+  routeEntries,
+  runHandled,
+}: {
+  resolve: Resolve;
+  getBuildPaths: (() => Promise<Iterable<BuildPath>>) | undefined;
+  getBuildElementIds: (() => Promise<Iterable<BuildElementId>>) | undefined;
+  routeEntries: ReturnType<typeof createRouteEntries>;
+  runHandled: <T>(req: Request, fn: () => Promise<T>) => Promise<T>;
+}): HandleBuild {
+  return async (utils) => {
     const cachedElements: Record<string, string> = {};
     const cache = createElementCache((id, entry) => {
       cachedElements[id] = entry;
@@ -234,3 +233,4 @@ export const createBuildHandler =
       JSON.stringify(moduleIdsByPrefetchRegExp),
     );
   };
+}

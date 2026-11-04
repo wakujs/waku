@@ -22,10 +22,10 @@ const safeDecodeURIComponent = (value: string): string | null => {
  * router: a prefixed terminal catch-all (/docs/[...path]) does not match its
  * base (/docs), while a root catch-all (/[...path]) matches / as { path: [] }.
  */
-export const matchRouteParams = <Path extends RoutePath>(
+export function matchRouteParams<Path extends RoutePath>(
   path: Path,
   pathname: string,
-): RouteParams<Path> | null => {
+): RouteParams<Path> | null {
   const pathSpec = parsePathWithSlug(getGrouplessPath(path));
   const mapping = getPathMapping(pathSpec, pathname);
   if (mapping === null) {
@@ -52,4 +52,4 @@ export const matchRouteParams = <Path extends RoutePath>(
     }
   }
   return params as RouteParams<Path>;
-};
+}

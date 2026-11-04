@@ -27,12 +27,14 @@ type InstantAttempt = {
   follows: number;
 };
 
-export const canPaintInstantOverlay = (
+export function canPaintInstantOverlay(
   cache: RouterCache,
   follows: number,
   route: RouteProps,
   resolvedElements: Record<string, unknown>,
-) => !follows && cache.hasCachedShell(route, resolvedElements);
+) {
+  return !follows && cache.hasCachedShell(route, resolvedElements);
+}
 
 // symbol keys are client owned; they are carried, never fetched
 const pinForSwr =
@@ -43,10 +45,10 @@ const pinForSwr =
       isImmutableElement(getResolvedElements(), key));
 export const pinForSwrForTest = pinForSwr;
 
-export const useStartInstantPaint = (
+export function useStartInstantPaint(
   getElements: () => Elements,
   reloadWithUrl: (url: URL) => void,
-) => {
+) {
   const mergeInstantElements = useMergeInstantElements();
   const cache = useRouterCache();
   return useCallback(
@@ -90,4 +92,4 @@ export const useStartInstantPaint = (
     },
     [cache, getElements, mergeInstantElements, reloadWithUrl],
   );
-};
+}

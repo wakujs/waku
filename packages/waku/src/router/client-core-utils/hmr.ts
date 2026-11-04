@@ -11,13 +11,13 @@ import { createRscParams, useRouterCache } from './caches.js';
  * Refetches the supplied route and registered lazy slices on development reloads.
  * Reads the route before `onBeforeRefetch` runs and invalidates Router caches.
  */
-export const useHmrRefetch = ({
+export function useHmrRefetch({
   getSettledRoute,
   onBeforeRefetch,
 }: {
   getSettledRoute: () => RouteProps;
   onBeforeRefetch?: () => void;
-}): void => {
+}): void {
   const mergeElements = useMergeElements();
   const registerRscReloadListener = useRegisterRscReloadListener();
   const cache = useRouterCache();
@@ -48,4 +48,4 @@ export const useHmrRefetch = ({
     onBeforeRefetch,
     registerRscReloadListener,
   ]);
-};
+}

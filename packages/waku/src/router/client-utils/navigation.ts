@@ -94,12 +94,12 @@ const reloadWithUrl = (url: URL) => {
   window.location.reload();
 };
 
-export const useNavigation = (
+export function useNavigation(
   elements: Elements,
   fallbackRoute: RouteProps,
   routeInterceptor: ((route: RouteProps) => RouteProps | false) | undefined,
   serverFunctionRouting: ServerFunctionRouting,
-): Navigation => {
+): Navigation {
   const cache = useRouterCache();
   const initialRoute = useInitialRoute(fallbackRoute);
   const has404 = has404FromElements(elements);
@@ -593,4 +593,4 @@ export const useNavigation = (
     isCurrentRoute,
     error: navigationError,
   };
-};
+}

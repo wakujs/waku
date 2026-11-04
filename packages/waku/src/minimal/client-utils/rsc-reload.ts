@@ -59,11 +59,11 @@ const addRscReloadListener = (listener: () => void): Unregister => {
   };
 };
 
-export const registerRootRscReloadListener = (
+export function registerRootRscReloadListener(
   store: RootStore,
   listener: () => void,
   options?: { replace?: boolean },
-): Unregister => {
+): Unregister {
   if (!options?.replace) {
     return addRscReloadListener(listener);
   }
@@ -90,12 +90,12 @@ export const registerRootRscReloadListener = (
       activateDefaultRscReloadListener();
     }
   };
-};
+}
 
-export const registerRootReload = (
+export function registerRootReload(
   store: RootStore,
   fallback: () => void,
-): Unregister => {
+): Unregister {
   const rootReload = rootReloads.get(store) ?? { mounted: false };
   const registered = createRscReloadListener(fallback);
   rootReload.fallback = registered;
@@ -117,4 +117,4 @@ export const registerRootReload = (
     }
     activateDefaultRscReloadListener();
   };
-};
+}

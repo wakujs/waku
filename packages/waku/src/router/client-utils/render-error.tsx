@@ -3,9 +3,9 @@ import type { ReactNode } from 'react';
 import { useElementsPromise_UNSTABLE as useElementsPromise } from 'waku/minimal/client';
 import { isNotFoundError } from '../client-core-utils/error-boundary.js';
 
-export const RenderError = ({ error }: { error: unknown }): never => {
+export function RenderError({ error }: { error: unknown }): never {
   throw error;
-};
+}
 
 class MissingRouteBoundary extends Component<
   { children?: ReactNode; resetKey: unknown },
@@ -38,8 +38,10 @@ class MissingRouteBoundary extends Component<
   }
 }
 
-export const MissingRouteHandler = ({ children }: { children: ReactNode }) => (
-  <MissingRouteBoundary resetKey={useElementsPromise()}>
-    {children}
-  </MissingRouteBoundary>
-);
+export function MissingRouteHandler({ children }: { children: ReactNode }) {
+  return (
+    <MissingRouteBoundary resetKey={useElementsPromise()}>
+      {children}
+    </MissingRouteBoundary>
+  );
+}

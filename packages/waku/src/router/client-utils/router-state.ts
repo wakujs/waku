@@ -65,28 +65,30 @@ type InstantRouterState = {
   readonly slotIds: ReadonlySet<string>;
 };
 
-export const createInstantRouterState = (
+export function createInstantRouterState(
   state: RouterState,
   elements: Record<string | symbol, unknown>,
-): InstantRouterState => ({ state, slotIds: new Set(Object.keys(elements)) });
+): InstantRouterState {
+  return { state, slotIds: new Set(Object.keys(elements)) };
+}
 
-export const getRouterState = (
+export function getRouterState(
   elements: Record<string | symbol, unknown>,
-): RouterState | undefined => {
+): RouterState | undefined {
   const state = elements[ROUTER_STATE_ID] as
     RouterState | InstantRouterState | undefined;
   return state && 'state' in state ? state.state : state;
-};
+}
 
-export const getInstantSlotIds = (
+export function getInstantSlotIds(
   elements: Record<string | symbol, unknown>,
-): ReadonlySet<string> | undefined => {
+): ReadonlySet<string> | undefined {
   const state = elements[ROUTER_STATE_ID] as
     RouterState | InstantRouterState | undefined;
   return state && 'state' in state ? state.slotIds : undefined;
-};
+}
 
-export const createRouterState = (
+export function createRouterState(
   route: RouteProps,
   url: URL,
   options: {
@@ -95,19 +97,21 @@ export const createRouterState = (
     pathChanged: boolean;
     follows: number;
   },
-): RouterState => ({
-  url: url.pathname + url.search + url.hash,
-  requested: [route.path, route.query],
-  history: options.history,
-  scroll: options.scroll ? { pathChanged: options.pathChanged } : null,
-  follows: options.follows,
-});
+): RouterState {
+  return {
+    url: url.pathname + url.search + url.hash,
+    requested: [route.path, route.query],
+    history: options.history,
+    scroll: options.scroll ? { pathChanged: options.pathChanged } : null,
+    follows: options.follows,
+  };
+}
 
-export const resolveServerRedirect = (
+export function resolveServerRedirect(
   elements: Record<string | symbol, unknown>,
   routerState: RouterState,
   fallbackPath: string,
-): { route: RouteProps; url: URL } => {
+): { route: RouteProps; url: URL } {
   const stateUrl = new URL(routerState.url, window.location.href);
   if (routerState.failedFrom) {
     return {
@@ -138,12 +142,12 @@ export const resolveServerRedirect = (
     },
     url: stateUrl,
   };
-};
+}
 
-export const getSettledRoute = (
+export function getSettledRoute(
   elements: Record<string | symbol, unknown>,
   fallback: RouteProps,
-): RouteProps => {
+): RouteProps {
   const routerState = getRouterState(elements);
   if (!routerState) {
     return fallback;
@@ -155,4 +159,4 @@ export const getSettledRoute = (
       : routerState.failedFrom;
   }
   return resolveServerRedirect(elements, routerState, fallback.path).route;
-};
+}

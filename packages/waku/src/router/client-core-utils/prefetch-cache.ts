@@ -111,7 +111,7 @@ type PrefetchManager = {
   clear: () => void;
 };
 
-export const createPrefetchManager = (): PrefetchManager => {
+export function createPrefetchManager(): PrefetchManager {
   let prefetchCache: PrefetchCache = new Map();
   let prefetchedElementsCache: PrefetchedElementsCache = new Map();
   return {
@@ -137,7 +137,7 @@ export const createPrefetchManager = (): PrefetchManager => {
       prefetchedElementsCache = new Map();
     },
   };
-};
+}
 
 const startPrefetch = (
   prefetchCache: PrefetchCache,

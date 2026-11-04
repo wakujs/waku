@@ -43,8 +43,9 @@ export type { PrefetchOptions } from './prefetch-cache.js';
 
 export type PrefetchHandle = Pick<PrefetchEntry, 'promise' | 'onInvalidate'>;
 
-export const createRscParams = (query: string): URLSearchParams =>
-  new URLSearchParams({ query });
+export function createRscParams(query: string): URLSearchParams {
+  return new URLSearchParams({ query });
+}
 
 const createRouterCache = (fetchRsc: FetchRsc) => {
   let intentObserver: RouteIntentObserver | undefined;
@@ -208,4 +209,6 @@ export const getRouterCacheForTest = getRouterCache;
  * Returns the Router cache of the enclosing Root. Outside a Root every caller
  * shares one cache, as they share one fetch.
  */
-export const useRouterCache = (): RouterCache => getRouterCache(useFetchRsc());
+export function useRouterCache(): RouterCache {
+  return getRouterCache(useFetchRsc());
+}

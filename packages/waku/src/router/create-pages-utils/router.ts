@@ -10,11 +10,11 @@ import { CREATE_PAGES_CONFIGS_KEY, toSerializable } from './config.js';
 import type { HandlerInterceptor, RuntimeConfig } from './config.js';
 import { createRouteResolver } from './route-resolver.js';
 
-export const createConfiguredRouter = (fns: {
+export function createConfiguredRouter(fns: {
   getConfigs: () => Promise<Iterable<RuntimeConfig>>;
   unstable_skipBuild?: (routePath: string) => boolean;
   unstable_interceptors?: HandlerInterceptor[];
-}) => {
+}) {
   const registry = createConfigRegistry(fns.getConfigs);
   const resolver = createRouteResolver(registry);
   const router = defineRouter({
@@ -138,4 +138,4 @@ export const createConfiguredRouter = (fns: {
     handleBuild,
     unstable_getRouterConfigs: async () => registry.getAll(),
   };
-};
+}

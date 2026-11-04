@@ -3,7 +3,7 @@ import path from 'node:path';
 
 export type BuildOptions = { distDir: string };
 
-async function postBuild({ distDir }: BuildOptions) {
+const postBuild = async ({ distDir }: BuildOptions) => {
   const SERVE_JS = 'serve-aws-lambda.js';
   const serveCode = `
 import { INTERNAL_runFetch } from './server/index.js';
@@ -19,7 +19,7 @@ export const handler = handle({
     path.join(distDir, 'package.json'),
     JSON.stringify({ type: 'module' }, null, 2),
   );
-}
+};
 
 export default async function buildEnhancer(
   build: (utils: unknown, options: BuildOptions) => Promise<void>,

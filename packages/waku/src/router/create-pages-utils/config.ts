@@ -108,9 +108,11 @@ export type SerializableConfig =
 
 export const CREATE_PAGES_CONFIGS_KEY = 'createPages:serializableConfigs';
 
-export const getPathSpecKey = (p: PathSpec) => JSON.stringify(p);
+export function getPathSpecKey(p: PathSpec) {
+  return JSON.stringify(p);
+}
 
-export const toSerializable = (c: RuntimeConfig): SerializableConfig => {
+export function toSerializable(c: RuntimeConfig): SerializableConfig {
   if (c.type === 'route') {
     const {
       rootElement,
@@ -149,7 +151,7 @@ export const toSerializable = (c: RuntimeConfig): SerializableConfig => {
   }
   const { renderer: _r, getEtagFromParams: _g, ...rest } = c;
   return rest;
-};
+}
 
 const throwMissingRuntimeFunction = (what: string): never => {
   throw new Error(
@@ -159,10 +161,10 @@ const throwMissingRuntimeFunction = (what: string): never => {
 
 // `rootElement.renderer` and per-id element renderers are shared
 // across routes - any one is a valid fallback for another.
-export const mergeWithRuntimeConfigs = (
+export function mergeWithRuntimeConfigs(
   serializableConfigs: SerializableConfig[],
   runtimeConfigs: RuntimeConfig[],
-): RuntimeConfig[] => {
+): RuntimeConfig[] {
   const runtimeRouteByPath = new Map<string, RouteConfig>();
   const runtimeApiByPath = new Map<string, ApiConfig>();
   const runtimeSliceById = new Map<string, SliceConfig>();
@@ -278,4 +280,4 @@ export const mergeWithRuntimeConfigs = (
       ...(c.sourceFile ? { sourceFile: c.sourceFile } : {}),
     };
   });
-};
+}

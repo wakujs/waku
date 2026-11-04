@@ -3,7 +3,7 @@ import path from 'node:path';
 
 export type BuildOptions = { distDir: string };
 
-async function postBuild({ distDir }: BuildOptions) {
+const postBuild = async ({ distDir }: BuildOptions) => {
   const SERVE_JS = 'serve-bun.js';
   const serveCode = `
 import { INTERNAL_runFetch } from './server/index.js';
@@ -13,7 +13,7 @@ Bun.serve({
 });
 `;
   writeFileSync(path.resolve(distDir, SERVE_JS), serveCode);
-}
+};
 
 export default async function buildEnhancer(
   build: (utils: unknown, options: BuildOptions) => Promise<void>,

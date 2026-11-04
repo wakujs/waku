@@ -9,13 +9,13 @@ export type BuildOptions = {
   serverless: boolean;
 };
 
-async function postBuild({
+const postBuild = async ({
   distDir,
   privateDir,
   rscBase,
   DIST_PUBLIC,
   serverless,
-}: BuildOptions) {
+}: BuildOptions) => {
   if (serverless) {
     const functionsDir = path.resolve('netlify-functions');
     mkdirSync(functionsDir, {
@@ -50,7 +50,7 @@ export const config = {
 `,
     );
   }
-}
+};
 
 export default async function buildEnhancer(
   build: (utils: unknown, options: BuildOptions) => Promise<void>,

@@ -1,10 +1,11 @@
 import type { PathSpec } from '../isomorphic-utils/path-spec.js';
 
-export const parseExactPath = (path: string): PathSpec =>
-  path
+export function parseExactPath(path: string): PathSpec {
+  return path
     .split('/')
     .filter(Boolean)
     .map((name) => ({ type: 'literal', name }));
+}
 
 export function countSlugsAndWildcards(pathSpec: PathSpec) {
   let numSlugs = 0;

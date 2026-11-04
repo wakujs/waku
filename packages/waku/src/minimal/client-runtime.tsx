@@ -208,10 +208,7 @@ const fetchRscElements = (
   }
 };
 
-export const callServerRsc = async (
-  serverFunctionId: string,
-  args: unknown[],
-) => {
+export async function callServerRsc(serverFunctionId: string, args: unknown[]) {
   const rootStore = getDefaultRootStore();
   const rscPath = encodeServerFunctionId(serverFunctionId);
   const rscParams =
@@ -233,7 +230,7 @@ export const callServerRsc = async (
     });
   }
   return value;
-};
+}
 
 const noop = () => {};
 
@@ -303,8 +300,9 @@ const fetchWithoutRoot: FetchRsc = (rscPath, rscParams, options) =>
  * `unstable_base`. Omitted slots must be retained by the caller. Outside a Root
  * it runs no enhancers.
  */
-export const useFetchRsc = (): FetchRsc =>
-  use(RootStoreContext)?.fetchRsc ?? fetchWithoutRoot;
+export function useFetchRsc(): FetchRsc {
+  return use(RootStoreContext)?.fetchRsc ?? fetchWithoutRoot;
+}
 
 const ElementsContext = createContext<Promise<Elements> | null>(null);
 
@@ -320,7 +318,7 @@ const ElementsContext = createContext<Promise<Elements> | null>(null);
  * Use `startTransition` to retain visible content while this or an earlier
  * queued update is pending; urgent merges can show a Suspense fallback.
  */
-export const useMergeElements = () => {
+export function useMergeElements() {
   const store = useRootStore();
   return useCallback<MergeElements>(
     (data, merge = mergeElementsPromise) => {
@@ -334,7 +332,7 @@ export const useMergeElements = () => {
     },
     [store],
   );
-};
+}
 
 /**
  * Returns a Root-bound registrar for development RSC reload listeners. The
@@ -342,7 +340,7 @@ export const useMergeElements = () => {
  * `replace`, the listener owns the Root's active refetch target until it is
  * replaced or unregistered.
  */
-export const useRegisterRscReloadListener = () => {
+export function useRegisterRscReloadListener() {
   const store = useRootStore();
   return useCallback<RegisterRscReloadListener>(
     (listener, options) =>
@@ -351,13 +349,13 @@ export const useRegisterRscReloadListener = () => {
         : noop,
     [store],
   );
-};
+}
 
 /**
  * Client root. Seeds the initial elements, bridges the store to React state,
  * and provides the elements to `Slot` descendants.
  */
-export const Root = ({
+export function Root({
   initialRscPath,
   initialRscParams,
   rscEnhancers = EMPTY_RSC_ENHANCERS,
@@ -373,7 +371,7 @@ export const Root = ({
    */
   rscEnhancers?: readonly RscEnhancer[];
   children: ReactNode;
-}) => {
+}) {
   const [initialInput] = useState(
     () => [initialRscPath || '', initialRscParams] as const,
   );
@@ -437,25 +435,27 @@ export const Root = ({
       </ElementsContext>
     </RootStoreContext>
   );
-};
+}
 
 const ChildrenContext = createContext<ReactNode>(undefined);
 const ChildrenContextProvider = memo(ChildrenContext);
 
 /** Render the client children passed to the enclosing Slot. */
-export const Children = () => use(ChildrenContext);
+export function Children() {
+  return use(ChildrenContext);
+}
 
 /**
  * Returns the enclosing Root's read-only element-map promise. Reading it with
  * React's `use` suspends while the record is pending.
  */
-export const useElementsPromise = () => {
+export function useElementsPromise() {
   const elementsPromise = use(ElementsContext);
   if (!elementsPromise) {
     throw new Error('Missing Root component');
   }
   return elementsPromise;
-};
+}
 
 /**
  * Slot component
@@ -471,13 +471,7 @@ export const useElementsPromise = () => {
  *   <Root><Slot id="foo" /><Slot id="bar" /></Root>
  * ```
  */
-export const Slot = ({
-  id,
-  children,
-}: {
-  id: string;
-  children?: ReactNode;
-}) => {
+export function Slot({ id, children }: { id: string; children?: ReactNode }) {
   const elementsPromise = useElementsPromise();
   const elements = use(elementsPromise);
   if (id in elements && elements[id] === undefined) {
@@ -493,19 +487,21 @@ export const Slot = ({
       <CancelRenderBoundary>{element as ReactNode}</CancelRenderBoundary>
     </ChildrenContextProvider>
   );
-};
+}
 
-export const INTERNAL_ServerRoot = ({
+export function INTERNAL_ServerRoot({
   elementsPromise,
   children,
 }: {
   elementsPromise: Promise<Elements>;
   children: ReactNode;
-}) => (
-  <RootStoreContext value={null}>
-    <ElementsContext value={elementsPromise}>
-      {META_GENERATOR}
-      {children}
-    </ElementsContext>
-  </RootStoreContext>
-);
+}) {
+  return (
+    <RootStoreContext value={null}>
+      <ElementsContext value={elementsPromise}>
+        {META_GENERATOR}
+        {children}
+      </ElementsContext>
+    </RootStoreContext>
+  );
+}

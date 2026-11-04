@@ -3,18 +3,18 @@
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-export const stringToStream = (str: string): ReadableStream => {
+export function stringToStream(str: string): ReadableStream {
   return new ReadableStream({
     start(controller) {
       controller.enqueue(encoder.encode(str));
       controller.close();
     },
   });
-};
+}
 
-export const streamToBytes = async (
+export async function streamToBytes(
   stream: ReadableStream,
-): Promise<Uint8Array> => {
+): Promise<Uint8Array> {
   const reader = stream.getReader();
   const chunks: Uint8Array[] = [];
   while (true) {
@@ -28,15 +28,16 @@ export const streamToBytes = async (
     chunks.push(value);
   }
   return concatUint8Array(chunks);
-};
+}
 
-export const bytesToStream = (bytes: Uint8Array): ReadableStream =>
-  new ReadableStream({
+export function bytesToStream(bytes: Uint8Array): ReadableStream {
+  return new ReadableStream({
     start(controller) {
       controller.enqueue(bytes);
       controller.close();
     },
   });
+}
 
 export function concatUint8Array(chunks: readonly Uint8Array[]): Uint8Array {
   if (chunks.length === 1) {
@@ -96,25 +97,25 @@ const FRAME_CHUNK = 0x02;
 const FRAME_END = 0x03;
 const FRAME_ERROR = 0x04;
 
-function encodeStart(key: string): Uint8Array {
+const encodeStart = (key: string): Uint8Array => {
   const keyBytes = encoder.encode(key);
   const out = new Uint8Array(1 + 2 + keyBytes.length);
   out[0] = FRAME_START;
   new DataView(out.buffer).setUint16(1, keyBytes.length);
   out.set(keyBytes, 3);
   return out;
-}
+};
 
-function encodeEnd(key: string): Uint8Array {
+const encodeEnd = (key: string): Uint8Array => {
   const keyBytes = encoder.encode(key);
   const out = new Uint8Array(1 + 2 + keyBytes.length);
   out[0] = FRAME_END;
   new DataView(out.buffer).setUint16(1, keyBytes.length);
   out.set(keyBytes, 3);
   return out;
-}
+};
 
-function encodeChunk(key: string, chunk: Uint8Array): Uint8Array {
+const encodeChunk = (key: string, chunk: Uint8Array): Uint8Array => {
   const keyBytes = encoder.encode(key);
   const out = new Uint8Array(1 + 2 + keyBytes.length + 4 + chunk.length);
   let offset = 0;
@@ -127,9 +128,9 @@ function encodeChunk(key: string, chunk: Uint8Array): Uint8Array {
   offset += 4;
   out.set(chunk, offset);
   return out;
-}
+};
 
-function encodeError(key: string, error: unknown): Uint8Array {
+const encodeError = (key: string, error: unknown): Uint8Array => {
   const keyBytes = encoder.encode(key);
   const payload = encoder.encode(String(error));
   const out = new Uint8Array(1 + 2 + keyBytes.length + 4 + payload.length);
@@ -143,14 +144,14 @@ function encodeError(key: string, error: unknown): Uint8Array {
   offset += 4;
   out.set(payload, offset);
   return out;
-}
+};
 
-function createFrameDispatcher(
+const createFrameDispatcher = (
   onStart: (key: string) => void,
   onChunk: (key: string, chunk: Uint8Array) => void,
   onEnd: (key: string) => void,
   onError: (key: string, error: string) => void,
-): (data: Uint8Array) => void {
+): ((data: Uint8Array) => void) => {
   let buffer: Uint8Array = new Uint8Array(0);
 
   return (data: Uint8Array): void => {
@@ -205,7 +206,7 @@ function createFrameDispatcher(
       buffer = buffer.slice(totalLen);
     }
   };
-}
+};
 
 export function produceMultiplexedStream(
   fn: (

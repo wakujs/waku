@@ -128,7 +128,7 @@ export async function getInput(
   return input;
 }
 
-function validateSameOriginPost(req: Request) {
+const validateSameOriginPost = (req: Request) => {
   if (req.method !== 'POST') {
     throw new Response('Method Not Allowed', { status: 405 });
   }
@@ -157,9 +157,9 @@ function validateSameOriginPost(req: Request) {
   } else if (req.headers.get('sec-fetch-site') === 'cross-site') {
     throw new Response('Forbidden', { status: 403 });
   }
-}
+};
 
-async function readRequestBody(req: Request) {
+const readRequestBody = async (req: Request) => {
   if (!req.body) {
     throw new Error('missing request body for server function');
   }
@@ -169,4 +169,4 @@ async function readRequestBody(req: Request) {
   } else {
     return req.text();
   }
-}
+};

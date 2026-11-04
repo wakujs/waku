@@ -27,7 +27,7 @@ type Asset = {
 // - emitted assets (CSS, fonts, wasm, ...): deleted
 // Reachability roots are bundle entries, non-pruned dynamic-entry chunks, and
 // chunks holding a server function, which a request can call.
-export const pruneBuildOutput = async ({
+export async function pruneBuildOutput({
   rootDir,
   srcDir,
   distDir,
@@ -41,7 +41,7 @@ export const pruneBuildOutput = async ({
   rscBundle: Record<string, Chunk | Asset>;
   prunableFiles: string[];
   serverReferenceModuleIds: ReadonlySet<string>;
-}): Promise<{ stubbedChunks: string[]; deletedAssets: string[] }> => {
+}): Promise<{ stubbedChunks: string[]; deletedAssets: string[] }> {
   if (prunableFiles.length === 0) {
     return { stubbedChunks: [], deletedAssets: [] };
   }
@@ -139,4 +139,4 @@ export const pruneBuildOutput = async ({
   ]);
 
   return { stubbedChunks, deletedAssets };
-};
+}

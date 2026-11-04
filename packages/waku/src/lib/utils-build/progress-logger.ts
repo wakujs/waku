@@ -1,5 +1,5 @@
 // This is node.js specific code
-export const createProgressLogger = (total?: number) => {
+export function createProgressLogger(total?: number) {
   const showProgress = process.stdout.isTTY && !process.env.CI;
   let count = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -31,4 +31,4 @@ export const createProgressLogger = (total?: number) => {
   const getCount = () => count;
 
   return { update, done, getCount };
-};
+}

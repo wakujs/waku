@@ -7,11 +7,7 @@ import {
 const getBasePath = () => import.meta.env?.WAKU_CONFIG_BASE_PATH ?? '/';
 const getRscBase = () => import.meta.env?.WAKU_CONFIG_RSC_BASE ?? 'RSC';
 
-export const parseRequestUrl = (
-  url: URL,
-  basePath: string,
-  rscBase: string,
-) => {
+export function parseRequestUrl(url: URL, basePath: string, rscBase: string) {
   const pathname = removeBase(url.pathname, basePath);
   const prefix = '/' + rscBase + '/';
   if (!pathname.startsWith(prefix)) {
@@ -23,7 +19,7 @@ export const parseRequestUrl = (
     return { type: 'call' as const, pathname, serverFunctionId };
   }
   return { type: 'rsc' as const, pathname, rscPath };
-};
+}
 
 type RequestInfo =
   | { type: 'http'; pathname: string; searchParams: URLSearchParams }
@@ -39,7 +35,7 @@ type RequestInfo =
  * This classification does not validate server function calls or authorize
  * requests.
  */
-export const parseRequest = (req: Request): RequestInfo | null => {
+export function parseRequest(req: Request): RequestInfo | null {
   const url = new URL(req.url);
   let parsed: ReturnType<typeof parseRequestUrl>;
   try {
@@ -62,4 +58,4 @@ export const parseRequest = (req: Request): RequestInfo | null => {
     rscPath: parsed.rscPath,
     rscParams: req.body === null ? url.searchParams : undefined,
   };
-};
+}

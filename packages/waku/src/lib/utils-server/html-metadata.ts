@@ -322,10 +322,10 @@ export const dedupeHeadMetadataForTest = (
   return new TextDecoder().decode(merged);
 };
 
-export const dedupeHtmlMetadataStream = (
+export function dedupeHtmlMetadataStream(
   filter: Partial<MetadataFilter> = {},
   maxBufferedHead = DEFAULT_MAX_BUFFERED_HEAD,
-): TransformStream<Uint8Array, Uint8Array> => {
+): TransformStream<Uint8Array, Uint8Array> {
   const chunks: Uint8Array[] = [];
   let html = '';
   let tail = '';
@@ -363,4 +363,4 @@ export const dedupeHtmlMetadataStream = (
       }
     },
   });
-};
+}

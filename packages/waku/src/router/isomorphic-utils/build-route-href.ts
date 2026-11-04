@@ -50,10 +50,10 @@ export type ConstructedHref<Path extends string> = string & {
 
 export type NavigationHref = RouteHref | ConstructedHref<RoutePath>;
 
-export const buildRouteHref = (
+export function buildRouteHref(
   path: string,
   params?: Record<string, unknown>,
-): string => {
+): string {
   const pathSpec = parsePathWithSlug(getGrouplessPath(path));
   const segments: string[] = [];
   for (const item of pathSpec) {
@@ -88,4 +88,4 @@ export const buildRouteHref = (
     throw new Error(`Cannot build "${path}" with the given params`);
   }
   return pathname;
-};
+}

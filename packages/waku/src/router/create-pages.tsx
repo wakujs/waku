@@ -481,7 +481,7 @@ const compareRoutePriority = (
   return 0;
 };
 
-export const createPages = <
+export function createPages<
   AllPages extends (AnyPage | ReturnType<CreateLayout>)[],
 >(
   fn: (fns: {
@@ -495,7 +495,7 @@ export const createPages = <
   options?: {
     unstable_skipBuild?: (routePath: string) => boolean;
   },
-) => {
+) {
   let configured = false;
 
   // A path key is a declared pattern or a concrete path from staticPaths.
@@ -1266,12 +1266,12 @@ export const createPages = <
       void // createLayout returns void
     >;
   };
-};
+}
 
-function expandStaticRoutePath(
+const expandStaticRoutePath = (
   pathSpec: PathSpec,
   staticSegments: readonly string[],
-) {
+) => {
   const mapping: Record<string, string | string[]> = {};
   let slugIndex = 0;
   const pathItems: string[] = [];
@@ -1302,4 +1302,4 @@ function expandStaticRoutePath(
     pathItems,
     mapping,
   };
-}
+};

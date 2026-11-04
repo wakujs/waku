@@ -31,19 +31,19 @@ const createInitialRscEntryCode = (debugId: string | undefined) =>
     .map((line) => line.trim())
     .join('');
 
-function getRecoveryBuildId(): string | undefined {
+const getRecoveryBuildId = (): string | undefined => {
   const buildId = import.meta.env?.WAKU_BUILD_ID;
   if (!buildId || buildId === DEV_BUILD_ID) {
     return undefined;
   }
   return buildId;
-}
+};
 
 // https://github.com/wakujs/waku/issues/2238
 // Must run before the bootstrap import. Defer reload until DOMContentLoaded
 // (streaming HTML is unreliable). Persist a build-id marker so a broken build
 // cannot loop forever.
-function getVersionSkewRecoveryCode(): string {
+const getVersionSkewRecoveryCode = (): string => {
   const buildId = getRecoveryBuildId();
   if (!buildId) {
     return '';
@@ -72,7 +72,7 @@ function getVersionSkewRecoveryCode(): string {
       }
     });
   `;
-}
+};
 
 // Bare import() does not fire vite:preloadError; mirror __vitePreload so the
 // recovery listener above runs. https://github.com/wakujs/waku/issues/2238
@@ -115,14 +115,14 @@ export function getBootstrapPreamble(options: {
     .join('\n');
 }
 
-export const createHtmlFallback = async (
+export async function createHtmlFallback(
   html: string,
   entryUrl: string,
   options?: {
     nonce?: string | undefined;
     extraScriptContent?: string | undefined;
   },
-) => {
+) {
   const script =
     getBootstrapPreamble({ hydrate: false, initialRsc: false }) +
     createBootstrapScriptContent(entryUrl) +
@@ -132,4 +132,4 @@ export const createHtmlFallback = async (
   );
   const scriptHtml = await new Response(stream).text();
   return html.replace('</body>', () => `${scriptHtml}</body>`);
-};
+}

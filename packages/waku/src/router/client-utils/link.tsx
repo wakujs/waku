@@ -56,9 +56,9 @@ const assignRef = <T,>(ref: RefObject<T | null>, node: T | null): void => {
   ref.current = node;
 };
 
-function useSharedRef<T>(
+const useSharedRef = <T,>(
   ref: Ref<T | null> | undefined,
-): [RefObject<T | null>, (node: T | null) => void | (() => void)] {
+): [RefObject<T | null>, (node: T | null) => void | (() => void)] => {
   const managedRef = useRef<T | null>(null);
 
   const handleRef = useCallback(
@@ -89,7 +89,7 @@ function useSharedRef<T>(
   );
 
   return [managedRef, handleRef];
-}
+};
 
 const usePrefetchOnView = (
   cache: RouterCache,
@@ -146,8 +146,9 @@ const NavigationStatusContext = createContext<NavigationStatus>({});
  * flight, until the destination route's async components resolve. Returns an
  * empty object when called outside a `Link`.
  */
-export const useNavigationStatus = (): NavigationStatus =>
-  useContext(NavigationStatusContext);
+export function useNavigationStatus(): NavigationStatus {
+  return useContext(NavigationStatusContext);
+}
 
 export type LinkProps = {
   to: NavigationHref;

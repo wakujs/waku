@@ -69,10 +69,10 @@ export type LoadOptions = {
   follows?: number;
 };
 
-export const rejectOnAbort = <T>(
+export function rejectOnAbort<T>(
   promise: Promise<T>,
   signal: AbortSignal | undefined,
-): Promise<T> => {
+): Promise<T> {
   if (!signal) {
     return promise;
   }
@@ -87,7 +87,7 @@ export const rejectOnAbort = <T>(
       .then(resolve, reject)
       .finally(() => signal.removeEventListener('abort', abort));
   });
-};
+}
 
 /**
  * Fetches a route through the supplied callback without merging elements or
@@ -101,11 +101,11 @@ export const rejectOnAbort = <T>(
  * @example
  * const outcome = await unstable_load(fetchRoute, route, { signal, has404 });
  */
-export const load = async (
+export async function load(
   fetchRoute: FetchRoute,
   requested: RouteProps,
   opts: LoadOptions,
-): Promise<LoadOutcome> => {
+): Promise<LoadOutcome> {
   const initialFollows = opts.follows ?? 0;
   const initialUrl = opts.url ?? getRouteUrl(requested);
 
@@ -199,4 +199,4 @@ export const load = async (
     url: initialUrl,
     follows: initialFollows,
   });
-};
+}

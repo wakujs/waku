@@ -6,7 +6,7 @@ import { loadConfig, loadDotEnv } from './loader.js';
 
 loadDotEnv();
 
-function createServerRestartHandler(strictPort: boolean) {
+const createServerRestartHandler = (strictPort: boolean) => {
   let restartInFlight = false;
 
   return async (
@@ -38,15 +38,15 @@ function createServerRestartHandler(strictPort: boolean) {
       restartInFlight = false;
     }
   };
-}
+};
 
-async function startDevServer(
+const startDevServer = async (
   host: string | undefined,
   port: number,
   config: Required<Config>,
   strictPort: boolean,
   isRestart?: boolean,
-) {
+) => {
   if (isRestart) {
     loadDotEnv();
   }
@@ -65,12 +65,7 @@ async function startDevServer(
   const url =
     server.resolvedUrls?.network?.[0] ?? server.resolvedUrls?.local?.[0];
   console.log(`ready: Listening on ${url}`);
-  const watcher = server.watcher;
-  watcher.on('change', handleConfigChange);
-  watcher.on('unlink', handleConfigChange);
-  watcher.on('add', handleConfigChange);
-
-  async function handleConfigChange(changedFile: string) {
+  const handleConfigChange = async (changedFile: string) => {
     const dirname = path.dirname(changedFile);
     const filename = path.basename(changedFile);
     if (
@@ -80,10 +75,14 @@ async function startDevServer(
       console.log(`Waku configuration file changed, restarting server...`);
       await handleServerRestart(host, port, server);
     }
-  }
+  };
+  const watcher = server.watcher;
+  watcher.on('change', handleConfigChange);
+  watcher.on('unlink', handleConfigChange);
+  watcher.on('add', handleConfigChange);
 
   return server;
-}
+};
 
 export async function runDev(flags: { host?: string; port?: string }) {
   // set NODE_ENV before vite.runnerImport: https://github.com/vitejs/vite/issues/20299

@@ -19,9 +19,9 @@ export async function runBuild() {
   await builder.buildApp();
 }
 
-async function startPreviewServerImpl(
+const startPreviewServerImpl = async (
   config: Required<Config>,
-): Promise<PreviewServer> {
+): Promise<PreviewServer> => {
   const server = await vite.preview({
     configFile: false,
     plugins: [combinedPlugins(config)],
@@ -33,4 +33,4 @@ async function startPreviewServerImpl(
     },
     close: () => server.close(),
   };
-}
+};

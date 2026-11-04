@@ -17,9 +17,9 @@ const is404 = (pathSpec: PathSpec) =>
 
 export type ConfigRegistry = ReturnType<typeof createConfigRegistry>;
 
-export const createConfigRegistry = (
+export function createConfigRegistry(
   getConfigs: () => Promise<Iterable<RuntimeConfig>>,
-) => {
+) {
   let cachedConfigs: RuntimeConfig[] | undefined;
   let cachedHas404 = false;
   let initPromise: Promise<void> | undefined;
@@ -116,4 +116,4 @@ export const createConfigRegistry = (
     findPathConfig,
     findSliceConfig,
   };
-};
+}

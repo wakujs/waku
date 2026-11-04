@@ -8,13 +8,16 @@ export type Etag = string | typeof IMMUTABLE_ETAG;
 export type Etags = Record<string, Etag>;
 
 // '' clears a tag; only printable Latin-1 (no control chars) is header-safe
-export const isValidEtag = (value: unknown): value is Etag =>
-  value === IMMUTABLE_ETAG ||
-  (typeof value === 'string' &&
-    value !== '' &&
-    /^[\x20-\x7e\xa0-\xff]+$/.test(value));
+export function isValidEtag(value: unknown): value is Etag {
+  return (
+    value === IMMUTABLE_ETAG ||
+    (typeof value === 'string' &&
+      value !== '' &&
+      /^[\x20-\x7e\xa0-\xff]+$/.test(value))
+  );
+}
 
-export const parseClientEtags = (serialized: string | null): Etags => {
+export function parseClientEtags(serialized: string | null): Etags {
   if (!serialized) {
     return {};
   }
@@ -34,10 +37,11 @@ export const parseClientEtags = (serialized: string | null): Etags => {
     }
   }
   return etags;
-};
+}
 
-export const serializeClientEtags = (etags: Etags): string =>
-  JSON.stringify(etags).replace(
+export function serializeClientEtags(etags: Etags): string {
+  return JSON.stringify(etags).replace(
     /[\u007f-\uffff]/g,
     (char) => '\\u' + char.charCodeAt(0).toString(16).padStart(4, '0'),
   );
+}

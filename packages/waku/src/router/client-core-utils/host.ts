@@ -34,10 +34,10 @@ export type RouterHost = {
 
 export const RouterHostContext = createContext<RouterHost | null>(null);
 
-export const useRouterHost = (): RouterHost => {
+export function useRouterHost(): RouterHost {
   const host = useContext(RouterHostContext);
   if (!host) {
     throw new Error('Missing RouterHost');
   }
   return host;
-};
+}

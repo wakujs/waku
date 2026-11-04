@@ -21,15 +21,18 @@ const ensureSlotEtags = (elements: Elements): SlotEtags => {
 };
 
 /** Whether the server delivered the element under `slotId` as immutable. */
-export const isImmutableElement = (
+export function isImmutableElement(
   elements: Elements,
   slotId: string,
-): boolean => slotEtagsByElements.get(elements)?.get(slotId) === IMMUTABLE_ETAG;
+): boolean {
+  return slotEtagsByElements.get(elements)?.get(slotId) === IMMUTABLE_ETAG;
+}
 
-export const collectEtags = (elements: Elements): Etags =>
-  Object.fromEntries(slotEtagsByElements.get(elements) ?? []);
+export function collectEtags(elements: Elements): Etags {
+  return Object.fromEntries(slotEtagsByElements.get(elements) ?? []);
+}
 
-export const adoptElements = (data: Elements): Elements => {
+export function adoptElements(data: Elements): Elements {
   const elements = Object.fromEntries(
     Object.entries(data).filter(([key]) => !key.startsWith('_')),
   );
@@ -41,7 +44,7 @@ export const adoptElements = (data: Elements): Elements => {
     }
   }
   return elements;
-};
+}
 
 const copyElement = (
   target: Record<string | symbol, unknown>,
@@ -63,11 +66,11 @@ const copyElement = (
  * spread or `Object.assign`, which drop them. With `filter`, only the
  * keys of `b` it accepts are taken.
  */
-export const combineElements = (
+export function combineElements(
   a: Elements,
   b: Elements,
   options?: { filter?: (key: string | symbol) => boolean },
-): Elements => {
+): Elements {
   const filter = options?.filter;
   const combined: Record<string | symbol, unknown> = {};
   for (const key of Reflect.ownKeys(a)) {
@@ -79,4 +82,4 @@ export const combineElements = (
     }
   }
   return combined;
-};
+}

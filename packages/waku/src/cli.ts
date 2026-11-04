@@ -28,7 +28,7 @@ const { values, positionals } = parseArgs({
 
 const cmd = positionals[0];
 
-async function run() {
+const run = async () => {
   if (values.version) {
     const { version } = require('../package.json');
     console.log(version);
@@ -54,9 +54,9 @@ async function run() {
     }
     displayUsage();
   }
-}
+};
 
-function displayUsage() {
+const displayUsage = () => {
   console.log(`
 Usage: waku [options] <command>
 
@@ -72,7 +72,7 @@ Options:
   -v, --version         Display the version number
       --help            Display this help message
 `);
-}
+};
 
 run().catch((error) => {
   console.error(error);

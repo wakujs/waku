@@ -24,11 +24,11 @@ import { getRouterState } from './router-state.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
-export const RouteIntent = ({
+export function RouteIntent({
   onError,
 }: {
   onError: (error: unknown, source: Elements) => void;
-}) => {
+}) {
   const elements = use(useElementsPromise());
   const router = use(RouterContext);
   const cache = useRouterCache();
@@ -142,4 +142,4 @@ export const RouteIntent = ({
   }, [cache, getElements]);
 
   return null;
-};
+}
