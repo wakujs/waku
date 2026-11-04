@@ -40,12 +40,14 @@ const gateFetch =
       }
       if (!held.length) {
         controller.close();
-        delete window.__rerenderOrderRelease;
+        if (window.__rerenderOrderRelease === release) {
+          delete window.__rerenderOrderRelease;
+        }
       }
     };
     window.__rerenderOrderRelease = release;
     setTimeout(() => {
-      while (window.__rerenderOrderRelease) {
+      while (held.length) {
         release();
       }
     }, 100);
