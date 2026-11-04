@@ -1,5 +1,5 @@
 import type { RouteParams } from '../create-pages-utils/inferred-path-types.js';
-import type { RoutePath } from './build-route-href.js';
+import type { PathPattern } from './build-route-href.js';
 import { getPathMapping, parsePathWithSlug } from './path-spec.js';
 import { getGrouplessPath } from './route-path.js';
 
@@ -22,7 +22,7 @@ const safeDecodeURIComponent = (value: string): string | null => {
  * router: a prefixed terminal catch-all (/docs/[...path]) does not match its
  * base (/docs), while a root catch-all (/[...path]) matches / as { path: [] }.
  */
-export function matchRouteParams<Path extends RoutePath>(
+export function matchRouteParams<Path extends PathPattern>(
   path: Path,
   pathname: string,
 ): RouteParams<Path> | null {

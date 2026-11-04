@@ -87,7 +87,7 @@ export type {
   RouteSearch as Unstable_RouteSearch,
 } from './create-pages-utils/inferred-path-types.js';
 
-export type { RoutePath as Unstable_RoutePath } from './isomorphic-utils/build-route-href.js';
+export type { PathPattern as Unstable_PathPattern } from './isomorphic-utils/build-route-href.js';
 
 export { matchRouteParams as unstable_matchRouteParams } from './isomorphic-utils/match-route-params.js';
 

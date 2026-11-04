@@ -3,7 +3,7 @@ import type { PagePath } from '../create-pages-utils/inferred-path-types.js';
 import { getPathMapping, parsePathWithSlug } from './path-spec.js';
 import { getGrouplessPath } from './route-path.js';
 
-export type RoutePath = [PagePath<CreatePagesConfig>] extends [never]
+export type PathPattern = [PagePath<CreatePagesConfig>] extends [never]
   ? string
   : PagePath<CreatePagesConfig>;
 
@@ -48,7 +48,7 @@ export type ConstructedHref<Path extends string> = string & {
   readonly [constructedHref]: NormalizePath<Path>;
 };
 
-export type NavigationHref = RouteHref | ConstructedHref<RoutePath>;
+export type NavigationHref = RouteHref | ConstructedHref<PathPattern>;
 
 export function buildRouteHref(
   path: string,

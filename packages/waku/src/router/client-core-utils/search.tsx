@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import type {
   NormalizePath,
-  RoutePath,
+  PathPattern,
 } from '../isomorphic-utils/build-route-href.js';
 import { matchRouteParams } from '../isomorphic-utils/match-route-params.js';
 import type { SearchCodec } from '../isomorphic-utils/search-codec.js';
@@ -17,7 +17,7 @@ type SearchRoute<
   Path extends string,
   Search extends Record<string, unknown>,
 > = {
-  path: NormalizePath<Path> extends NormalizePath<RoutePath> ? Path : never;
+  path: NormalizePath<Path> extends NormalizePath<PathPattern> ? Path : never;
   searchCodec: SearchCodec<Search>;
 };
 
@@ -34,7 +34,7 @@ export function useSearch<
   const { route } = useRouterHost();
   return useMemo(
     () =>
-      matchRouteParams(path as RoutePath, route.path) === null
+      matchRouteParams(path as PathPattern, route.path) === null
         ? null
         : searchCodec.parse(route.query),
     [path, searchCodec, route.path, route.query],
@@ -55,7 +55,7 @@ export function useSetSearch<
   const { route, navigate } = useRouterHost();
   return useCallback<SetSearch<Search>>(
     async (update, options) => {
-      if (matchRouteParams(path as RoutePath, route.path) === null) {
+      if (matchRouteParams(path as PathPattern, route.path) === null) {
         return;
       }
       const prev = searchCodec.parse(route.query);
