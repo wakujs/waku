@@ -10,6 +10,13 @@ import { CREATE_PAGES_CONFIGS_KEY, toSerializable } from './config.js';
 import type { HandlerInterceptor, RuntimeConfig } from './config.js';
 import { createRouteResolver } from './route-resolver.js';
 
+type BuildPath =
+  Awaited<
+    ReturnType<NonNullable<Parameters<typeof defineRouter>[0]['getBuildPaths']>>
+  > extends Iterable<infer Path>
+    ? Path
+    : never;
+
 export function createConfiguredRouter(fns: {
   getConfigs: () => Promise<Iterable<RuntimeConfig>>;
   unstable_skipBuild?: (routePath: string) => boolean;
@@ -22,7 +29,7 @@ export function createConfiguredRouter(fns: {
     resolveElement: resolver.resolveElement,
     getHas404: async () => registry.has404(),
     getBuildPaths: async () => {
-      const targets = [];
+      const targets: BuildPath[] = [];
       for (const config of registry.getAll()) {
         if (config.type === 'slice') {
           continue;
