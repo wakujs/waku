@@ -383,7 +383,15 @@ export function createRequestHandler({
           if (typeof resolved === 'function') {
             const url = new URL(req.url);
             url.pathname = pathname;
-            return resolved(new Request(url, req));
+            return resolved(
+              new Request(url, {
+                method: req.method,
+                headers: req.headers,
+                body: req.body,
+                signal: req.signal,
+                duplex: 'half',
+              } as RequestInit),
+            );
           }
           if (resolved?.noSsr) {
             const nonce = getNonce();

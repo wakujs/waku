@@ -1,5 +1,6 @@
 import type { Unstable_RenderHtml as RenderHtml } from 'waku/minimal/server';
 import { getServerInsertedHTML, serverInsertedHTMLStorage } from './context';
+import type { ServerInsertedHTMLStore } from './context';
 import { createHeadInsertionTransformStream } from './stream';
 
 export function injectRenderHtml(renderHtml: RenderHtml): RenderHtml {
@@ -8,7 +9,8 @@ export function injectRenderHtml(renderHtml: RenderHtml): RenderHtml {
   }
 
   return async (elementsStream, html, options) => {
-    return serverInsertedHTMLStorage.run({ callbacks: [] }, async () => {
+    const store: ServerInsertedHTMLStore = { callbacks: [] };
+    return serverInsertedHTMLStorage.run(store, async () => {
       // Bridge for 'use client' components to register callbacks without importing Node.js built-ins
       globalThis.__addServerInsertedHTML = (callback) => {
         serverInsertedHTMLStorage.getStore()?.callbacks.push(callback);
@@ -22,7 +24,7 @@ export function injectRenderHtml(renderHtml: RenderHtml): RenderHtml {
       }
 
       const transformedStream = body.pipeThrough(
-        createHeadInsertionTransformStream(getServerInsertedHTML),
+        createHeadInsertionTransformStream(() => getServerInsertedHTML(store)),
       );
 
       return new Response(transformedStream, {

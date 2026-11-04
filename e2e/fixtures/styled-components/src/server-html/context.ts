@@ -11,10 +11,6 @@ export type ServerInsertedHTMLStore = {
 export const serverInsertedHTMLStorage =
   new AsyncLocalStorage<ServerInsertedHTMLStore>();
 
-export function getServerInsertedHTML(): string {
-  const store = serverInsertedHTMLStorage.getStore();
-  if (!store) {
-    return '';
-  }
+export function getServerInsertedHTML(store: ServerInsertedHTMLStore): string {
   return store.callbacks.map((callback) => callback()).join('');
 }
