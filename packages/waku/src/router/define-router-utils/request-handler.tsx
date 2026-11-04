@@ -383,15 +383,8 @@ export function createRequestHandler({
           if (typeof resolved === 'function') {
             const url = new URL(req.url);
             url.pathname = pathname;
-            return resolved(
-              new Request(url, {
-                method: req.method,
-                headers: req.headers,
-                body: req.body,
-                signal: req.signal,
-                duplex: 'half',
-              } as RequestInit),
-            );
+            // FIXME: Pass req directly once @hono/node-server forwards duplex.
+            return resolved(new Request(url, new Request(req)));
           }
           if (resolved?.noSsr) {
             const nonce = getNonce();
