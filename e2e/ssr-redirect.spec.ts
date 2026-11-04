@@ -324,10 +324,12 @@ test.describe(`ssr-redirect`, () => {
   test('redirect should not log "Error during rendering" to server console', async ({
     page,
   }) => {
+    const outputStart = serverOutput.length;
     await page.goto(`http://localhost:${port}/async`);
     await waitForHydration(page);
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
-    const combined = serverOutput.join('');
-    expect(combined).not.toContain('Error during rendering');
+    expect(serverOutput.slice(outputStart).join('')).not.toContain(
+      'Error during rendering',
+    );
   });
 });
