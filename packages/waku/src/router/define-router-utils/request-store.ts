@@ -10,7 +10,7 @@ export type ServerFunctionContext = {
   legacyTarget?: readonly [rscPath: string, rscParams: unknown];
 };
 
-export type RouterStore = {
+type RouterStore = {
   req: Request;
   rscPath?: string;
   rscParams?: unknown;

@@ -166,9 +166,10 @@ collision, or client bundle size can justify an exception.
 - Avoid shadowing an outer binding.
 - Import a binding under its exported name. Rename an import only to resolve a
   real collision or to drop an unstable marker.
-- An export that exists only for tests ends in `ForTest`, or `_FOR_TEST` for a
-  constant. When the module also uses the binding, keep its plain name and add
-  a separate exported declaration next to it, such as
+- Export a binding only when another module imports it. An export that exists
+  only for tests ends in `ForTest`, or `_FOR_TEST` for a constant. When the
+  module also uses the binding, keep its plain name and add a separate exported
+  declaration next to it, such as
   `export const doFooForTest = doFoo;`, `export const FOO_FOR_TEST = FOO;`, or
   `export type FooForTest = Foo;`. Do not add the suffix with an export alias.
 - Name a component module in kebab case after its component, such as

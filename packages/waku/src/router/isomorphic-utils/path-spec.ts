@@ -1,4 +1,4 @@
-export type PathSpecItem =
+type PathSpecItem =
   | { type: 'literal'; name: string }
   | { type: 'group'; name?: string; prefix?: string; suffix?: string }
   | { type: 'wildcard'; name?: string };

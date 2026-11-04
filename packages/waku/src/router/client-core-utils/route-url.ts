@@ -16,9 +16,6 @@ export function resolveRouteHref(to: NavigationHref): string {
   return addBase(to, import.meta.env.WAKU_CONFIG_BASE_PATH);
 }
 
-export const isInsideBase = (url: URL) =>
-  url.pathname.startsWith(import.meta.env.WAKU_CONFIG_BASE_PATH);
-
 export function parseRoute(url: URL): RouteProps {
   const { pathname, searchParams, hash } = url;
   return {

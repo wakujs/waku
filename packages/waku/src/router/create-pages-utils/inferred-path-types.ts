@@ -115,7 +115,7 @@ type CollectPathsForDynamicSlugPage<Page extends DynamicPage> = Page extends {
  * - Dynamic pages with slugs will return the path with the slugs replaced with any string.
  *   (e.g., `/[slug]` => `/${string}`)
  */
-export type CollectPaths<EachPage extends AnyPage> = EachPage extends unknown
+type CollectPaths<EachPage extends AnyPage> = EachPage extends unknown
   ? IsPageWithSlug<EachPage> extends true
     ? EachPage extends StaticSlugPage
       ? CollectPathsForStaticSlugPage<EachPage>

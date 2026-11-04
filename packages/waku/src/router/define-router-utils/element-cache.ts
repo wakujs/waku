@@ -2,8 +2,6 @@ import type { ReactNode } from 'react';
 import type { Unstable_ElementSource as ElementSource } from 'waku/minimal/server';
 import { deserializeRsc, serializeRsc } from 'waku/server';
 
-export const ROOT_SLOT_ID = 'root';
-
 const bytesToBase64 = (bytes: Uint8Array) => {
   let binary = '';
   for (const byte of bytes) {
@@ -15,7 +13,7 @@ const bytesToBase64 = (bytes: Uint8Array) => {
 const base64ToBytes = (base64: string) =>
   Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
 
-export type CacheId = string;
+type CacheId = string;
 
 export function createElementCache(
   onSerialize?: (cacheId: CacheId, data: string) => void,

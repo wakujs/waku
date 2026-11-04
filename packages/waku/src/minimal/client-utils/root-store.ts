@@ -2,7 +2,7 @@ import type { Etags } from '../../lib/utils-isomorphic/etags.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
-export type SetElements = (
+type SetElements = (
   updater: (prev: Promise<Elements>) => Promise<Elements>,
 ) => void;
 
