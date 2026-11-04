@@ -91,6 +91,10 @@ jobs:
             os: ubuntu-latest
             version: 26.0.0
             suite: full-matrix
+          - name: ubuntu-node-26.13
+            os: ubuntu-latest
+            version: 26.13.0
+            suite: full-matrix
           - name: ubuntu-node-24
             os: ubuntu-latest
             version: 24.0.0
