@@ -272,7 +272,7 @@ export async function generateFsRouterTypes(pagesDir: string) {
     const hasAnyGetConfig = fileInfo.some((file) => file.hasGetConfig);
     const lines: string[] = [
       '// deno-fmt-ignore-file',
-      '// biome-ignore format: generated types do not need formatting',
+      '// biome-ignore-all format: generated types do not need formatting',
       '// prettier-ignore',
       hasAnyGetConfig
         ? "import type { PathsForPages, GetConfigResponse, SearchCodecsForPages } from 'waku/router';"
