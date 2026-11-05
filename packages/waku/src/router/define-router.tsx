@@ -353,7 +353,8 @@ export function defineRouter(fns: RouterOptions): Handlers & {
         utils.unstable_registerPrunableFile(file);
       }
     },
-    unstable_routerOptions: fns,
+    // a combined router retries a failed router without rerunning the others
+    unstable_routerOptions: { ...fns, initialize },
   };
 }
 
