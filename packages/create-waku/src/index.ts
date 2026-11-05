@@ -148,7 +148,7 @@ async function doPrompts() {
         },
         checkOverwrites: ({ results }) => {
           if (!results.overwrites) {
-            p.cancel(pc.red('✖') + ' Operation cancelled');
+            onCancel();
           }
           return Promise.resolve(true);
         },
@@ -236,7 +236,7 @@ async function init() {
 
   console.log('Setting up project...');
 
-  // doPrompts would exit if the dir exists and overwrite is false
+  // doPrompts exits if the dir is not empty and overwriting was declined
   fse.emptyDirSync(root);
   if (!existsSync(root)) {
     mkdirSync(root, { recursive: true });
