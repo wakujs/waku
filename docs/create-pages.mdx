@@ -779,6 +779,8 @@ With the file-system router, slug slices work the same way as slug pages: create
 
 Multiple dynamic segments are also supported (e.g., `items/[category]/[id]`), and each extracted parameter is passed as a separate prop.
 
+A slug slice's pattern should not match the ID of a static slice. The production build drops the static slice's code, so a page that lists that ID in `slices` gets the slug slice instead.
+
 ### Handler interceptors
 
 A handler interceptor wraps each render, in both the request and build phases, so it runs inside the request scope where `getRequest` is available. It also wraps API route handlers. Use it to install an `AsyncLocalStorage` for the render or to set the inline-script nonce.

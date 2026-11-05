@@ -249,12 +249,12 @@ type RouterOptions = {
  * or explicit cache key. Use a bounded set of keys, not arbitrary request paths.
  *
  * A prerendered route or a built element ID is kept in the build output: at
- * runtime it is served from there, without asking `resolve` or
- * `resolveElement`. Immutable sources also render from the build cache, so
- * after the build `getPrunableFiles` lists source files that only immutable
- * sources use, for the server bundle to drop. `initialize` runs before the
- * first request or the build; after a failure, it runs again on the next
- * request.
+ * runtime it is served from there for every request method, without asking
+ * `resolve` or `resolveElement`. Immutable sources also render from the build
+ * cache, so after the build `getPrunableFiles` lists source files that only
+ * immutable sources use, for the server bundle to drop. `initialize` runs
+ * before the first request or the build; after a failure, it runs again on
+ * the next request.
  */
 export function defineRouter(fns: RouterOptions): Handlers & {
   unstable_routerOptions: RouterOptions;
