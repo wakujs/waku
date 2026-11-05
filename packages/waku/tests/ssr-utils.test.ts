@@ -172,12 +172,12 @@ describe('version skew recovery code', () => {
         fn();
       }
     };
-    const beforeUnload = () => {
-      for (const fn of listeners.get('beforeunload') ?? []) {
-        fn({});
+    const fire = (type: string, event: object = {}) => {
+      for (const fn of listeners.get(type) ?? []) {
+        fn(event);
       }
     };
-    return { win, backing, preloadError, domContentLoaded, beforeUnload };
+    return { win, backing, preloadError, domContentLoaded, fire };
   };
 
   it('waits for the document before reloading mid-stream', () => {
@@ -200,12 +200,34 @@ describe('version skew recovery code', () => {
   });
 
   it('does not reload a page that is being left', () => {
-    const { win, backing, preloadError, beforeUnload } = runRecoveryCode();
-    beforeUnload();
+    const { win, backing, preloadError, fire } = runRecoveryCode();
+    fire('beforeunload');
     const e = preloadError();
     expect(win.location.reload).not.toHaveBeenCalled();
     expect(e.preventDefault).not.toHaveBeenCalled();
     expect(backing.has('waku:preload-error-build-id')).toBe(false);
+  });
+
+  it.each(['pointerdown', 'keydown'])(
+    'recovers again when the user stays and sends %s',
+    (type) => {
+      const { win, preloadError, fire } = runRecoveryCode();
+      fire('beforeunload');
+      fire(type);
+      preloadError();
+      expect(win.location.reload).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('recovers again on a page restored from the back/forward cache', () => {
+    const { win, preloadError, fire } = runRecoveryCode();
+    fire('beforeunload');
+    fire('pageshow', { persisted: false });
+    preloadError();
+    expect(win.location.reload).not.toHaveBeenCalled();
+    fire('pageshow', { persisted: true });
+    preloadError();
+    expect(win.location.reload).toHaveBeenCalledTimes(1);
   });
 
   it('gives up after one attempt, so a broken build cannot reload forever', () => {
