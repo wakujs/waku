@@ -65,11 +65,15 @@ export function createRouteResolver(registry: ConfigRegistry) {
       ),
     };
     for (const id of config.slices || []) {
-      const source = await resolveElement(getSliceSlotId(id));
-      if (!source) {
-        throw new Error('Slice not found: ' + id);
-      }
-      elements[getSliceSlotId(id)] = source;
+      // a static slice pruned from the server bundle comes from the build output
+      elements[getSliceSlotId(id)] = (await resolveElement(
+        getSliceSlotId(id),
+      )) ?? {
+        immutable: true,
+        render: () => {
+          throw new Error('Slice not found: ' + id);
+        },
+      };
     }
     return { elements, ...(config.noSsr && { noSsr: true }) };
   };

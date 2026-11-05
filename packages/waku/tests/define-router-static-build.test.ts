@@ -1,6 +1,10 @@
+import { createElement } from 'react';
+import type { ReactNode } from 'react';
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
+import { defineRouter } from '../src/router/define-router.js';
+import { fsRouter } from '../src/router/fs-router.js';
 import {
   ROUTE_ID,
   encodeRoutePath,
@@ -270,7 +274,7 @@ describe('define-router handleBuild', () => {
   });
 
   it('hydrates cached elements before any concurrent first request can read them', async () => {
-    // Build phase: produce serializableConfigs + cachedElements metadata.
+    // Build phase: produce the build metadata.
     const buildSave = vi.fn().mockResolvedValue(undefined);
     const buildRouter = createConfiguredRouter({
       getConfigs: async () => [
@@ -299,8 +303,8 @@ describe('define-router handleBuild', () => {
       buildSave.mock.calls.map(([key, value]) => [key, value]),
     );
 
-    // Runtime: empty getConfigs simulates a fully-pruned route - the merge
-    // falls back to throwMissingRuntimeFunction renderers, so any cache miss throws.
+    // Runtime: empty getConfigs simulates a fully-pruned route, which only the
+    // build output can serve, so any cache miss throws.
     const runtimeRouter = createConfiguredRouter({
       getConfigs: async () => [],
     });
@@ -338,6 +342,133 @@ describe('define-router handleBuild', () => {
         throw result.reason;
       }
     }
+  });
+
+  it('serves a static route from the build output once the router stops resolving it', async () => {
+    const buildMetadata = new Map<string, string>();
+    const buildRouter = defineRouter({
+      resolve: async (pathname) =>
+        pathname === '/foo'
+          ? {
+              elements: {
+                root: { immutable: true, render: () => 'root' },
+                route: { immutable: true, render: () => 'route' },
+              },
+            }
+          : null,
+      getBuildPaths: async () => ['/foo'],
+    });
+    await buildRouter.handleBuild({
+      renderRsc: () => Promise.resolve(makeStream()),
+      renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
+      rscPathToFileName: (rscPath: string) => `dist/${rscPath}.txt`,
+      saveBuildMetadata: async (key, value) => {
+        buildMetadata.set(key, value);
+      },
+      generateFile: vi.fn(),
+      generateDefaultHtml: vi.fn(),
+      unstable_registerPrunableFile: vi.fn(),
+    });
+
+    const runtimeRouter = defineRouter({ resolve: async () => null });
+    const renderRsc = vi.fn().mockResolvedValue(makeStream());
+    await runtimeRouter.handleRequest(
+      {
+        type: 'rsc',
+        rscPath: 'R/foo',
+        rscParams: undefined,
+        pathname: '/RSC/R/foo.txt',
+        req: new Request('http://localhost/RSC/R/foo.txt'),
+      },
+      {
+        renderRsc,
+        renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
+        loadBuildMetadata: async (key: string) => buildMetadata.get(key),
+      },
+    );
+
+    expect(renderRsc.mock.calls[0]![0][ROUTE_ID]).toEqual(['/foo', '']);
+  });
+
+  it('leaves a path with prerender: false to the runtime resolve', async () => {
+    const buildMetadata = new Map<string, string>();
+    const resolve = vi.fn(async () => ({
+      elements: {
+        root: { immutable: true, render: () => 'root' },
+        route: { render: () => 'dynamic' },
+      },
+    }));
+    const router = defineRouter({
+      resolve,
+      getBuildPaths: async () => [
+        {
+          pathname: '/foo',
+          routerDefinition: {
+            elements: {
+              root: { immutable: true, render: () => 'root' },
+              route: { immutable: true, render: () => 'warm' },
+            },
+          },
+          prerender: false,
+        },
+      ],
+    });
+    await router.handleBuild({
+      renderRsc: () => Promise.resolve(makeStream()),
+      renderHtml: vi.fn(),
+      rscPathToFileName: (rscPath: string) => `dist/${rscPath}.txt`,
+      saveBuildMetadata: async (key, value) => {
+        buildMetadata.set(key, value);
+      },
+      generateFile: vi.fn(),
+      generateDefaultHtml: vi.fn(),
+      unstable_registerPrunableFile: vi.fn(),
+    });
+    await router.handleRequest(
+      {
+        type: 'rsc',
+        rscPath: 'R/foo',
+        rscParams: undefined,
+        pathname: '/RSC/R/foo.txt',
+        req: new Request('http://localhost/RSC/R/foo.txt'),
+      },
+      {
+        renderRsc: vi.fn().mockResolvedValue(makeStream()),
+        renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
+        loadBuildMetadata: async (key: string) => buildMetadata.get(key),
+      },
+    );
+
+    expect(resolve).toHaveBeenCalledWith('/foo', '');
+  });
+
+  it('initializes once across concurrent first requests', async () => {
+    const initialize = vi.fn(async () => {});
+    const router = defineRouter({
+      resolve: async () => null,
+      initialize,
+    });
+    const utils = {
+      renderRsc: vi.fn(),
+      renderHtml: vi.fn(),
+      renderHtmlFallback: vi.fn(),
+      loadBuildMetadata: async () => undefined,
+    };
+    const input = {
+      type: 'rsc' as const,
+      rscPath: 'R/foo',
+      rscParams: undefined,
+      pathname: '/RSC/R/foo.txt',
+      req: new Request('http://localhost/RSC/R/foo.txt'),
+    };
+    await Promise.all([
+      router.handleRequest(input, utils),
+      router.handleRequest(input, utils),
+    ]);
+
+    expect(initialize).toHaveBeenCalledOnce();
   });
 
   it('does not register a source file shared by any dynamic config', async () => {
@@ -388,6 +519,267 @@ describe('define-router handleBuild', () => {
     });
 
     expect(register).not.toHaveBeenCalledWith('pages/shared.tsx');
+  });
+
+  it('registers a static page file only when its whole route is static', async () => {
+    const register = vi.fn();
+    const { handleBuild } = createConfiguredRouter({
+      getConfigs: async () => [
+        {
+          type: 'route',
+          pathSpec: [{ type: 'literal', name: 'about' }],
+          isStatic: true,
+          rootElement: { isStatic: true, renderer: () => null },
+          routeElement: { isStatic: true, renderer: () => null },
+          elements: {
+            'page:/about': {
+              isStatic: true,
+              renderer: () => null,
+              sourceFile: 'pages/about.tsx',
+            },
+          },
+        },
+        {
+          type: 'route',
+          pathSpec: [{ type: 'literal', name: 'news' }],
+          isStatic: false,
+          rootElement: {
+            isStatic: true,
+            renderer: () => null,
+            sourceFile: 'pages/_root.tsx',
+          },
+          routeElement: { isStatic: true, renderer: () => null },
+          elements: {
+            'layout:/': {
+              isStatic: true,
+              renderer: () => null,
+              sourceFile: 'pages/_layout.tsx',
+            },
+            'layout:/news': {
+              isStatic: false,
+              renderer: () => null,
+              sourceFile: 'pages/news/_layout.tsx',
+            },
+            'page:/news': {
+              isStatic: true,
+              renderer: () => null,
+              sourceFile: 'pages/news.tsx',
+            },
+          },
+        },
+      ],
+    });
+
+    await handleBuild({
+      renderRsc: () => Promise.resolve(makeStream()),
+      renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
+      rscPathToFileName: (rscPath: string) => `dist/${rscPath}.txt`,
+      saveBuildMetadata: vi.fn().mockResolvedValue(undefined),
+      generateFile: vi.fn().mockResolvedValue(undefined),
+      generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
+      unstable_registerPrunableFile: register,
+    });
+
+    // the build output cannot serve a static page whose layout is dynamic
+    expect(register.mock.calls.flat().sort()).toEqual([
+      'pages/_layout.tsx',
+      'pages/_root.tsx',
+      'pages/about.tsx',
+    ]);
+  });
+
+  it('serves a pruned static route before a dynamic route that matches it', async () => {
+    const About = () => createElement('p', null, 'about');
+    const slugModule = async () => ({
+      default: () => createElement('p', null, 'slug'),
+      getConfig: async () => ({ render: 'dynamic' as const }),
+    });
+    const buildMetadata = new Map<string, string>();
+    await fsRouter({
+      './pages/about.tsx': async () => ({ default: About }),
+      './pages/[slug].tsx': slugModule,
+    }).handleBuild({
+      renderRsc: () => Promise.resolve(makeStream()),
+      renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
+      rscPathToFileName: (rscPath: string) => `dist/${rscPath}.txt`,
+      saveBuildMetadata: async (key, value) => {
+        buildMetadata.set(key, value);
+      },
+      generateFile: vi.fn(),
+      generateDefaultHtml: vi.fn(),
+      unstable_registerPrunableFile: vi.fn(),
+    });
+
+    const renderRsc = vi.fn().mockResolvedValue(makeStream());
+    await fsRouter({
+      './pages/about.tsx': async () => ({}),
+      './pages/[slug].tsx': slugModule,
+    }).handleRequest(
+      {
+        type: 'rsc',
+        rscPath: 'R/about',
+        rscParams: undefined,
+        pathname: '/RSC/R/about.txt',
+        req: new Request('http://localhost/RSC/R/about.txt'),
+      },
+      {
+        renderRsc,
+        renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
+        loadBuildMetadata: async (key: string) => buildMetadata.get(key),
+      },
+    );
+
+    const slotIds = Object.keys(renderRsc.mock.calls[0]![0]);
+    expect(slotIds).toContain('page:/about');
+    expect(slotIds).not.toContain('page:/[slug]');
+  });
+
+  it('serves a built element before a broader runtime match', async () => {
+    const buildMetadata = new Map<string, string>();
+    await defineRouter({
+      resolve: async () => null,
+      getBuildElementIds: async () => [
+        {
+          id: 'slice:post/a',
+          source: { immutable: true, render: () => 'post a' },
+        },
+      ],
+    }).handleBuild({
+      renderRsc: () => Promise.resolve(makeStream()),
+      renderHtml: vi.fn(),
+      rscPathToFileName: (rscPath: string) => `dist/${rscPath}.txt`,
+      saveBuildMetadata: async (key, value) => {
+        buildMetadata.set(key, value);
+      },
+      generateFile: vi.fn(),
+      generateDefaultHtml: vi.fn(),
+      unstable_registerPrunableFile: vi.fn(),
+    });
+
+    // a dynamic `post/[id]` slice remains at runtime
+    const resolveElement = vi.fn(async () => ({ render: () => 'dynamic' }));
+    await defineRouter({
+      resolve: async () => null,
+      resolveElement,
+    }).handleRequest(
+      {
+        type: 'rsc',
+        rscPath: encodeSliceId('post/a'),
+        rscParams: undefined,
+        pathname: '/RSC/' + encodeSliceId('post/a') + '.txt',
+        req: new Request('http://localhost/RSC/slice.txt'),
+      },
+      {
+        renderRsc: vi.fn().mockResolvedValue(makeStream()),
+        renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
+        loadBuildMetadata: async (key: string) => buildMetadata.get(key),
+      },
+    );
+
+    expect(resolveElement).not.toHaveBeenCalled();
+  });
+
+  it('keeps pruned static layouts and slices in dynamic routes', async () => {
+    const Layout = ({ children }: { children: ReactNode }) =>
+      createElement('main', null, children);
+    const Dynamic = () => createElement('p', null, 'dynamic');
+    const dynamicModule = async () => ({
+      default: Dynamic,
+      getConfig: async () => ({
+        render: 'dynamic' as const,
+        slices: ['hello'],
+      }),
+    });
+    const buildMetadata = new Map<string, string>();
+    await fsRouter({
+      './pages/_layout.tsx': async () => ({ default: Layout }),
+      './pages/_slices/hello.tsx': async () => ({ default: () => 'hello' }),
+      './pages/dynamic.tsx': dynamicModule,
+    }).handleBuild({
+      renderRsc: () => Promise.resolve(makeStream()),
+      renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
+      rscPathToFileName: (rscPath: string) => `dist/${rscPath}.txt`,
+      saveBuildMetadata: async (key, value) => {
+        buildMetadata.set(key, value);
+      },
+      generateFile: vi.fn(),
+      generateDefaultHtml: vi.fn(),
+      unstable_registerPrunableFile: vi.fn(),
+    });
+
+    // pruned modules are empty stubs at runtime
+    const renderRsc = vi.fn().mockResolvedValue(makeStream());
+    await fsRouter({
+      './pages/_layout.tsx': async () => ({}),
+      './pages/_slices/hello.tsx': async () => ({}),
+      './pages/dynamic.tsx': dynamicModule,
+    }).handleRequest(
+      {
+        type: 'rsc',
+        rscPath: 'R/dynamic',
+        rscParams: undefined,
+        pathname: '/RSC/R/dynamic.txt',
+        req: new Request('http://localhost/RSC/R/dynamic.txt'),
+      },
+      {
+        renderRsc,
+        renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
+        loadBuildMetadata: async (key: string) => buildMetadata.get(key),
+      },
+    );
+
+    expect(Object.keys(renderRsc.mock.calls[0]![0])).toEqual(
+      expect.arrayContaining(['layout:/', 'slice:hello', 'page:/dynamic']),
+    );
+  });
+
+  it('keeps a pruned static 404 route available at runtime', async () => {
+    const buildMetadata = new Map<string, string>();
+    const route404 = {
+      type: 'route' as const,
+      pathSpec: [{ type: 'literal' as const, name: '404' }],
+      isStatic: true,
+      rootElement: { isStatic: true, renderer: () => null },
+      routeElement: { isStatic: true, renderer: () => null },
+      elements: {},
+    };
+    await createConfiguredRouter({
+      getConfigs: async () => [route404],
+    }).handleBuild({
+      renderRsc: () => Promise.resolve(makeStream()),
+      renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
+      rscPathToFileName: (rscPath: string) => `dist/${rscPath}.txt`,
+      saveBuildMetadata: async (key, value) => {
+        buildMetadata.set(key, value);
+      },
+      generateFile: vi.fn(),
+      generateDefaultHtml: vi.fn(),
+      unstable_registerPrunableFile: vi.fn(),
+    });
+
+    const renderHtml = vi.fn().mockResolvedValue(new Response('not found'));
+    await createConfiguredRouter({ getConfigs: async () => [] }).handleRequest(
+      {
+        type: 'http',
+        pathname: '/missing',
+        req: new Request('http://localhost/missing'),
+      },
+      {
+        renderRsc: vi.fn().mockResolvedValue(makeStream()),
+        renderHtml,
+        renderHtmlFallback: vi.fn(),
+        loadBuildMetadata: async (key: string) => buildMetadata.get(key),
+      },
+    );
+
+    expect(renderHtml).toHaveBeenCalledWith(
+      expect.any(ReadableStream),
+      expect.anything(),
+      expect.objectContaining({ status: 404 }),
+    );
   });
 
   it('emits files and metadata for static routes, apis, slices, 404, and noSsr', async () => {
@@ -453,13 +845,14 @@ describe('define-router handleBuild', () => {
       savedMetadata.get('defineRouter:cachedElements')!,
     ) as Record<string, string>;
     expect(Object.keys(cachedElements).length).toBeGreaterThan(0);
-    const serializableConfigs = JSON.parse(
-      savedMetadata.get('createPages:serializableConfigs')!,
-    ) as { type: string; rootElement?: object }[];
-    expect(serializableConfigs).toHaveLength(6);
     expect(
-      serializableConfigs.find((c) => c.type === 'route')!.rootElement,
-    ).not.toHaveProperty('renderer');
+      Object.keys(
+        JSON.parse(savedMetadata.get('defineRouter:staticRouterDefinitions')!),
+      ).sort(),
+    ).toEqual(['/404', '/foo', '/nossr']);
+    expect(
+      JSON.parse(savedMetadata.get('defineRouter:staticElementIds')!),
+    ).toEqual(['slice:sb']);
     expect(savedMetadata.has('defineRouter:moduleIdsByPrefetchRegExp')).toBe(
       true,
     );

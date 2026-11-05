@@ -186,7 +186,12 @@ export function fsRouter(
         } else if (pathItems.at(-1) === '_layout') {
           createLayout({
             path,
-            component: mod.default,
+            // a pruned static layout still frames the dynamic routes under it
+            component:
+              mod.default ??
+              (() => {
+                throw new Error('No default export: ' + srcPath);
+              }),
             render: 'static',
             ...config,
             unstable_sourceFile: srcPath,
