@@ -77,7 +77,10 @@ export function createBuildHandler({
       cachedElements[id] = entry;
     });
     const moduleIdsByPrefetchRegExp: Record<string, string[]> = {};
-    const staticRouterDefinitions: Record<string, StaticRouterDefinition> = {};
+    const staticRouterDefinitionByRoutePath: Record<
+      string,
+      StaticRouterDefinition
+    > = {};
     const staticElementIds: string[] = [];
     const htmlTasks: (() => Promise<void>)[] = [];
     const { runTask, waitForTasks } = createTaskRunner(500);
@@ -138,7 +141,7 @@ export function createBuildHandler({
           // only a prerendered route takes over the runtime `resolve`, as its
           // emitted files would on a static host
           if (prerender) {
-            staticRouterDefinitions[routePath] = {
+            staticRouterDefinitionByRoutePath[routePath] = {
               elements: Object.fromEntries(
                 Object.entries(resolved.elements).map(([id, { cacheKey }]) => [
                   id,
@@ -264,8 +267,8 @@ export function createBuildHandler({
       JSON.stringify(moduleIdsByPrefetchRegExp),
     );
     await utils.saveBuildMetadata(
-      ROUTER_METADATA.staticRouterDefinitions,
-      JSON.stringify(staticRouterDefinitions),
+      ROUTER_METADATA.staticRouterDefinitionByRoutePath,
+      JSON.stringify(staticRouterDefinitionByRoutePath),
     );
     await utils.saveBuildMetadata(
       ROUTER_METADATA.staticElementIds,

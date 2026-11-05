@@ -847,7 +847,9 @@ describe('define-router handleBuild', () => {
     expect(Object.keys(cachedElements).length).toBeGreaterThan(0);
     expect(
       Object.keys(
-        JSON.parse(savedMetadata.get('defineRouter:staticRouterDefinitions')!),
+        JSON.parse(
+          savedMetadata.get('defineRouter:staticRouterDefinitionByRoutePath')!,
+        ),
       ).sort(),
     ).toEqual(['/404', '/foo', '/nossr']);
     expect(

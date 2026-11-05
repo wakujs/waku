@@ -1,6 +1,7 @@
 export const ROUTER_METADATA = {
   cachedElements: 'defineRouter:cachedElements',
   moduleIdsByPrefetchRegExp: 'defineRouter:moduleIdsByPrefetchRegExp',
-  staticRouterDefinitions: 'defineRouter:staticRouterDefinitions',
+  staticRouterDefinitionByRoutePath:
+    'defineRouter:staticRouterDefinitionByRoutePath',
   staticElementIds: 'defineRouter:staticElementIds',
 } as const;

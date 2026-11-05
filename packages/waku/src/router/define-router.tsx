@@ -315,7 +315,7 @@ export function defineRouter(fns: RouterOptions): Handlers & {
         Object.entries(
           JSON.parse(
             (await loadBuildMetadata(
-              ROUTER_METADATA.staticRouterDefinitions,
+              ROUTER_METADATA.staticRouterDefinitionByRoutePath,
             )) || '{}',
           ),
         ),

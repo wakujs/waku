@@ -186,7 +186,7 @@ export function fsRouter(
         } else if (pathItems.at(-1) === '_layout') {
           createLayout({
             path,
-            // a pruned static layout still frames the dynamic routes under it
+            // frames the dynamic routes under a pruned static layout
             component:
               mod.default ??
               (() => {

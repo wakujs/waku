@@ -23,8 +23,7 @@ export type RouterDefinition = {
   noSsr?: boolean;
 };
 
-// a router definition whose sources are all immutable, kept so the build
-// output can serve it once the router no longer resolves it
+// a prerendered router definition as the build output stores it
 export type StaticRouterDefinition = {
   elements: Record<string, { cacheKey?: string }>;
   noSsr?: true;
