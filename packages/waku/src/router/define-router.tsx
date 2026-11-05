@@ -252,8 +252,9 @@ type RouterOptions = {
  * runtime it is served from there, without asking `resolve` or
  * `resolveElement`. Immutable sources also render from the build cache, so
  * after the build `getPrunableFiles` lists source files that only immutable
- * sources use, for the server bundle to drop. `initialize` runs once, before
- * the first request or the build.
+ * sources use, for the server bundle to drop. `initialize` runs before the
+ * first request or the build; after a failure, it runs again on the next
+ * request.
  */
 export function defineRouter(fns: RouterOptions): Handlers & {
   unstable_routerOptions: RouterOptions;
@@ -353,8 +354,7 @@ export function defineRouter(fns: RouterOptions): Handlers & {
         utils.unstable_registerPrunableFile(file);
       }
     },
-    // a combined router retries a failed router without rerunning the others
-    unstable_routerOptions: { ...fns, initialize },
+    unstable_routerOptions: fns,
   };
 }
 
@@ -387,6 +387,9 @@ const joinBuildTargets = <Target,>(
  * render the same content in every router that defines it. For example, give
  * `createPages` the root component that `fsRouter` reads from `_root.tsx`.
  * Handler interceptors from every router wrap every request, in router order.
+ * If one router's `initialize` fails, the next request runs every router's
+ * `initialize` again, so each must be safe to rerun; those of `createPages`
+ * and `fsRouter` are.
  *
  * @example
  * export default adapter(

@@ -224,32 +224,4 @@ describe('combineRouters', () => {
 
     expect(order).toEqual(['a:before', 'b:before', 'b:after', 'a:after']);
   });
-
-  it('retries only the router whose initialize failed', async () => {
-    let finishFirst!: () => void;
-    const first = vi.fn(
-      () =>
-        new Promise<void>((resolve) => {
-          finishFirst = resolve;
-        }),
-    );
-    const second = vi
-      .fn<() => Promise<void>>()
-      .mockRejectedValueOnce(new Error('second failed'))
-      .mockResolvedValue(undefined);
-    const router = combineRouters(
-      defineRouter({ resolve: async () => null, initialize: first }),
-      defineRouter({ resolve: async () => null, initialize: second }),
-    );
-
-    await expect(router.handleBuild(makeBuildUtils())).rejects.toThrow(
-      'second failed',
-    );
-    const retry = router.handleBuild(makeBuildUtils());
-    finishFirst();
-    await retry;
-
-    expect(first).toHaveBeenCalledOnce();
-    expect(second).toHaveBeenCalledTimes(2);
-  });
 });
