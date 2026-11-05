@@ -189,6 +189,28 @@ test.describe('fs-router', () => {
     expect(settled).toBeLessThan(5);
   });
 
+  test('leaving while a chunk loads does not reload the page', async ({
+    page,
+    mode,
+  }) => {
+    // eslint-disable-next-line playwright/no-skipped-test
+    test.skip(mode === 'DEV', 'covers the production recovery only');
+    const layoutChunk = /\/assets\/_layout-[\w-]+\.js$/;
+    await page.route(layoutChunk, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await route.continue().catch(() => {});
+    });
+    const layoutRequest = page.waitForRequest(layoutChunk);
+    await page.goto(`http://localhost:${port}/subroute/test`);
+    await layoutRequest;
+    await page.goto(`http://localhost:${port}/subroute/test/deep/path`);
+    await expect(
+      page.getByRole('heading', {
+        name: 'Subroute Catch-All: test/deep/path',
+      }),
+    ).toBeVisible();
+  });
+
   test('foo with trailing slash', async ({ page }) => {
     await page.goto(`http://localhost:${port}/foo/`);
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
