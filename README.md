@@ -1580,7 +1580,7 @@ export default adapter(fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')));
 ```
 
 ```sh
-npm run build
+bun run --bun build
 ```
 
 ### AWS Lambda (experimental)
