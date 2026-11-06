@@ -195,20 +195,29 @@ test.describe('fs-router', () => {
   }) => {
     // eslint-disable-next-line playwright/no-skipped-test
     test.skip(mode === 'DEV', 'covers the production recovery only');
+    let navigations = 0;
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame()) {
+        navigations++;
+      }
+    });
     const layoutChunk = /\/assets\/_layout-[\w-]+\.js$/;
+    const held = Promise.withResolvers<void>();
     await page.route(layoutChunk, async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await held.promise;
       await route.continue().catch(() => {});
     });
     const layoutRequest = page.waitForRequest(layoutChunk);
     await page.goto(`http://localhost:${port}/subroute/test`);
     await layoutRequest;
     await page.goto(`http://localhost:${port}/subroute/test/deep/path`);
+    held.resolve();
     await expect(
       page.getByRole('heading', {
         name: 'Subroute Catch-All: test/deep/path',
       }),
     ).toBeVisible();
+    expect(navigations).toBe(2);
   });
 
   test('foo with trailing slash', async ({ page }) => {

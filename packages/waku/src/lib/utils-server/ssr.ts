@@ -54,16 +54,11 @@ const getVersionSkewRecoveryCode = (): string => {
       window.addEventListener('beforeunload', function () {
         leaving = true;
       });
-      const stay = function () {
-        leaving = false;
-      };
       window.addEventListener('pageshow', function (e) {
         if (e.persisted) {
-          stay();
+          leaving = false;
         }
       });
-      window.addEventListener('pointerdown', stay, true);
-      window.addEventListener('keydown', stay, true);
       window.addEventListener('vite:preloadError', function (e) {
         if (leaving) {
           return;

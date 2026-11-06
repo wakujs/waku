@@ -208,17 +208,6 @@ describe('version skew recovery code', () => {
     expect(backing.has('waku:preload-error-build-id')).toBe(false);
   });
 
-  it.each(['pointerdown', 'keydown'])(
-    'recovers again when the user stays and sends %s',
-    (type) => {
-      const { win, preloadError, fire } = runRecoveryCode();
-      fire('beforeunload');
-      fire(type);
-      preloadError();
-      expect(win.location.reload).toHaveBeenCalledTimes(1);
-    },
-  );
-
   it('recovers again on a page restored from the back/forward cache', () => {
     const { win, preloadError, fire } = runRecoveryCode();
     fire('beforeunload');
