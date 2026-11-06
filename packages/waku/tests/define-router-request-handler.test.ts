@@ -1224,6 +1224,23 @@ describe('request dispatch', () => {
     expect(res).toBeNull();
   });
 
+  it('does not match a route with an empty path segment', async () => {
+    const { handleRequest } = createConfiguredRouter({
+      getConfigs: async () => [dynamicRoute('/admin')],
+    });
+    const utils = makeUtils();
+    const res = await handleRequest(
+      {
+        type: 'http',
+        pathname: '//admin',
+        req: new Request('http://localhost//admin'),
+      },
+      utils,
+    );
+    expect(res).toBeNull();
+    expect(utils.renderHtml).not.toHaveBeenCalled();
+  });
+
   it('serves a single-slice rsc request', async () => {
     const { handleRequest } = createConfiguredRouter({
       getConfigs: async () => [

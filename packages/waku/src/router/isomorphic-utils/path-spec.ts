@@ -87,7 +87,10 @@ export function getPathMapping(
   pathSpec: PathSpec,
   pathname: string,
 ): Record<string, string | string[]> | null {
-  const actual = pathname.split('/').filter(Boolean);
+  const actual = pathname === '/' ? [] : pathname.slice(1).split('/');
+  if (actual.includes('')) {
+    return null;
+  }
   if (pathSpec.length > actual.length) {
     const wildcardIndex = pathSpec.findIndex(
       (spec) => spec.type === 'wildcard',
