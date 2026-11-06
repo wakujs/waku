@@ -149,6 +149,23 @@ describe('create-waku CLI with args', () => {
     );
   });
 
+  test('keeps existing files when overwriting is declined', async () => {
+    createNonEmptyDir();
+    const cmd = runAsync(['--project-name', projectName, '--skip-install'], {
+      cwd: import.meta.dirname,
+      reject: false,
+    });
+    cmd.stdin.write('n');
+    cmd.stdin.end();
+    const { stdout, exitCode } = await cmd;
+    expect(stdout).toContain('Operation cancelled');
+    expect(stdout).not.toContain('Setting up project...');
+    expect(exitCode).toBe(0);
+    expect(fs.readFileSync(path.join(genPath, 'package.json'), 'utf8')).toBe(
+      '{ "foo": "bar" }',
+    );
+  });
+
   test('asks to overwrite non-empty target directory with subfolder', () => {
     createNonEmptyDir(genPathWithSubfolder);
     const { stdout } = run(['--project-name', `.test/${projectName}`], {
