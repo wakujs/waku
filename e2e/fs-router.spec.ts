@@ -189,6 +189,43 @@ test.describe('fs-router', () => {
     expect(settled).toBeLessThan(5);
   });
 
+  test('leaving while a chunk loads does not reload the page', async ({
+    page,
+    mode,
+  }) => {
+    // eslint-disable-next-line playwright/no-skipped-test
+    test.skip(mode === 'DEV', 'covers the production recovery only');
+    // Leaving from a hydrated page makes Firefox hit the bug every time.
+    await page.goto(`http://localhost:${port}/subroute`);
+    await waitForHydration(page);
+    let navigations = 0;
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame()) {
+        navigations++;
+      }
+    });
+    const layoutChunk = /\/assets\/_layout-[\w-]+\.js$/;
+    const held = Promise.withResolvers<void>();
+    await page.route(layoutChunk, async (route) => {
+      await held.promise;
+      await route.continue().catch(() => {});
+    });
+    const layoutRequest = page.waitForRequest(layoutChunk);
+    await page.goto(`http://localhost:${port}/subroute/test`);
+    await layoutRequest;
+    // The next page preloads the held chunk too, which can delay its load.
+    await page.goto(`http://localhost:${port}/subroute/test/deep/path`, {
+      waitUntil: 'commit',
+    });
+    held.resolve();
+    await expect(
+      page.getByRole('heading', {
+        name: 'Subroute Catch-All: test/deep/path',
+      }),
+    ).toBeVisible();
+    expect(navigations).toBe(2);
+  });
+
   test('foo with trailing slash', async ({ page }) => {
     await page.goto(`http://localhost:${port}/foo/`);
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
@@ -653,6 +690,8 @@ test.describe('fs-router', () => {
     await expect(
       page.getByRole('heading', { name: 'Subroute Catch-All: test' }),
     ).toBeVisible();
+    // Leaving before hydration aborts chunk loads, which this test is not about.
+    await waitForHydration(page);
 
     await page.goto(`http://localhost:${port}/subroute/test/deep/path`);
     await expect(
