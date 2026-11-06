@@ -176,6 +176,7 @@ test.describe('broken-links: static server', { tag: '@prd' }, () => {
 
     test('correct link', async ({ page }) => {
       await page.goto(`http://localhost:${port}`);
+      await waitForHydration(page);
       // Click on a link to an existing page
       await page.getByRole('link', { name: 'Existing page' }).click();
       // The page renders the target page
@@ -189,6 +190,7 @@ test.describe('broken-links: static server', { tag: '@prd' }, () => {
 
     test('broken link', async ({ page }) => {
       await page.goto(`http://localhost:${port}`);
+      await waitForHydration(page);
       // Click on a link to a non-existing page
       await page.getByRole('link', { name: 'Broken link' }).click();
       // The page renders the custom 404.tsx
@@ -203,6 +205,7 @@ test.describe('broken-links: static server', { tag: '@prd' }, () => {
 
     test('redirect', async ({ page }) => {
       await page.goto(`http://localhost:${port}`);
+      await waitForHydration(page);
       // Click on a link to a redirect
       await page.getByRole('link', { name: 'Correct redirect' }).click();
       // The page renders the target page
