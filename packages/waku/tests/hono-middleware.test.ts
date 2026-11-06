@@ -50,6 +50,33 @@ describe('middlewareRunner', () => {
     expect(res.headers.get('location')).toBe('http://example.com/about');
   });
 
+  test('shows an outer middleware the response an inner one returned', async () => {
+    const app = new Hono();
+    let observedStatus: number | undefined;
+    app.use(
+      middlewareRunner(
+        {
+          '/src/middleware/logger.ts': async () => ({
+            default: () => async (c, next) => {
+              await next();
+              observedStatus = c.res.status;
+            },
+          }),
+          '/src/middleware/no-trailing-slash.ts': async () => ({
+            default: () => async (c) =>
+              c.redirect(new URL('/about', c.req.url).toString(), 301),
+          }),
+        },
+        { app },
+      ),
+    );
+    app.get('*', (c) => c.text('ok'));
+
+    await app.request('http://example.com/about/');
+
+    expect(observedStatus).toBe(301);
+  });
+
   test('keeps inner response even if outer middleware returns after next', async () => {
     const app = new Hono();
     app.use(
