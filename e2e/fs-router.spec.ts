@@ -684,6 +684,8 @@ test.describe('fs-router', () => {
     await expect(
       page.getByRole('heading', { name: 'Subroute Catch-All: test' }),
     ).toBeVisible();
+    // Leaving before hydration aborts chunk loads, which this test is not about.
+    await waitForHydration(page);
 
     await page.goto(`http://localhost:${port}/subroute/test/deep/path`);
     await expect(
