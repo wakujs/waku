@@ -1,4 +1,5 @@
 import type { MiddlewareHandler } from 'hono';
+import { every } from 'hono/combine';
 import type { Hono } from 'hono/tiny';
 import type { ProcessRequest } from '../types.js';
 
@@ -27,29 +28,14 @@ export function middlewareRunner(
   >,
   opts: { app: Hono },
 ): MiddlewareHandler {
-  let handlersPromise: Promise<MiddlewareHandler[]> | undefined;
+  let handlerPromise: Promise<MiddlewareHandler> | undefined;
   return async (c, next) => {
-    if (!handlersPromise) {
-      handlersPromise = Promise.all(
-        Object.values(middlewareModules).map((m) =>
-          m().then((mod) => mod.default(opts)),
-        ),
-      );
-    }
-    const handlers = await handlersPromise;
-    let response: Response | undefined;
-    const run = async (index: number) => {
-      const handler = handlers[index];
-      if (handler) {
-        const result = await handler(c, () => run(index + 1));
-        if (result && !response) {
-          response = result;
-        }
-      } else {
-        await next();
-      }
-    };
-    await run(0);
-    return response;
+    handlerPromise ??= Promise.all(
+      Object.values(middlewareModules).map((m) =>
+        m().then((mod) => mod.default(opts)),
+      ),
+    ).then((handlers) => every(...handlers));
+    const handler = await handlerPromise;
+    await handler(c, next);
   };
 }
