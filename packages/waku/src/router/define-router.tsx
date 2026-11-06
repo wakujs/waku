@@ -128,8 +128,6 @@ export function notFound(): never {
   cancelRender();
 }
 
-// Dot segments can turn a path-absolute href into a network-path reference,
-// such as `/..//evil.example`, so check the resolved pathname too.
 const staysInTheApp = (location: string) => {
   if (!location.startsWith('/')) {
     return false;
