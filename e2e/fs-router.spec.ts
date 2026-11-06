@@ -210,7 +210,10 @@ test.describe('fs-router', () => {
     const layoutRequest = page.waitForRequest(layoutChunk);
     await page.goto(`http://localhost:${port}/subroute/test`);
     await layoutRequest;
-    await page.goto(`http://localhost:${port}/subroute/test/deep/path`);
+    // The next page preloads the held chunk too, which can delay its load.
+    await page.goto(`http://localhost:${port}/subroute/test/deep/path`, {
+      waitUntil: 'commit',
+    });
     held.resolve();
     await expect(
       page.getByRole('heading', {
