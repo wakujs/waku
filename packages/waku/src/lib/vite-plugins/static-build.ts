@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { mkdir } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -7,9 +8,21 @@ import { pathToFileURL } from 'node:url';
 import { getPluginApi } from '@vitejs/plugin-rsc';
 import pc from 'picocolors';
 import type { Plugin, Rollup } from 'vite';
+import { setAllEnv } from '../env.js';
 import { createProgressLogger } from '../utils-build/progress-logger.js';
 import { pruneBuildOutput } from '../utils-build/prune-build.js';
 import { joinPath } from '../utils-isomorphic/path.js';
+
+const resolveModuleId = (moduleId: string, rootDir: string) => {
+  if (moduleId.startsWith('file://')) {
+    return moduleId;
+  }
+  if (moduleId.startsWith('/')) {
+    return pathToFileURL(joinPath(rootDir, moduleId.slice(1))).href;
+  }
+  const require = createRequire(joinPath(rootDir, 'DUMMY.js'));
+  return pathToFileURL(require.resolve(moduleId)).href;
+};
 
 export function staticBuildPlugin({
   srcDir,
@@ -49,23 +62,36 @@ export function staticBuildPlugin({
         };
         const entryPath = path.join(
           viteConfig.environments.rsc!.build.outDir,
-          'build.js',
+          'index.js',
         );
         console.log(pc.blue('[ssg] processing static generation...'));
         const startTime = performance.now();
-        const entry: typeof import('../vite-entries/entry.build.js') =
+        const entry: typeof import('../vite-entries/entry.server.js') =
           await import(pathToFileURL(entryPath).href);
-        const { prunableFiles } = await entry.INTERNAL_runBuild({
-          rootDir,
-          emitFile,
-        });
-        if (prunableFiles.length && rscBundle) {
+        const serverEntry = entry.unstable_serverEntry;
+        setAllEnv(process.env);
+        let build = serverEntry.build;
+        for (const enhancer of serverEntry.buildEnhancers || []) {
+          const mod = await import(resolveModuleId(enhancer, rootDir));
+          build = await mod.default(build);
+        }
+        const prunableFiles = new Set<string>();
+        await build(
+          {
+            emitFile,
+            unstable_registerPrunableFile: (srcPath) => {
+              prunableFiles.add(srcPath);
+            },
+          },
+          serverEntry.buildOptions || {},
+        );
+        if (prunableFiles.size && rscBundle) {
           const { stubbedChunks, deletedAssets } = await pruneBuildOutput({
             rootDir,
             srcDir,
             distDir,
             rscBundle,
-            prunableFiles,
+            prunableFiles: Array.from(prunableFiles),
             serverReferenceModuleIds: new Set(
               getPluginApi(viteConfig)!.manager.serverReferences.metaMap.keys(),
             ),

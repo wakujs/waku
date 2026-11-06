@@ -29,7 +29,6 @@ const RSC_ENTRIES = [
   'minimal/server.ts',
   'router/server.ts',
   'lib/vite-entries/entry.server.tsx',
-  'lib/vite-entries/entry.build.ts',
 ];
 
 const SRC = fileURLToPath(new URL('../src', import.meta.url));

@@ -101,7 +101,6 @@ test('CLI and Vite tooling can import build and server utilities', async () => {
   for (const file of [
     'vite-plugins.ts',
     'lib/vite-rsc/loader.ts',
-    'lib/vite-entries/entry.build.ts',
     'lib/vite-plugins/rsc-devtools.ts',
   ]) {
     expect(await lintImport(file, 'lib/utils-build/config.ts')).toEqual([]);
