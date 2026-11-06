@@ -128,17 +128,18 @@ export function notFound(): never {
   cancelRender();
 }
 
+const staysInTheApp = (location: string) =>
+  location.startsWith('/') &&
+  !location.startsWith('//') &&
+  !new URL(location, 'http://localhost').pathname.startsWith('//');
+
 const getRedirectLocation = (
   to: NavigationHref | `http://${string}` | `https://${string}` | URL,
 ) => {
   let location = to instanceof URL ? to.href : to;
   const leavesTheApp =
     location.startsWith('http://') || location.startsWith('https://');
-  if (
-    leavesTheApp
-      ? !URL.canParse(location)
-      : !location.startsWith('/') || location.startsWith('//')
-  ) {
+  if (leavesTheApp ? !URL.canParse(location) : !staysInTheApp(location)) {
     throw new Error(`Invalid redirect location: ${JSON.stringify(location)}`);
   }
   if (leavesTheApp) {
