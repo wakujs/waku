@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  parse-version:
+  prepare:
     if: |
       github.event.issue.pull_request &&
       startsWith(github.event.comment.body, '/canary-ci run') &&
@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       react_version: ${{ steps.get-version.outputs.react_version }}
+      head_sha: ${{ steps.get-head.outputs.head_sha }}
     steps:
       - name: Get React version from comment
         id: get-version
@@ -29,17 +30,25 @@ jobs:
             version="canary"
           fi
           echo "react_version=$version" >> $GITHUB_OUTPUT
+      - name: Get the PR head commit at comment time
+        id: get-head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          head_sha=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq .head.sha)
+          echo "head_sha=$head_sha" >> $GITHUB_OUTPUT
 
   canary-ci-e2e:
-    needs: parse-version
+    needs: prepare
     uses: ./.github/workflows/e2e.yml
     with:
-      ref: refs/pull/${{ github.event.issue.number }}/head
-      react_version: ${{ needs.parse-version.outputs.react_version }}
+      ref: ${{ needs.prepare.outputs.head_sha }}
+      react_version: ${{ needs.prepare.outputs.react_version }}
 
   canary-ci-test:
-    needs: parse-version
+    needs: prepare
     uses: ./.github/workflows/test.yml
     with:
-      ref: refs/pull/${{ github.event.issue.number }}/head
-      react_version: ${{ needs.parse-version.outputs.react_version }}
+      ref: ${{ needs.prepare.outputs.head_sha }}
+      react_version: ${{ needs.prepare.outputs.react_version }}
