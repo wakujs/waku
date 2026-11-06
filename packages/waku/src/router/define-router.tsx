@@ -128,13 +128,10 @@ export function notFound(): never {
   cancelRender();
 }
 
-const staysInTheApp = (location: string) => {
-  if (!location.startsWith('/')) {
-    return false;
-  }
-  const url = new URL(location, 'http://localhost');
-  return url.origin === 'http://localhost' && !url.pathname.startsWith('//');
-};
+const staysInTheApp = (location: string) =>
+  location.startsWith('/') &&
+  !location.startsWith('//') &&
+  !new URL(location, 'http://localhost').pathname.startsWith('//');
 
 const getRedirectLocation = (
   to: NavigationHref | `http://${string}` | `https://${string}` | URL,

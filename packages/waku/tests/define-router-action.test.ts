@@ -523,6 +523,7 @@ describe('redirect', () => {
 
   it.each([
     '//example.com/',
+    '//localhost/',
     '/\\example.com/',
     '/..//example.com/',
     '/.//example.com/',
