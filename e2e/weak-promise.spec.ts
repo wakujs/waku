@@ -83,8 +83,8 @@ test.describe('weak promises', () => {
       'data-hydrated',
       'true',
     );
-    // eslint-disable-next-line playwright/no-force-option -- WebKit's stability check stalls while the document response is open.
-    await page.getByTestId('weak-counter').click({ force: true });
+    // While the document loads, WebKit stalls a click and Firefox can drop one.
+    await page.getByTestId('weak-counter').dispatchEvent('click');
     await expect(page.getByTestId('weak-counter')).toHaveText('1');
     const release = await request.get(
       `http://localhost:${port}/weak-release?id=${id}`,
