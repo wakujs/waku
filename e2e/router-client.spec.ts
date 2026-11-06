@@ -657,6 +657,8 @@ test.describe('router-client', () => {
     await waitForHydration(page);
     expect(prefetchedEnterRequests).toHaveLength(0);
 
+    // React mounts on body here, so a pointer coming from <html> never enters.
+    await page.getByRole('heading', { name: 'Start' }).hover();
     await page.getByTestId('prefetch-on-enter-link').hover();
     await expect.poll(() => prefetchedEnterRequests.length).toBeGreaterThan(0);
     await expect(page.getByRole('heading', { name: 'Start' })).toBeVisible();
