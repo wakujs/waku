@@ -85,8 +85,7 @@ export async function pruneBuildOutput({
         keepRoots.push(chunk.fileName);
       }
     }
-    // The 'build' entry is the SSG runner, not part of the runtime bundle.
-    if (chunk.isEntry && chunk.name !== 'build') {
+    if (chunk.isEntry) {
       keepRoots.push(chunk.fileName);
     }
     if (chunk.moduleIds.some((id) => serverReferenceModuleIds.has(id))) {

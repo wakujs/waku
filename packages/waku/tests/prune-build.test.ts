@@ -69,7 +69,6 @@ describe('pruneBuildOutput', () => {
     writeFile.mockClear();
     rm.mockClear();
     const bundle = makeBundle([
-      { type: 'chunk', fileName: 'build.js', isEntry: true, name: 'build' },
       // Static page chunk + its CSS asset.
       {
         type: 'chunk',
@@ -99,7 +98,6 @@ describe('pruneBuildOutput', () => {
 
   it('keeps a static chunk that holds a server function, with its imports', async () => {
     const bundle = makeBundle([
-      { type: 'chunk', fileName: 'build.js', isEntry: true, name: 'build' },
       {
         type: 'chunk',
         fileName: 'static-layout.js',
@@ -128,7 +126,6 @@ describe('pruneBuildOutput', () => {
     writeFile.mockClear();
     rm.mockClear();
     const bundle = makeBundle([
-      { type: 'chunk', fileName: 'build.js', isEntry: true, name: 'build' },
       {
         type: 'chunk',
         fileName: 'static-page.js',
