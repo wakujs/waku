@@ -49,28 +49,42 @@ const getVersionSkewRecoveryCode = (): string => {
     return '';
   }
   return `
-    window.addEventListener('vite:preloadError', function (e) {
-      var key = 'waku:preload-error-build-id';
-      var canRetry = false;
-      try {
-        canRetry = sessionStorage.getItem(key) !== ${JSON.stringify(buildId)};
-        sessionStorage.setItem(key, ${JSON.stringify(buildId)});
-      } catch {
-        canRetry = false;
-      }
-      if (!canRetry) {
-        return;
-      }
-      e.preventDefault();
-      var reload = function () {
-        window.location.reload();
-      };
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', reload);
-      } else {
-        reload();
-      }
-    });
+    {
+      let leaving = false;
+      window.addEventListener('beforeunload', function () {
+        leaving = true;
+      });
+      window.addEventListener('pageshow', function (e) {
+        if (e.persisted) {
+          leaving = false;
+        }
+      });
+      window.addEventListener('vite:preloadError', function (e) {
+        if (leaving) {
+          return;
+        }
+        var key = 'waku:preload-error-build-id';
+        var canRetry = false;
+        try {
+          canRetry = sessionStorage.getItem(key) !== ${JSON.stringify(buildId)};
+          sessionStorage.setItem(key, ${JSON.stringify(buildId)});
+        } catch {
+          canRetry = false;
+        }
+        if (!canRetry) {
+          return;
+        }
+        e.preventDefault();
+        var reload = function () {
+          window.location.reload();
+        };
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', reload);
+        } else {
+          reload();
+        }
+      });
+    }
   `;
 };
 
