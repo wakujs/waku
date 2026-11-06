@@ -178,12 +178,48 @@ Return `{ id, source }` instead of an ID string when the build should use an exp
 
 Include an element directly in a route's `elements` when it should arrive in the route payload. There are no separate page, layout, or slice declarations in `defineRouter`; those are `createPages` authoring concepts.
 
+## Build Output at Runtime
+
+A route the build prerenders, one whose sources are all immutable and whose target doesn't set `prerender: false`, stays available from the build output, as does each built element ID. At runtime, `defineRouter` serves those from the build output without calling `resolve` or `resolveElement`, so a broader route, such as a dynamic `/[slug]`, cannot take over a static path whose module was pruned. This applies to every request method: to return an HTTP handler for a `POST` to a prerendered path, set `prerender: false` on that target or leave it out of `getBuildPaths`. Any immutable source a route returns also renders from the build cache. A router can therefore leave out modules that only immutable sources use:
+
+- `getPrunableFiles()` runs after the build and lists those source files, so the server bundle can drop them.
+- `initialize()` runs before the first request or the build, so it can prepare what `resolve` reads. After a failure, it runs again on the next request.
+
+## Combining Routers
+
+`unstable_combineRouters` combines routers created by `unstable_defineRouter`, `createPages`, or `fsRouter`, for example to add config routes next to file routes.
+
+```tsx
+// src/waku.server.tsx
+import { createPages, fsRouter } from 'waku';
+import adapter from 'waku/adapters/default';
+import { unstable_combineRouters as combineRouters } from 'waku/router/server';
+import Company from './components/company';
+import Root from './pages/_root';
+
+export default adapter(
+  combineRouters(
+    createPages(async ({ createPage, createRoot }) => [
+      createRoot({ render: 'static', component: Root }),
+      createPage({ path: '/company', render: 'static', component: Company }),
+    ]),
+    fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')),
+  ),
+);
+```
+
+A route or an independently requested element belongs to the first router that resolves it. The build fails when two routers list the same build path or element ID. A catch-all or dynamic route should be in the last router, or it would take routes meant for the routers after it.
+
+The routers share element IDs, so an ID such as `root` or `layout:/` must render the same content in every router that defines it. In the example, `createPages` uses the root component of `_root.tsx`. Handler interceptors from every router wrap every request, in router order. If one router's `initialize` fails, the next request runs every router's `initialize` again, so each must be safe to rerun; those of `createPages` and `fsRouter` are.
+
+Generated types from `fsRouter` cover only the file routes.
+
 ## Boundaries
 
 `defineRouter` owns the protocol expected by `waku/router/client`: reserved metadata, root and route slots, server function rerenders, redirects, 404 handling, SSR, and build output. Custom routers supply resolution and element sources, without importing internal IDs or encoding helpers from `waku/router/client-core`.
 
 For changes to Router itself or another client binding, see [Router Protocol](/guides/router-protocol).
 
-`createPages` uses this same public API for runtime and builds. It owns page/layout matching, configuration metadata, and source-file pruning. `fsRouter` uses only `createPages`' public authoring API to translate route modules into those declarations.
+`createPages` uses this same public API for runtime and builds. It owns page/layout matching and decides which source files to prune. `fsRouter` uses only `createPages`' public authoring API to translate route modules into those declarations.
 
 The API is unstable and may change.

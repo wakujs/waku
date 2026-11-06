@@ -5,6 +5,7 @@ import type {
   BuildElementId,
   BuildPath,
 } from './define-router-utils/build-handler.js';
+import { ROUTER_METADATA } from './define-router-utils/build-metadata.js';
 import { createRequestHandler } from './define-router-utils/request-handler.js';
 import {
   getRequest,
@@ -20,6 +21,8 @@ import { createRouteEntries } from './define-router-utils/route-entries.js';
 import type {
   Resolve,
   ResolveElement,
+  RouterDefinition,
+  StaticRouterDefinition,
 } from './define-router-utils/route-entries.js';
 import type { NavigationHref } from './isomorphic-utils/build-route-href.js';
 import { pathnameToRoutePath } from './isomorphic-utils/route-path.js';
@@ -198,6 +201,12 @@ export function redirect(
   cancelRender();
 }
 
+const throwNotBuilt = (id: string): never => {
+  throw new Error(
+    `defineRouter: ${id} is not in the build output; rebuild required`,
+  );
+};
+
 type RouterOptions = {
   resolve: Resolve;
   getBuildPaths?: () => Promise<Iterable<BuildPath>>;
@@ -205,6 +214,8 @@ type RouterOptions = {
   resolveElement?: ResolveElement;
   getHas404?: () => Promise<boolean>;
   unstable_interceptors?: HandlerInterceptor[];
+  initialize?: () => Promise<void>;
+  getPrunableFiles?: () => Promise<Iterable<string>>;
 };
 
 /**
@@ -225,9 +236,9 @@ type RouterOptions = {
  * RSC files, as strings to resolve or `{ id, source }` targets.
  * Only `slice:<id>` IDs are supported for standalone requests.
  * Unresolved or mutable build IDs fail the build.
- * An immutable source's optional `cacheKey` shares its cached content across
- * slot IDs. A route with only immutable sources can be reused without a request,
- * including in development.
+ * An immutable router definition source's optional `cacheKey` shares its
+ * cached content across slot IDs. A route with only immutable sources can be
+ * reused without a request, including in development.
  * Handler interceptors can be bypassed by static reuse; checks that must run
  * on each request require a dynamic route.
  * `createPages` and `fsRouter` supply route cache keys automatically.
@@ -236,12 +247,57 @@ type RouterOptions = {
  * `createPages` and `fsRouter` supply it from their route registry.
  * Immutable sources must render the same content for the lifetime of their ID
  * or explicit cache key. Use a bounded set of keys, not arbitrary request paths.
+ *
+ * A prerendered route or a built element ID is kept in the build output: at
+ * runtime it is served from there for every request method, without asking
+ * `resolve` or `resolveElement`. Immutable sources also render from the build
+ * cache, so after the build `getPrunableFiles` lists source files that only
+ * immutable sources use, for the server bundle to drop. `initialize` runs
+ * before the first request or the build; after a failure, it runs again on
+ * the next request.
  */
-export function defineRouter(fns: RouterOptions): Handlers {
+export function defineRouter(fns: RouterOptions): Handlers & {
+  unstable_routerOptions: RouterOptions;
+} {
+  let staticRouterDefinitionByRoutePath = new Map<
+    string,
+    StaticRouterDefinition
+  >();
+  let staticElementIds = new Set<string>();
+  // the build output comes first: once a static page is pruned, a broader
+  // runtime route such as `/[slug]` would otherwise match its path
+  const resolve: Resolve = async (pathname, query) => {
+    const staticRouterDefinition =
+      staticRouterDefinitionByRoutePath.get(pathname);
+    if (!staticRouterDefinition) {
+      return fns.resolve(pathname, query);
+    }
+    const elements: Record<string, RouterDefinition['elements']['root']> = {};
+    for (const [id, source] of Object.entries(
+      staticRouterDefinition.elements,
+    )) {
+      elements[id] = {
+        ...source,
+        immutable: true,
+        render: () => throwNotBuilt(id),
+      };
+    }
+    return {
+      elements: elements as RouterDefinition['elements'],
+      ...(staticRouterDefinition.noSsr && { noSsr: true }),
+    };
+  };
+  const resolveElement: ResolveElement = async (id) =>
+    staticElementIds.has(id)
+      ? { immutable: true, render: () => throwNotBuilt(id) }
+      : ((await fns.resolveElement?.(id)) ?? null);
+  const { getHas404 } = fns;
   const routeEntries = createRouteEntries(
-    fns.resolve,
-    fns.resolveElement,
-    fns.getHas404,
+    resolve,
+    resolveElement,
+    getHas404 &&
+      (async () =>
+        staticRouterDefinitionByRoutePath.has('/404') || getHas404()),
   );
   const runHandled = <T,>(req: Request, fn: () => Promise<T>): Promise<T> =>
     runWithRouterStore({ req }, () =>
@@ -250,18 +306,170 @@ export function defineRouter(fns: RouterOptions): Handlers {
         fn,
       )(),
     );
+  const handleRequest = createRequestHandler({
+    resolve,
+    routeEntries,
+    runHandled,
+    loadStaticOutput: async (loadBuildMetadata) => {
+      staticRouterDefinitionByRoutePath = new Map(
+        Object.entries(
+          JSON.parse(
+            (await loadBuildMetadata(
+              ROUTER_METADATA.staticRouterDefinitionByRoutePath,
+            )) || '{}',
+          ),
+        ),
+      );
+      staticElementIds = new Set(
+        JSON.parse(
+          (await loadBuildMetadata(ROUTER_METADATA.staticElementIds)) || '[]',
+        ),
+      );
+    },
+  });
+  const handleBuild = createBuildHandler({
+    resolve,
+    getBuildPaths: fns.getBuildPaths,
+    getBuildElementIds: fns.getBuildElementIds,
+    routeEntries,
+    runHandled,
+  });
+  let initialized: Promise<void> | undefined;
+  const initialize = () =>
+    (initialized ??= (async () => {
+      await fns.initialize?.();
+    })().catch((error: unknown) => {
+      initialized = undefined;
+      throw error;
+    }));
   return {
-    handleRequest: createRequestHandler({
-      resolve: fns.resolve,
-      routeEntries,
-      runHandled,
-    }),
-    handleBuild: createBuildHandler({
-      resolve: fns.resolve,
-      getBuildPaths: fns.getBuildPaths,
-      getBuildElementIds: fns.getBuildElementIds,
-      routeEntries,
-      runHandled,
-    }),
+    handleRequest: async (input, utils) => {
+      await initialize();
+      return handleRequest(input, utils);
+    },
+    handleBuild: async (utils) => {
+      await initialize();
+      await handleBuild(utils);
+      for (const file of (await fns.getPrunableFiles?.()) ?? []) {
+        utils.unstable_registerPrunableFile(file);
+      }
+    },
+    unstable_routerOptions: fns,
   };
+}
+
+// the build writes each target to a file, so a later router would overwrite
+// what an earlier router emitted
+const joinBuildTargets = <Target,>(
+  targetsList: Iterable<Target>[],
+  getKey: (target: Target) => string,
+) => {
+  const routerIndexByKey = new Map<string, number>();
+  return targetsList.flatMap((targets, index) =>
+    Array.from(targets, (target) => {
+      const key = getKey(target);
+      if ((routerIndexByKey.get(key) ?? index) !== index) {
+        throw new Error('combineRouters: more than one router builds ' + key);
+      }
+      routerIndexByKey.set(key, index);
+      return target;
+    }),
+  );
+};
+
+/**
+ * Combines routers created by `unstable_defineRouter`, `createPages`, or
+ * `fsRouter` into one router. A route or an independently requested element,
+ * such as a slice, belongs to the first router that resolves it. The build
+ * fails when two routers list the same build path or element ID.
+ *
+ * The routers share element IDs, so an ID such as `root` or `layout:/` must
+ * render the same content in every router that defines it. For example, give
+ * `createPages` the root component that `fsRouter` reads from `_root.tsx`.
+ * Handler interceptors from every router wrap every request, in router order.
+ * If one router's `initialize` fails, the next request runs every router's
+ * `initialize` again, so each must be safe to rerun; those of `createPages`
+ * and `fsRouter` are.
+ *
+ * @example
+ * export default adapter(
+ *   unstable_combineRouters(
+ *     createPages(async ({ createPage }) => [
+ *       createPage({ path: '/company', render: 'static', component: Company }),
+ *     ]),
+ *     fsRouter(import.meta.glob('./pages/**\/*.{tsx,ts}')),
+ *   ),
+ * );
+ */
+export function combineRouters(
+  ...routers: ReturnType<typeof defineRouter>[]
+): ReturnType<typeof defineRouter> {
+  const optionsList = routers.map((router) => router.unstable_routerOptions);
+  return defineRouter({
+    resolve: async (pathname, query) => {
+      for (const options of optionsList) {
+        const resolved = await options.resolve(pathname, query);
+        if (resolved) {
+          return resolved;
+        }
+      }
+      return null;
+    },
+    resolveElement: async (id) => {
+      for (const options of optionsList) {
+        const source = await options.resolveElement?.(id);
+        if (source) {
+          return source;
+        }
+      }
+      return null;
+    },
+    getHas404: async () => {
+      for (const options of optionsList) {
+        if (await options.getHas404?.()) {
+          return true;
+        }
+      }
+      return false;
+    },
+    getBuildPaths: async () =>
+      joinBuildTargets(
+        await Promise.all(
+          optionsList.map((options) => options.getBuildPaths?.() ?? []),
+        ),
+        (target) => {
+          const url = new URL('http://localhost:3000');
+          url.pathname = typeof target === 'string' ? target : target.pathname;
+          const routePath = pathnameToRoutePath(url.pathname);
+          // the build writes the `/404` page to `404.html`
+          return routePath === '/404' ? '/404.html' : routePath;
+        },
+      ),
+    getBuildElementIds: async () =>
+      joinBuildTargets(
+        await Promise.all(
+          optionsList.map((options) => options.getBuildElementIds?.() ?? []),
+        ),
+        (target) => (typeof target === 'string' ? target : target.id),
+      ),
+    unstable_interceptors: [
+      // read per request: createPages registers interceptors as it loads pages
+      <T,>(next: () => Promise<T>) =>
+        optionsList
+          .flatMap((options) => options.unstable_interceptors ?? [])
+          .reduceRight(
+            (inner, interceptor) => () => interceptor(inner),
+            next,
+          )(),
+    ],
+    initialize: async () => {
+      await Promise.all(optionsList.map((options) => options.initialize?.()));
+    },
+    getPrunableFiles: async () => {
+      const filesList = await Promise.all(
+        optionsList.map((options) => options.getPrunableFiles?.() ?? []),
+      );
+      return filesList.flatMap((files) => [...files]);
+    },
+  });
 }

@@ -1,5 +1,6 @@
 export {
   defineRouter as unstable_defineRouter,
+  combineRouters as unstable_combineRouters,
   getRequest,
   getRscPath as unstable_getRscPath,
   getRscParams as unstable_getRscParams,

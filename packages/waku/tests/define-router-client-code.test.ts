@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { CREATE_PAGES_CONFIGS_KEY } from '../src/router/create-pages-utils/config.js';
 import { getRouterPrefetchCode } from '../src/router/define-router-utils/client-code.js';
 
 type Globals = {
@@ -38,11 +37,5 @@ describe('getRouterPrefetchCode', () => {
   it('emits no ids for a path with no matching pattern', () => {
     const prefetch = runPrefetch(getRouterPrefetchCode({ '/a': ['m1'] }));
     expect(prefetch('/no-match')).toEqual([]);
-  });
-});
-
-describe('CREATE_PAGES_CONFIGS_KEY', () => {
-  it('matches the persisted metadata key exactly', () => {
-    expect(CREATE_PAGES_CONFIGS_KEY).toBe('createPages:serializableConfigs');
   });
 });

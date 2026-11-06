@@ -23,6 +23,12 @@ export type RouterDefinition = {
   noSsr?: boolean;
 };
 
+// a prerendered router definition as the build output stores it
+export type StaticRouterDefinition = {
+  elements: Record<string, { cacheKey?: string }>;
+  noSsr?: true;
+};
+
 export type Resolve = (
   pathname: string,
   query: string,

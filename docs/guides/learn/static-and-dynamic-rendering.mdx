@@ -97,6 +97,8 @@ export const getConfig = async () => {
 
 At build time, Waku calls `getConfig`, receives the slugs, and prerenders one page per post. The component code is unchanged; only the declaration of when it runs is different. Note that paths outside the list now return 404 instead of rendering the component.
 
+`getConfig` also runs in production for every page whose route is not fully static: a dynamic page, or a static page with a dynamic root, layout or slice. Keep data that is only reachable at build time, such as local file reads or CMS fetches, in pages whose whole route is static. The server calls these `getConfig` functions before it handles its first request, so one that throws there makes every request it handles fail.
+
 ## Choosing a mode
 
 - Same content for every visitor until the next deploy? **Static.**
