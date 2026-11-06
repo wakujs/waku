@@ -195,6 +195,9 @@ test.describe('fs-router', () => {
   }) => {
     // eslint-disable-next-line playwright/no-skipped-test
     test.skip(mode === 'DEV', 'covers the production recovery only');
+    // Leaving from a hydrated page makes Firefox hit the bug every time.
+    await page.goto(`http://localhost:${port}/subroute`);
+    await waitForHydration(page);
     let navigations = 0;
     page.on('framenavigated', (frame) => {
       if (frame === page.mainFrame()) {
