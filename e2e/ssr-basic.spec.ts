@@ -60,6 +60,7 @@ test.describe(`ssr-basic`, () => {
 
   test('vercel ai', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     const aiLocator = page.getByTestId('vercel-ai');
     await aiLocator.waitFor({
       state: 'visible',
@@ -98,6 +99,7 @@ test.describe(`ssr-basic`, () => {
     const errors: string[] = [];
     page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await expect(page.getByTestId('app-name')).toHaveText('Waku');
     await expect(page.getByTestId('count')).toHaveText('0');
     await page.getByTestId('increment').click();

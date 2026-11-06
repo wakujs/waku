@@ -1,6 +1,6 @@
 import type { CDPSession, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
-import { prepareNormalSetup, test } from './utils.js';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('performance-track');
 
@@ -26,6 +26,7 @@ test.describe('performance-track', () => {
       await expect(
         page.getByText('HomeSlowServerComponent resolved after 500ms'),
       ).toBeVisible();
+      await waitForHydration(page);
       await waitForPerformanceFlush(page);
       const initialNames = serverComponentTrackNames(
         await stopTracing(session),
