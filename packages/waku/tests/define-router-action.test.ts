@@ -524,6 +524,10 @@ describe('redirect', () => {
   it.each([
     '//example.com/',
     '/\\example.com/',
+    '/..//example.com/',
+    '/.//example.com/',
+    '/a/..//example.com/',
+    '/%2e%2e//example.com/',
     'login',
     '/bad\npath',
     '/bad\x7fpath',

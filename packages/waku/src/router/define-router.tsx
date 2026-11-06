@@ -128,17 +128,23 @@ export function notFound(): never {
   cancelRender();
 }
 
+// Dot segments can turn a path-absolute href into a network-path reference,
+// such as `/..//evil.example`, so check the resolved pathname too.
+const staysInTheApp = (location: string) => {
+  if (!location.startsWith('/')) {
+    return false;
+  }
+  const url = new URL(location, 'http://localhost');
+  return url.origin === 'http://localhost' && !url.pathname.startsWith('//');
+};
+
 const getRedirectLocation = (
   to: NavigationHref | `http://${string}` | `https://${string}` | URL,
 ) => {
   let location = to instanceof URL ? to.href : to;
   const leavesTheApp =
     location.startsWith('http://') || location.startsWith('https://');
-  if (
-    leavesTheApp
-      ? !URL.canParse(location)
-      : !location.startsWith('/') || location.startsWith('//')
-  ) {
+  if (leavesTheApp ? !URL.canParse(location) : !staysInTheApp(location)) {
     throw new Error(`Invalid redirect location: ${JSON.stringify(location)}`);
   }
   if (leavesTheApp) {
