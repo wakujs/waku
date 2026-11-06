@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { prepareNormalSetup, test } from './utils.js';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('wildcard-api-routes');
 
@@ -88,6 +88,7 @@ test.describe('wildcard api routes', () => {
     expect(await response.text()).toBe('files:path/to/file.txt');
 
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await page.getByRole('link', { name: 'About' }).click();
     await expect(page.getByRole('heading', { name: 'About' })).toBeVisible();
   });

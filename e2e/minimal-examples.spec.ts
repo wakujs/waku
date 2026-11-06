@@ -29,6 +29,7 @@ test.describe('minimal examples coverage', () => {
     page.on('pageerror', (error) => errors.push(error.message));
     const response = await page.goto(`http://localhost:${port}/cancel-render`);
     expect(response?.status()).toBe(200);
+    await waitForHydration(page);
     await expect(page.getByRole('heading')).toHaveText('Cancellation shell');
     await expect(page.getByText('Sibling survived')).toBeVisible();
     await expect(page.getByText('Cancelled slot fallback')).toBeHidden();

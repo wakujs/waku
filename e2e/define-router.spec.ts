@@ -405,6 +405,7 @@ test.describe(`define-router`, () => {
   }) => {
     const response = await page.goto(`http://localhost:${port}/server-search`);
     expect(await response!.text()).toContain('href="/foo?q=server"');
+    await waitForHydration(page);
     const link = page.getByRole('link', { name: 'Server search', exact: true });
     await expect(link).toHaveAttribute('href', '/foo?q=server');
     await link.click();
@@ -416,6 +417,7 @@ test.describe(`define-router`, () => {
     page,
   }) => {
     await page.goto(`http://localhost:${port}/server-search`);
+    await waitForHydration(page);
     const link = page.getByRole('link', { name: 'Composed search' });
     await expect(link).toHaveAttribute('href', '/foo?q=composed');
     await link.click();
