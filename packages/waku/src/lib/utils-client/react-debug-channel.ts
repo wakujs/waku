@@ -98,7 +98,6 @@ export function setupDebugChannel(
     return {};
   }
 
-  // Unlike randomUUID, getRandomValues also works over LAN HTTP.
   const newDebugId = bytesToBase64(crypto.getRandomValues(new Uint8Array(16)));
   const debugChannel = createWsDebugChannel(newDebugId);
   const fetchFn = ((input: RequestInfo | URL, init?: RequestInit) => {
