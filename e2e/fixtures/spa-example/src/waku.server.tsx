@@ -12,7 +12,7 @@ export default adapter({
           'sessionStorage.setItem("bootstrap", "request");',
       });
     }
-    return 'fallback';
+    return renderHtmlFallback();
   },
   handleBuild: async ({ generateDefaultHtml }) => {
     await generateDefaultHtml('index.html');

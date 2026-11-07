@@ -87,7 +87,7 @@ const { rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export default createServerEntryAdapter(
   (
-    { processRequest, processBuild, notFoundHtml },
+    { processRequest, processBuild },
     options?: {
       middlewareFns?: ((opts: { app: Hono }) => MiddlewareHandler)[];
       middlewareModules?: Record<
@@ -98,13 +98,6 @@ export default createServerEntryAdapter(
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
     const app = new Hono();
-
-    app.notFound((c) => {
-      if (notFoundHtml) {
-        return c.html(notFoundHtml, 404);
-      }
-      return c.text('404 Not Found', 404);
-    });
 
     for (const middlewareFn of middlewareFns) {
       app.use(middlewareFn({ app }));
@@ -121,7 +114,7 @@ export default createServerEntryAdapter(
 );
 ```
 
-`middlewareRunner(...)` runs middleware modules discovered from `src/middleware`, passing each the `{ app }` Hono instance. `rscMiddleware(...)` delegates the final request handling to Waku. Request context such as `getRequest` is established by the app's handlers around each render, so the adapter does not install it.
+`middlewareRunner(...)` runs middleware modules discovered from `src/middleware`, passing each the `{ app }` Hono instance. `rscMiddleware(...)` delegates the final request handling to Waku and passes requests Waku leaves unhandled, including URLs outside the base path, to the next Hono handler. Request context such as `getRequest` is established by the app's handlers around each render, so the adapter does not install it.
 
 `waku/internals` is intentionally internal. It is useful for adapter authors, but it is not a stable application API.
 
@@ -147,7 +140,7 @@ The callback passed to `createServerEntryAdapter` receives:
 - `unstable_setAllEnv`: updates Waku's server-side environment map.
 - `config`: resolved Waku config without the Vite config.
 - `isBuild`: `true` while Vite is running the build environment.
-- `notFoundHtml`: prerendered not-found HTML, when available.
+- `notFoundHtml`: deprecated; the contents of `public/404.html`, when present.
 
 The returned server entry can include:
 

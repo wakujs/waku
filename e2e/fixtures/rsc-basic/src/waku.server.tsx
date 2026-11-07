@@ -6,7 +6,10 @@ const BUILD_METADATA_KEY = 'metadata-key';
 const BUILD_METADATA_VALUE = 'metadata-value';
 
 export default adapter({
-  handleRequest: async (input, { renderRsc, loadBuildMetadata }) => {
+  handleRequest: async (
+    input,
+    { renderRsc, renderHtmlFallback, loadBuildMetadata },
+  ) => {
     const enhanced = input.req.headers.get('X-Enhancer');
     if (input.type === 'rsc') {
       if (
@@ -52,7 +55,7 @@ export default adapter({
         { value },
       );
     }
-    return 'fallback';
+    return renderHtmlFallback();
   },
   handleBuild: async ({ saveBuildMetadata }) => {
     await saveBuildMetadata(BUILD_METADATA_KEY, BUILD_METADATA_VALUE);

@@ -182,6 +182,15 @@ test('preserves an explicit response cache policy', async () => {
   expect(response.headers.get('cache-control')).toBe('public, max-age=60');
 });
 
+test('leaves a malformed payload URL unhandled', async () => {
+  const handle = vi.fn();
+  const response = await runtime(handle).processRequest(
+    new Request('https://app.example/RSC/not-encoded'),
+  );
+  expect(response).toBeNull();
+  expect(handle).not.toHaveBeenCalled();
+});
+
 test('reports an ordinary handler failure as a generic 500', async () => {
   const error = new Error('private details');
   const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});

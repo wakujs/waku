@@ -6,7 +6,7 @@ const router = fsRouter(import.meta.glob('./pages/**/*.tsx'));
 export default adapter({
   handleRequest: async (input, utils) => {
     if (input.type === 'http') {
-      return 'fallback';
+      return utils.renderHtmlFallback();
     }
     return router.handleRequest(input, utils);
   },
