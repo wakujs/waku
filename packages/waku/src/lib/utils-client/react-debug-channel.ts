@@ -98,7 +98,7 @@ export function setupDebugChannel(
     return {};
   }
 
-  const newDebugId = crypto.randomUUID();
+  const newDebugId = bytesToBase64(crypto.getRandomValues(new Uint8Array(16)));
   const debugChannel = createWsDebugChannel(newDebugId);
   const fetchFn = ((input: RequestInfo | URL, init?: RequestInit) => {
     const headers = new Headers(init?.headers);

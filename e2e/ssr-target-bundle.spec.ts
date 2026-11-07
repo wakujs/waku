@@ -1,4 +1,4 @@
-import { readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { expect } from '@playwright/test';
 import { prepareNormalSetup, test, waitForHydration } from './utils.js';
@@ -19,6 +19,26 @@ test.describe(`ssr-target-bundle`, () => {
   });
 
   test.describe('PRD only tests', { tag: '@prd' }, () => {
+    test('client bundles exclude the development debug channel', () => {
+      const publicDir = path.join(fixtureDir, 'dist', 'public');
+      const scripts = readdirSync(publicDir, {
+        recursive: true,
+        encoding: 'utf8',
+      }).filter((file) => file.endsWith('.js'));
+      expect(scripts.length).toBeGreaterThan(0);
+
+      for (const file of scripts) {
+        const source = readFileSync(path.join(publicDir, file), 'utf8');
+        // Protocol strings survive minification even when function names do not.
+        expect(
+          source.match(/waku:debug-cmd|waku:debug-data|X-Waku-Debug-Id/g),
+          file,
+        ).toBeNull();
+        // This fixture has no application code that generates random IDs.
+        expect(source.match(/getRandomValues|randomUUID/g), file).toBeNull();
+      }
+    });
+
     test('image exists in folder public/assets', async () => {
       const imagePath = path.join(fixtureDir, 'dist', 'public', 'assets');
       const files = readdirSync(imagePath);
