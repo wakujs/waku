@@ -95,6 +95,7 @@ export const DEV_ONLY_SPECS = [
   'cloudflare-adapter.dev.spec.ts',
   'hot-reload.dev.spec.ts',
   'performance-track.dev.spec.ts',
+  'public-host.dev.spec.ts',
 ] as const;
 
 export const ECOSYSTEM_CI_IGNORED_SPECS = ['monorepo.spec.ts'] as const;
