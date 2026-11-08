@@ -24,7 +24,7 @@ export function notFoundPlugin(): Plugin {
         if (!warned) {
           warned = true;
           this.warn(
-            'Serving public/404.html for unhandled requests is deprecated. Add a /404 page instead.',
+            "Waku's server will stop serving public/404.html for unhandled requests in a future release. Add a /404 page instead.",
           );
         }
         return `export { default } from ${JSON.stringify(notFoundHtmlPath + '?raw')}`;

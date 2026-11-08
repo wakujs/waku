@@ -42,11 +42,6 @@ const loadSsrEntryModule = () => {
 const toProcessRequest =
   (handleRequest: HandleRequest): ProcessRequest =>
   async (req) => {
-    try {
-      parseRequestUrl(new URL(req.url), config.basePath, config.rscBase);
-    } catch {
-      return null;
-    }
     const temporaryReferences = createTemporaryReferenceSet();
 
     const debugId =
@@ -57,6 +52,12 @@ const toProcessRequest =
       (debugId && debugChannelRegistry?.get(debugId)) || [];
     if (debugId) {
       debugChannelRegistry?.delete(debugId);
+    }
+    try {
+      parseRequestUrl(new URL(req.url), config.basePath, config.rscBase);
+    } catch {
+      finishDebugChannel?.();
+      return null;
     }
 
     const renderUtils = createRenderUtils({
