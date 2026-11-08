@@ -46,6 +46,9 @@ export default function Layout({ children }: { children: ReactNode }) {
         <a href="/mix-budget" data-testid="go-mix-budget">
           Mix budget
         </a>
+        <a href="/fragment-target#comments" data-testid="go-fragment-target">
+          Fragment target
+        </a>
       </nav>
       {children}
     </div>

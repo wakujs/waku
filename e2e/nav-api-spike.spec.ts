@@ -393,6 +393,28 @@ test.describe('nav-api-spike', () => {
     expect(await page.evaluate(() => window.scrollY)).toBe(before);
   });
 
+  test('a fragment link to another route scrolls to the target', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await page.getByTestId('go-fragment-target').click();
+    await expect(page).toHaveURL(/\/fragment-target#comments$/);
+    await expect(page.getByTestId('comments')).toBeInViewport();
+  });
+
+  test('navigate finished settles after the destination commits', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    const committed = await page.evaluate(async () => {
+      await window.navigation.navigate('/fragment-target').finished;
+      return document.querySelector('[data-testid="fragment-target"]') !== null;
+    });
+    expect(committed).toBe(true);
+  });
+
   test('an action rerenders the route it was called from', async ({ page }) => {
     await page.goto(`http://localhost:${port}/rerender-action`);
     await waitForHydration(page);
