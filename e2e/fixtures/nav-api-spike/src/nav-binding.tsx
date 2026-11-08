@@ -18,6 +18,7 @@ import type { ReactNode } from 'react';
 import {
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
+  unstable_combineElements as combineElements,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useMergeElements_UNSTABLE as useMergeElements,
 } from 'waku/minimal/client';
@@ -58,15 +59,24 @@ type FollowRun = (
 
 type LastFollow = { href: string; follows: number };
 
+type CommitWaiter = { seq: number; resolve: () => void };
+
+type CommitTracker = { seq: number; waiters: Set<CommitWaiter> };
+
 type FollowHost = {
   ownsNavigation: boolean;
   follows: number;
   setFollows: (n: number | ((n: number) => number)) => void;
   lastFollowRef: { current: LastFollow | null };
   runRef: { current: FollowRun };
+  commitRef: { current: CommitTracker };
 };
 
 const FollowHostContext = createContext<FollowHost | null>(null);
+
+// client symbol keys survive later merges, so a commit carrying a newer
+// sequence also includes every earlier merge
+const COMMIT_SEQ_ID = Symbol('COMMIT_SEQ');
 
 const subscribeNever = () => () => {};
 const getClientTrue = () => true;
@@ -228,7 +238,7 @@ const NavBinding = ({
   fallbackRoute: RouteProps;
   serverFunctionRouting: ServerFunctionRouting;
 }) => {
-  const { ownsNavigation, setFollows, lastFollowRef, runRef } =
+  const { ownsNavigation, setFollows, lastFollowRef, runRef, commitRef } =
     use(FollowHostContext)!;
   const elements = use(useElementsPromise());
   const mergeElements = useMergeElements();
@@ -240,7 +250,43 @@ const NavBinding = ({
   useLayoutEffect(() => {
     resolvedRef.current = elements;
     settledHrefRef.current = window.location.href;
-  }, [elements]);
+    const committed = elements[COMMIT_SEQ_ID];
+    if (typeof committed !== 'number') {
+      return;
+    }
+    for (const waiter of commitRef.current.waiters) {
+      if (waiter.seq <= committed) {
+        waiter.resolve();
+      }
+    }
+  }, [elements, commitRef]);
+  // mergeElements settles with the payload, before React commits it. The
+  // intercept handler has to outlive the commit: the browser scrolls to the
+  // fragment and fires navigatesuccess once the handler settles.
+  const mergeCommitted = async (
+    patch: Readonly<Record<string | symbol, unknown>>,
+    signal: AbortSignal,
+  ) => {
+    const tracker = commitRef.current;
+    const seq = ++tracker.seq;
+    const committed = new Promise<void>((resolve) => {
+      const waiter: CommitWaiter = {
+        seq,
+        resolve: () => {
+          tracker.waiters.delete(waiter);
+          signal.removeEventListener('abort', waiter.resolve);
+          resolve();
+        },
+      };
+      tracker.waiters.add(waiter);
+      signal.addEventListener('abort', waiter.resolve);
+      if (signal.aborted) {
+        waiter.resolve();
+      }
+    });
+    await mergeElements(combineElements(patch, { [COMMIT_SEQ_ID]: seq }));
+    return committed;
+  };
   const has404 = has404FromElements(elements);
   // hash-only navigations skip load; the host still has to report the current hash
   const [hash, setHash] = useState('');
@@ -350,9 +396,10 @@ const NavBinding = ({
       return;
     }
     if (outcome.type === 'reused') {
-      await mergeElements({
-        [ROUTE_ID]: [outcome.route.path, outcome.route.query],
-      });
+      await mergeCommitted(
+        { [ROUTE_ID]: [outcome.route.path, outcome.route.query] },
+        signal,
+      );
       return;
     }
     const patch = buildMergePatch(
@@ -361,8 +408,9 @@ const NavBinding = ({
       base,
       { settled },
     );
-    await mergeElements(patch);
+    const committed = mergeCommitted(patch, signal);
     cache.learnStaticFromElements(outcome.elements);
+    await committed;
   };
 
   useLayoutEffect(() => {
@@ -492,6 +540,7 @@ export const NavRouter = ({
   const [follows, setFollows] = useState(0);
   const lastFollowRef = useRef<LastFollow | null>(null);
   const runRef = useRef<FollowRun>(async () => {});
+  const commitRef = useRef<CommitTracker>({ seq: 0, waiters: new Set() });
   const followHost = useMemo(
     (): FollowHost => ({
       ownsNavigation,
@@ -499,6 +548,7 @@ export const NavRouter = ({
       setFollows,
       lastFollowRef,
       runRef,
+      commitRef,
     }),
     [follows, ownsNavigation],
   );
