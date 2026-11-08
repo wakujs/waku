@@ -25,7 +25,10 @@ import {
 } from 'vitest';
 import { ETAGS_ID, IMMUTABLE_ETAG } from '../src/lib/utils-isomorphic/etags.js';
 import type { Etags } from '../src/lib/utils-isomorphic/etags.js';
-import { INTERNAL_ServerRoot } from '../src/minimal/client-runtime.js';
+import {
+  INTERNAL_ServerRoot,
+  createBuildIdMismatchForTest,
+} from '../src/minimal/client-runtime.js';
 import {
   adoptElements,
   collectEtags,
@@ -1945,6 +1948,30 @@ describe('Slice', () => {
     expect(slices().getInFlightSliceCount()).toBe(0);
 
     view.unmount();
+  });
+
+  test('reloads when a slice comes from a different build', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const reloadSpy = vi
+      .spyOn(window.location, 'reload')
+      .mockImplementation(() => {});
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
+    refetch.mockRejectedValueOnce(createBuildIdMismatchForTest());
+    installRefetch(refetch);
+    try {
+      const view = await renderWithMinimalRoot(
+        <Slice id="slice-1" lazy fallback={<div>fallback</div>} />,
+        {},
+      );
+
+      expect(reloadSpy).toHaveBeenCalledOnce();
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      view.unmount();
+    } finally {
+      consoleSpy.mockRestore();
+      reloadSpy.mockRestore();
+    }
   });
 });
 

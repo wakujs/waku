@@ -36,6 +36,7 @@ import {
   Children_UNSTABLE as Children,
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
+  unstable_isBuildIdMismatch as isBuildIdMismatch,
   useFetchRsc_UNSTABLE,
   useMergeElements_UNSTABLE,
 } from '../src/minimal/client.js';
@@ -881,6 +882,39 @@ describe('minimal/client build id mismatch', () => {
     await wait();
 
     expect(onBuildIdMismatch).toHaveBeenCalledTimes(1);
+  });
+
+  test('a stale build id rejects without a handler', async () => {
+    vi.stubEnv('WAKU_BUILD_ID', 'build-1');
+    mocks.createFromFetch.mockResolvedValueOnce({
+      _value: null,
+      _buildId: 'build-2',
+    });
+    stubFetch();
+
+    const error = await fetchRsc('R/z.txt').catch((e: unknown) => e);
+
+    expect(isBuildIdMismatch(error)).toBe(true);
+  });
+
+  test('a server function call reloads on a stale build id', async () => {
+    vi.stubEnv('WAKU_BUILD_ID', 'build-1');
+    mocks.createFromFetch.mockResolvedValueOnce({
+      _value: null,
+      _buildId: 'build-2',
+    });
+    stubFetch();
+    const reload = vi
+      .spyOn(window.location, 'reload')
+      .mockImplementation(() => {});
+    try {
+      void callServerRsc('file#action', []);
+      await wait();
+
+      expect(reload).toHaveBeenCalledOnce();
+    } finally {
+      reload.mockRestore();
+    }
   });
 
   test('a matching build id does not trigger the handler', async () => {

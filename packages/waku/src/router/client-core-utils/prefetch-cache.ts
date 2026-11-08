@@ -14,6 +14,10 @@ export type PrefetchOptions = {
 export type PrefetchEntry = {
   promise: Promise<Elements>;
   expiresAt: number;
+  /**
+   * @deprecated Will be removed in a future release, when a prefetch from a
+   * different build rejects instead.
+   */
   onInvalidate: (callback: () => void) => () => void;
 };
 

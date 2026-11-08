@@ -136,21 +136,42 @@ const decodeRsc = (
     }),
   );
 
-const reloadOnBuildIdMismatch = (
-  elements: Promise<Elements>,
+const buildIdMismatch = Symbol('waku.build-id-mismatch');
+
+/**
+ * Recognizes the rejection of an RSC fetch whose response comes from a
+ * different build, such as a newer deploy. Reload the page to recover.
+ */
+export function isBuildIdMismatch(error: unknown): boolean {
+  return error instanceof Error && error.cause === buildIdMismatch;
+}
+
+const createBuildIdMismatch = () =>
+  new Error('RSC response is from a different build', {
+    cause: buildIdMismatch,
+  });
+export const createBuildIdMismatchForTest = createBuildIdMismatch;
+
+const checkBuildId = (
+  data: Elements,
   onBuildIdMismatch: (() => void) | undefined,
-) => {
-  if (!import.meta.env?.WAKU_BUILD_ID) {
-    return;
+): Elements => {
+  const buildId = import.meta.env?.WAKU_BUILD_ID;
+  if (buildId && data._buildId !== buildId) {
+    if (!onBuildIdMismatch) {
+      throw createBuildIdMismatch();
+    }
+    onBuildIdMismatch();
   }
-  Promise.resolve(elements).then(
-    (data) => {
-      if (data._buildId !== import.meta.env.WAKU_BUILD_ID) {
-        (onBuildIdMismatch ?? (() => window.location.reload()))();
-      }
-    },
-    () => {},
-  );
+  return data;
+};
+
+const reloadOnBuildIdMismatch = (error: unknown): Promise<never> => {
+  if (isBuildIdMismatch(error)) {
+    window.location.reload();
+    return new Promise(() => {});
+  }
+  throw error;
 };
 
 const EMPTY_RSC_ENHANCERS: readonly RscEnhancer[] = [];
@@ -186,8 +207,7 @@ const fetchRscElements = (
       responsePromise,
       temporaryReferences,
       debug?.debugChannel,
-    );
-    reloadOnBuildIdMismatch(elements, options.onBuildIdMismatch);
+    ).then((data) => checkBuildId(data, options.onBuildIdMismatch));
     return elements.then((data) =>
       type === 'call'
         ? { elements: adoptElements(data), value: data._value }
@@ -218,7 +238,7 @@ export async function callServerRsc(serverFunctionId: string, args: unknown[]) {
     rscParams,
     { type: 'call', etags: rootStore?.etags ?? {} },
     rootStore?.rscEnhancers,
-  );
+  ).catch(reloadOnBuildIdMismatch);
   if (Reflect.ownKeys(data).length) {
     if (!rootStore) {
       throw new Error(
@@ -268,7 +288,7 @@ const getInitialRsc = (
         rscParams,
         initial ? { initial } : { etags: {} },
         initial ? EMPTY_RSC_ENHANCERS : rscEnhancers,
-      ).then(({ elements }) => elements);
+      ).then(({ elements }) => elements, reloadOnBuildIdMismatch);
     },
     rscEnhancers,
   );

@@ -27,6 +27,10 @@ export type RscEnhancer = (requestRsc: RequestRsc) => RequestRsc;
 
 export type FetchRscOptions = {
   signal?: AbortSignal;
+  /**
+   * @deprecated Will be removed in a future release. Without it, a response
+   * from a different build rejects; recognize it with `unstable_isBuildIdMismatch`.
+   */
   onBuildIdMismatch?: () => void;
   /**
    * Retained elements whose etags are sent, allowing the server to omit them.

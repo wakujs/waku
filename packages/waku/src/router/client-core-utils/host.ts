@@ -8,9 +8,9 @@ import type { RouteProps } from '../isomorphic-utils/route-path.js';
  *
  * Bindings reconcile the response route metadata and observe `INTENT` to
  * follow redirects and custom 404s. Bound that chain with `decideRouteIntent`
- * and `MAX_FOLLOWS_PER_NAVIGATION`, and surface failures. Pass `onBuildIdMismatch`
- * and `onInvalidate` for build-mismatch recovery or leave Minimal's default
- * reload behavior. `navigate` must honor `scroll`.
+ * and `MAX_FOLLOWS_PER_NAVIGATION`, and surface failures. A failure recognized
+ * by `unstable_isBuildIdMismatch` comes from a different build; reload at the
+ * failed URL to recover. `navigate` must honor `scroll`.
  */
 export type RouterHost = {
   route: RouteProps;
