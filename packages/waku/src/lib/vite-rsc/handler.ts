@@ -28,6 +28,7 @@ import {
 import { encodeRscPath } from '../utils-isomorphic/rsc-path.js';
 import { stringToStream } from '../utils-isomorphic/stream.js';
 import { createRenderUtils } from '../utils-server/render.js';
+import { parseRequestUrl } from '../utils-server/request-url.js';
 import { getInput } from '../utils-server/request.js';
 
 const loadSsrEntryModule = () => {
@@ -51,6 +52,12 @@ const toProcessRequest =
       (debugId && debugChannelRegistry?.get(debugId)) || [];
     if (debugId) {
       debugChannelRegistry?.delete(debugId);
+    }
+    try {
+      parseRequestUrl(new URL(req.url), config.basePath, config.rscBase);
+    } catch {
+      finishDebugChannel?.();
+      return null;
     }
 
     const renderUtils = createRenderUtils({
@@ -105,9 +112,15 @@ const toProcessRequest =
       return res;
     }
 
-    // fallback index html like packages/waku/src/lib/plugins/vite-plugin-rsc-index.ts
     const url = new URL(req.url);
     if (res === 'fallback' || (!res && url.pathname === '/')) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          res === 'fallback'
+            ? "[waku] Returning 'fallback' from handleRequest is deprecated. Return renderHtmlFallback() instead."
+            : "[waku] Serving the HTML fallback for an unhandled '/' is deprecated. Return renderHtmlFallback() from handleRequest instead.",
+        );
+      }
       return renderUtils.renderHtmlFallback();
     }
 

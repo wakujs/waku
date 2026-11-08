@@ -63,7 +63,7 @@ export default adapter(pages);
 
 ## Disable SSR from a Custom Server Entry
 
-If you own `src/waku.server.tsx`, you can return `'fallback'` for document requests. This is useful when using the file-system router but deciding at the server-entry level that some or all document requests should skip SSR.
+If you own `src/waku.server.tsx`, you can return `utils.renderHtmlFallback()` for document requests. This is useful when using the file-system router but deciding at the server-entry level that some or all document requests should skip SSR.
 
 The simplest whole-app version looks like this:
 
@@ -77,7 +77,7 @@ const router = fsRouter(import.meta.glob('./pages/**/*.tsx'));
 export default adapter({
   handleRequest: async (input, utils) => {
     if (input.type === 'http') {
-      return 'fallback';
+      return utils.renderHtmlFallback();
     }
     return router.handleRequest(input, utils);
   },
@@ -92,13 +92,13 @@ You can also make this conditional:
 ```tsx
 handleRequest: async (input, utils) => {
   if (input.type === 'http' && input.pathname.startsWith('/app')) {
-    return 'fallback';
+    return utils.renderHtmlFallback();
   }
   return router.handleRequest(input, utils);
 };
 ```
 
-In production, a static page is served from the HTML the build prerendered for it, before `handleRequest` runs, so `'fallback'` only reaches dynamic pages. Give a static page [`unstable_noSsr`](#disable-ssr-for-a-page) as well, and the build writes the fallback shell for it instead.
+In production, a static page is served from the HTML the build prerendered for it, before `handleRequest` runs, so this fallback only reaches dynamic pages. Give a static page [`unstable_noSsr`](#disable-ssr-for-a-page) as well, and the build writes the fallback shell for it instead.
 
 ## What the Fallback Contains
 

@@ -195,6 +195,27 @@ A form POST without JavaScript to an unresolved route renders the custom 404 pag
 
 A client-side navigation to a missing route is answered the same way: the server sends the 404 page in the response, so the client does not need a second request. That response carries status 200, because it carries a page rather than an error. A direct page load of the same URL is still a 404. Where no Waku server answers, such as a static export, the request 404s and the client fetches the 404 page itself.
 
+## Handle Unmatched Requests in Middleware
+
+Middleware in `src/middleware` wraps Waku, so after `await next()` it sees Waku's response, including the 404 for a request no route matched. To hand those requests to another handler, such as an existing Hono app during a migration, replace the response:
+
+```ts
+// src/middleware/legacy.ts
+import type { MiddlewareHandler } from 'hono';
+import { legacyApp } from '../legacy-app';
+
+const legacy = (): MiddlewareHandler => async (c, next) => {
+  await next();
+  if (c.res.status === 404) {
+    c.res = await legacyApp.fetch(c.req.raw);
+  }
+};
+
+export default legacy;
+```
+
+This also replaces the `/404` page and `requestNotFound()` responses, so leave out the `/404` page while another app owns unmatched paths.
+
 ## Pending Client Intents
 
 An intent in the current page response stays attached to that response. A

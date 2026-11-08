@@ -1,5 +1,6 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import type { Handlers } from '../src/lib/types.js';
+import { DEBUG_ID_HEADER } from '../src/lib/utils-isomorphic/react-debug-channel.js';
 import { cancelRender } from '../src/lib/utils-isomorphic/render-cancellation.js';
 import { createServerEntryAdapter } from '../src/lib/vite-rsc/handler.js';
 import {
@@ -48,7 +49,10 @@ const runtime = (
   return result;
 };
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 test.each([
   { method: 'GET', headers: {}, status: 405 },
@@ -180,6 +184,22 @@ test('preserves an explicit response cache policy', async () => {
     await processRequest(new Request('https://app.example/RSC/page.txt')),
   ).toBe(response);
   expect(response.headers.get('cache-control')).toBe('public, max-age=60');
+});
+
+test('leaves a malformed payload URL unhandled', async () => {
+  const finishDebugChannel = vi.fn();
+  const registry = new Map([['debug', [vi.fn(), finishDebugChannel]]]);
+  vi.stubGlobal('__WAKU_DEBUG_CHANNEL_REGISTRY__', registry);
+  const handle = vi.fn();
+  const response = await runtime(handle).processRequest(
+    new Request('https://app.example/RSC/not-encoded', {
+      headers: { [DEBUG_ID_HEADER]: 'debug' },
+    }),
+  );
+  expect(response).toBeNull();
+  expect(handle).not.toHaveBeenCalled();
+  expect(registry.size).toBe(0);
+  expect(finishDebugChannel).toHaveBeenCalledOnce();
 });
 
 test('reports an ordinary handler failure as a generic 500', async () => {
