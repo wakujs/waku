@@ -142,7 +142,7 @@ export function fsRouterTypegenPlugin(
         if (!existsSync(pagesDir) || !(await detectFsRouterUsage(srcDir))) {
           return;
         }
-        const generation = await generateFsRouterTypes(pagesDir, opts);
+        const generation = await generateFsRouterTypes(srcDir, opts);
         if (!generation) {
           // skip failures
           return;
@@ -204,14 +204,16 @@ export async function detectFsRouterUsage(srcDir: string): Promise<boolean> {
 }
 
 export async function generateFsRouterTypes(
-  pagesDir: string,
-  {
-    pagesDir: pagesDirName = SRC_PAGES,
+  srcPath: string,
+  opts: FsRouterDirs = {},
+) {
+  const {
+    pagesDir = SRC_PAGES,
     apiDir = '_api',
     slicesDir = '_slices',
     interceptorsDir = '_interceptors',
-  }: FsRouterDirs = {},
-) {
+  } = opts;
+  const pagesPath = joinPath(srcPath, pagesDir);
   const nonPageDirs = new Set([apiDir, slicesDir, interceptorsDir]);
   // Recursively collect `.tsx` files in the given directory
   const collectFiles = async (
@@ -227,7 +229,7 @@ export async function generateFsRouterTypes(
         await collectFiles(fullPath, files);
       } else {
         if (entry.name.endsWith('.tsx')) {
-          files.push(fullPath.slice(pagesDir.length));
+          files.push(fullPath.slice(pagesPath.length));
         }
       }
     }
@@ -235,7 +237,7 @@ export async function generateFsRouterTypes(
   };
 
   const fileExportsGetConfig = async (filePath: string) => {
-    const file = await parseModule(pagesDir + filePath);
+    const file = await parseModule(pagesPath + filePath);
     return file.body.some((node) => {
       if (node.type !== 'ExportNamedDeclaration') {
         return false;
@@ -322,7 +324,7 @@ export async function generateFsRouterTypes(
         const moduleName = moduleNames[file.src];
         lines.push(
           `// prettier-ignore`,
-          `import type { getConfig as ${moduleName}_getConfig } from './${pagesDirName}/${file.src.replace('.tsx', '')}';`,
+          `import type { getConfig as ${moduleName}_getConfig } from './${pagesDir}/${file.src.replace('.tsx', '')}';`,
         );
       }
     }
@@ -378,7 +380,7 @@ export async function generateFsRouterTypes(
     return result;
   };
 
-  const files = (await collectFiles(pagesDir)).sort();
+  const files = (await collectFiles(pagesPath)).sort();
   if (!files.length) {
     return;
   }

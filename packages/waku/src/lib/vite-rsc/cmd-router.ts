@@ -45,7 +45,7 @@ const runTypegen = async () => {
     process.exit(1);
   }
 
-  const result = await generateFsRouterTypes(pagesDir);
+  const result = await generateFsRouterTypes(srcDir);
   if (!result) {
     console.error('Failed to generate types (no page files found)');
     process.exit(1);
