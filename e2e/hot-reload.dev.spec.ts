@@ -379,7 +379,7 @@ defineConfig({
     }).toPass({ timeout: 10_000 });
   });
 
-  test('reload environment variables when new env added', async ({
+  test('reload environment variables when .env changes', async ({
     request,
   }) => {
     // Create initial .env file with only one variable
@@ -393,6 +393,8 @@ defineConfig({
       'waku.config.ts',
       `import { defineConfig } from 'waku/config';
 
+const configMessage = process.env.TEST_MESSAGE;
+
 export default defineConfig({
   vite: {
     plugins: [
@@ -404,6 +406,7 @@ export default defineConfig({
               if (req.url === "/__test_env") {
                 res.setHeader('Content-Type', 'application/json');
                 res.end(JSON.stringify({
+                  configMessage,
                   testMessage: process.env.TEST_MESSAGE,
                   appVersion: process.env.APP_VERSION,
                   newFeature: process.env.NEW_FEATURE,
@@ -463,6 +466,20 @@ export default defineConfig({
       expect(data.testMessage).toEqual('Hello from initial .env');
       expect(data.appVersion).toEqual('1.0.0');
       expect(data.newFeature).toEqual('enabled');
+    }).toPass({ timeout: 20_000 });
+
+    createFile(
+      standaloneDir,
+      '.env',
+      'TEST_MESSAGE=Hello from edited .env\nAPP_VERSION=1.0.0\nNEW_FEATURE=enabled\n',
+    );
+
+    await expect(async () => {
+      const res = await request.get(`http://localhost:${port}/__test_env`);
+      expect(res.status()).toBe(200);
+      const data = await res.json();
+      expect(data.testMessage).toEqual('Hello from edited .env');
+      expect(data.configMessage).toEqual('Hello from edited .env');
     }).toPass({ timeout: 20_000 });
   });
 });

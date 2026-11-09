@@ -23,13 +23,13 @@ const createServerRestartHandler = (strictPort: boolean) => {
       console.log('Restarting server with fresh plugin configuration...');
       const previousUrls = server.resolvedUrls;
       await server.close();
+      loadDotEnv();
       const freshConfig = await loadConfig();
       const newServer = await startDevServer(
         host,
         port,
         freshConfig,
         strictPort,
-        true,
       );
       if (previousUrls) {
         server.resolvedUrls = newServer.resolvedUrls;
@@ -45,11 +45,7 @@ const startDevServer = async (
   port: number,
   config: Required<Config>,
   strictPort: boolean,
-  isRestart?: boolean,
 ) => {
-  if (isRestart) {
-    loadDotEnv();
-  }
   const server = await vite.createServer({
     configFile: false,
     plugins: [combinedPlugins(config)],
