@@ -11,6 +11,8 @@ import {
 import { EXTENSIONS, SRC_PAGES, SRC_SERVER_ENTRY } from '../constants.js';
 import { joinPath } from '../utils-isomorphic/path.js';
 
+const NON_PAGE_DIRS = new Set(['_slices', '_api', '_interceptors']);
+
 type ProgramNode = ParseResult['program'];
 type ImportDeclaration = ProgramNode['body'][number] & {
   type: 'ImportDeclaration';
@@ -248,7 +250,11 @@ export async function generateFsRouterTypes(pagesDir: string) {
         return null;
       }
 
-      if (isIgnoredPath(filePath.split('/'))) {
+      if (
+        isIgnoredPath(filePath.split('/')) ||
+        NON_PAGE_DIRS.has(filePath.split('/')[1]!) ||
+        filePath.endsWith('/_root.tsx')
+      ) {
         continue;
       } else if (filePath.endsWith('/_layout.tsx')) {
         const path = filePath.slice(0, -'/_layout.tsx'.length);
@@ -293,7 +299,11 @@ export async function generateFsRouterTypes(pagesDir: string) {
       }
     }
 
-    lines.push('', '// prettier-ignore', 'type Page =');
+    lines.push(
+      '',
+      '// prettier-ignore',
+      fileInfo.length ? 'type Page =' : 'type Page = never',
+    );
     for (const file of fileInfo) {
       const moduleName = moduleNames[file.src];
       if (file.hasGetConfig) {

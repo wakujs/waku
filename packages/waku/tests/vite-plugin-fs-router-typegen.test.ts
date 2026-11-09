@@ -83,8 +83,6 @@ describe('vite-plugin-fs-router-typegen', () => {
       `// prettier-ignore
 import type { getConfig as File_CategoryTagsIndex_getConfig } from './pages/[category]/[...tags]/index';
 // prettier-ignore
-import type { getConfig as File_Root_getConfig } from './pages/_root';
-// prettier-ignore
 import type { getConfig as File_Index_getConfig } from './pages/index';
 // prettier-ignore
 import type { getConfig as File_OneTwoThree_getConfig } from './pages/one-two-three';
@@ -176,6 +174,13 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     ).toBeUndefined();
   });
 
+  test('emits an empty page union when no file is a page', async () => {
+    const generated = await generateFsRouterTypes(
+      path.join(fixturesDir, 'plugin-fs-router-typegen-root-only', 'pages'),
+    );
+    expect(generated).toContain('type Page = never;');
+  });
+
   test('skips getConfig imports for pages without getConfig', async () => {
     const generated = await generateFsRouterTypes(
       path.join(
@@ -213,6 +218,8 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     expect(generated).not.toContain('_actions');
     expect(generated).not.toContain('_components');
     expect(generated).not.toContain('_hooks');
+    expect(generated).not.toContain('_root');
+    expect(generated).not.toContain('_slices');
     expect(generated).toContain(
       "| ({ path: '/landing' } & GetConfigResponse<typeof File_GroupLandingIndex_getConfig>)",
     );
