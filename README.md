@@ -419,6 +419,25 @@ export const getConfig = async () => {
 };
 ```
 
+#### Exact routes
+
+To serve a path with literal brackets, set `exactPath: true` in `getConfig`. Segments such as `[slug]` and `[...catchAll]` in the file path then match only themselves, not dynamic values.
+
+```tsx
+// ./src/pages/exact/[slug].tsx
+// Served only at /exact/[slug]
+export default async function ExactPage() {
+  return <h1>Exact</h1>;
+}
+
+export const getConfig = async () => {
+  return {
+    render: 'static',
+    exactPath: true,
+  } as const;
+};
+```
+
 #### Group routes
 
 Group routes allow you to organize routes into logical groups without affecting the URL structure. They're created by wrapping directory names in parentheses (e.g., `(group)`). This is particularly useful for sharing layouts across multiple routes while keeping the URL clean.

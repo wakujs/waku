@@ -611,6 +611,29 @@ describe('type tests', () => {
         >
       >(true);
     });
+
+    it('exactPath', () => {
+      const mockedCreatePages: typeof createPages = vi.fn();
+      const _exactRouter = mockedCreatePages(async ({ createPage }) => [
+        createPage({
+          render: 'static',
+          path: '/about',
+          component: () => 'about me',
+        }),
+        createPage({
+          render: 'static',
+          path: '/exact/[slug]',
+          exactPath: true,
+          component: () => 'exact',
+        }),
+      ]);
+      expectType<
+        TypeEqual<
+          PathsForPages<typeof _exactRouter>,
+          '/about' | '/exact/[slug]'
+        >
+      >(true);
+    });
   });
 });
 

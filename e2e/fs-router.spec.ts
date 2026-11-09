@@ -253,6 +253,15 @@ test.describe('fs-router', () => {
     ).toBeVisible();
   });
 
+  test('exactPath', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/exact/[slug]`);
+    await expect(
+      page.getByRole('heading', { name: 'Exact path' }),
+    ).toBeVisible();
+    const res = await fetch(`http://localhost:${port}/exact/foo`);
+    expect(res.status).toBe(404);
+  });
+
   test('search params (fs-router getConfig codec, typegen)', async ({
     page,
   }) => {

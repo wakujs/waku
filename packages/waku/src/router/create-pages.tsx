@@ -238,7 +238,7 @@ export type CreatePage = <
     unstable_noSsr?: boolean;
     /**
      * If true, the path will be matched exactly, without wildcards or slugs.
-     * This is intended for extending support to create custom routers.
+     * File-based pages set it in `getConfig`.
      */
     exactPath?: ExactPath;
     /**
