@@ -17,9 +17,14 @@ type DynamicPage = {
   render: 'dynamic';
 };
 
-type IsExactPathPage<Page> = true extends Page[Extract<keyof Page, 'exactPath'>]
-  ? true
-  : false;
+type ExactPathValue<Page> = Page[Extract<keyof Page, 'exactPath'>];
+
+type IsExactPathPage<Page> =
+  true extends ExactPathValue<Page>
+    ? [ExactPathValue<Page>] extends [true | undefined]
+      ? true
+      : false
+    : false;
 
 type IsPageWithSlug<Page extends AnyPage> = Page extends {
   path: infer P;

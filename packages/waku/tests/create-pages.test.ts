@@ -633,6 +633,19 @@ describe('type tests', () => {
           '/about' | '/exact/[slug]'
         >
       >(true);
+
+      const exactFlag = Math.random() < 0.5;
+      const _flagRouter = mockedCreatePages(async ({ createPage }) => [
+        createPage({
+          render: 'dynamic',
+          path: '/blog/[slug]',
+          exactPath: exactFlag,
+          component: () => 'blog',
+        }),
+      ]);
+      expectType<
+        TypeEqual<PathsForPages<typeof _flagRouter>, `/blog/${string}`>
+      >(true);
     });
   });
 });

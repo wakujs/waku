@@ -12,6 +12,9 @@ export function assertRouterTargetTyping(router: Router, computed: string) {
   void router.push(nestedRoute({ params: { name: 'x' } }));
   void router.replace(nestedRoute({ params: { name: 'x' } }));
   void router.push(groupedSearchRoute({ search: { q: 'grouped', page: 2 } }));
+  void router.push('/exact/[slug]');
+  // @ts-expect-error an exactPath page matches only its literal path
+  void router.push('/exact/foo');
 
   const article = unstable_createRouteHref({
     path: '/page-with-segment/(article)/[slug]',
