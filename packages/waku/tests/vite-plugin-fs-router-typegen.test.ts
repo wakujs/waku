@@ -174,6 +174,13 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     ).toBeUndefined();
   });
 
+  test('emits an empty page union when no file is a page', async () => {
+    const generated = await generateFsRouterTypes(
+      path.join(fixturesDir, 'plugin-fs-router-typegen-root-only', 'pages'),
+    );
+    expect(generated).toContain('type Page = never;');
+  });
+
   test('skips getConfig imports for pages without getConfig', async () => {
     const generated = await generateFsRouterTypes(
       path.join(

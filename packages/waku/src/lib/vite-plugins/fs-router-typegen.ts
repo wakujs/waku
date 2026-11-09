@@ -299,7 +299,11 @@ export async function generateFsRouterTypes(pagesDir: string) {
       }
     }
 
-    lines.push('', '// prettier-ignore', 'type Page =');
+    lines.push(
+      '',
+      '// prettier-ignore',
+      fileInfo.length ? 'type Page =' : 'type Page = never',
+    );
     for (const file of fileInfo) {
       const moduleName = moduleNames[file.src];
       if (file.hasGetConfig) {
