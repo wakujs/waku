@@ -126,7 +126,7 @@ export default createServerEntryAdapter(
       } catch {
         // Not in a Cloudflare environment
       }
-      // workerd passes the env, which disallow_importable_env hides from the import
+      // disallow_importable_env hides env from the import
       const env = cloudflareContext && (workerEnv ?? cloudflareContext.env);
       if (env) {
         unstable_setAllEnv(env);
