@@ -897,6 +897,34 @@ describe('minimal/client build id mismatch', () => {
     expect(isBuildIdMismatch(error)).toBe(true);
   });
 
+  test("a Root's initial fetch reloads on a stale build id", async () => {
+    vi.stubEnv('WAKU_BUILD_ID', 'build-1');
+    mocks.createFromFetch.mockResolvedValueOnce({
+      _value: null,
+      _buildId: 'build-2',
+    });
+    stubFetch();
+    const reload = vi
+      .spyOn(window.location, 'reload')
+      .mockImplementation(() => {});
+    const root = createRoot(document.createElement('div'));
+    try {
+      await act(async () => {
+        root.render(
+          <Root>
+            <Slot id="App" />
+          </Root>,
+        );
+        await wait();
+      });
+
+      expect(reload).toHaveBeenCalledOnce();
+    } finally {
+      act(() => root.unmount());
+      reload.mockRestore();
+    }
+  });
+
   test('a server function call reloads on a stale build id', async () => {
     vi.stubEnv('WAKU_BUILD_ID', 'build-1');
     mocks.createFromFetch.mockResolvedValueOnce({

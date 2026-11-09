@@ -3857,8 +3857,11 @@ describe('Router integration', () => {
       .spyOn(window.location, 'reload')
       .mockImplementation(() => {});
     try {
-      capture.router!.prefetch('/next');
-      prefetchRsc.mock.calls[0]?.[2]?.onBuildIdMismatch?.();
+      await act(async () => {
+        capture.router!.prefetch('/next');
+        pending.reject(createBuildIdMismatchForTest());
+        await flush();
+      });
 
       expect(window.location.pathname).toBe('/start');
       expect(reloadSpy).not.toHaveBeenCalled();
@@ -3896,18 +3899,13 @@ describe('Router integration', () => {
       const navigation = capture.router!.push('/next');
       await Promise.resolve();
 
-      prefetchRsc.mock.calls[0]?.[2]?.onBuildIdMismatch?.();
-
-      expect(window.location.pathname).toBe('/next');
-      expect(reloadSpy).toHaveBeenCalledOnce();
-
-      pending.resolve({
-        [ROUTE_ID]: ['/next', ''],
-        [IS_STATIC_ID]: false,
-      });
+      pending.reject(createBuildIdMismatchForTest());
       await act(async () => {
         await navigation;
       });
+
+      expect(window.location.pathname).toBe('/next');
+      expect(reloadSpy).toHaveBeenCalledOnce();
     } finally {
       pending.resolve({});
       reloadSpy.mockRestore();
@@ -5028,16 +5026,13 @@ describe('Router integration', () => {
       capture.router!.prefetch('/next');
       await flush();
     });
-    expect(prefetchRsc.mock.calls.at(0)?.[2]).toEqual({
-      onBuildIdMismatch: expect.any(Function),
-    });
+    expect(prefetchRsc.mock.calls.at(0)?.[2]).toBeUndefined();
 
     await act(async () => {
       capture.router!.prefetch('/next?q=b');
       await flush();
     });
     expect(prefetchRsc.mock.calls.at(1)?.[2]).toEqual({
-      onBuildIdMismatch: expect.any(Function),
       unstable_base: expect.objectContaining({
         [unstable_getRouteSlotId('/next')]: expect.anything(),
       }),

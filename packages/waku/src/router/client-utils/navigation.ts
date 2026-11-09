@@ -9,6 +9,7 @@ import {
 } from 'react';
 import {
   unstable_combineElements as combineElements,
+  unstable_isBuildIdMismatch as isBuildIdMismatch,
   useMergeElements_UNSTABLE as useMergeElements,
   useRegisterRscReloadListener_UNSTABLE as useRegisterRscReloadListener,
 } from 'waku/minimal/client';
@@ -114,7 +115,7 @@ export function useNavigation(
   }, [elements]);
   const getElements = useCallback(() => committedElementsRef.current, []);
 
-  const startInstantPaint = useStartInstantPaint(getElements, reloadWithUrl);
+  const startInstantPaint = useStartInstantPaint(getElements);
   const mergeElements = useMergeElements();
   const registerRscReloadListener = useRegisterRscReloadListener();
   const [navigationError, setNavigationError] = useState<NavigationError>();
@@ -349,12 +350,6 @@ export function useNavigation(
           base,
           url: routeUrl,
           follows: initialFollows,
-          onBuildIdMismatch: reloadWithUrl,
-          onInvalidate: (url) => {
-            if (!controller.signal.aborted) {
-              reloadWithUrl(url);
-            }
-          },
           ...(adopt ? { adopt } : {}),
         });
         if (requestRef.current !== request) {
@@ -377,6 +372,10 @@ export function useNavigation(
         }
         if (outcome.type === 'failed') {
           const { error } = outcome;
+          if (isBuildIdMismatch(error)) {
+            reloadWithUrl(outcome.url);
+            return {};
+          }
           commitHistory(outcome.url, historyIntent);
           const failureState: RouterState = {
             ...createRouterState(outcome.route, outcome.url, {
