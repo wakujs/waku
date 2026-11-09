@@ -281,7 +281,22 @@ createPage({
 });
 ```
 
-This is primarily intended for custom router integrations.
+File-based pages set it in `getConfig`:
+
+```tsx
+// ./src/pages/exact/[slug].tsx
+// Served only at /exact/[slug]
+export default async function ExactPage() {
+  return <h1>Exact</h1>;
+}
+
+export const getConfig = async () => {
+  return {
+    render: 'static',
+    exactPath: true,
+  } as const;
+};
+```
 
 ### Router paths type safety
 

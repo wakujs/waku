@@ -611,6 +611,42 @@ describe('type tests', () => {
         >
       >(true);
     });
+
+    it('exactPath', () => {
+      const mockedCreatePages: typeof createPages = vi.fn();
+      const _exactRouter = mockedCreatePages(async ({ createPage }) => [
+        createPage({
+          render: 'static',
+          path: '/about',
+          component: () => 'about me',
+        }),
+        createPage({
+          render: 'static',
+          path: '/exact/[slug]',
+          exactPath: true,
+          component: () => 'exact',
+        }),
+      ]);
+      expectType<
+        TypeEqual<
+          PathsForPages<typeof _exactRouter>,
+          '/about' | '/exact/[slug]'
+        >
+      >(true);
+
+      const exactFlag = Math.random() < 0.5;
+      const _flagRouter = mockedCreatePages(async ({ createPage }) => [
+        createPage({
+          render: 'dynamic',
+          path: '/blog/[slug]',
+          exactPath: exactFlag,
+          component: () => 'blog',
+        }),
+      ]);
+      expectType<
+        TypeEqual<PathsForPages<typeof _flagRouter>, `/blog/${string}`>
+      >(true);
+    });
   });
 });
 

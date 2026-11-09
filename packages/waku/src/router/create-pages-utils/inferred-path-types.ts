@@ -17,6 +17,15 @@ type DynamicPage = {
   render: 'dynamic';
 };
 
+type ExactPathValue<Page> = Page[Extract<keyof Page, 'exactPath'>];
+
+type IsExactPathPage<Page> =
+  true extends ExactPathValue<Page>
+    ? [ExactPathValue<Page>] extends [true | undefined]
+      ? true
+      : false
+    : false;
+
 type IsPageWithSlug<Page extends AnyPage> = Page extends {
   path: infer P;
 }
@@ -110,19 +119,21 @@ type CollectPathsForDynamicSlugPage<Page extends DynamicPage> = Page extends {
  *
  * You can consider this the entry point to each of the page => path mappings.
  *
- * - Pages with no slugs will return the path as is.
+ * - Pages with no slugs or with `exactPath` will return the path as is.
  * - Static pages with slugs will return the path with the slugs replaced with the staticPaths.
  * - Dynamic pages with slugs will return the path with the slugs replaced with any string.
  *   (e.g., `/[slug]` => `/${string}`)
  */
 type CollectPaths<EachPage extends AnyPage> = EachPage extends unknown
-  ? IsPageWithSlug<EachPage> extends true
-    ? EachPage extends StaticSlugPage
-      ? CollectPathsForStaticSlugPage<EachPage>
-      : EachPage extends DynamicPage
-        ? CollectPathsForDynamicSlugPage<EachPage>
-        : never
-    : EachPage['path']
+  ? IsExactPathPage<EachPage> extends true
+    ? EachPage['path']
+    : IsPageWithSlug<EachPage> extends true
+      ? EachPage extends StaticSlugPage
+        ? CollectPathsForStaticSlugPage<EachPage>
+        : EachPage extends DynamicPage
+          ? CollectPathsForDynamicSlugPage<EachPage>
+          : never
+      : EachPage['path']
   : never;
 
 /** Generic type that represents any page. This is used to infer the return type of createPages. */
