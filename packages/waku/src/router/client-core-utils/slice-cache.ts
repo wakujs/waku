@@ -1,4 +1,5 @@
 import { startTransition } from 'react';
+import { unstable_isBuildIdMismatch as isBuildIdMismatch } from 'waku/minimal/client';
 import type { useMergeElements_UNSTABLE as useMergeElements } from 'waku/minimal/client';
 import { encodeSliceId } from '../isomorphic-utils/router-protocol.js';
 import type { FetchRsc } from './caches.js';
@@ -37,6 +38,10 @@ export function createSliceCache(fetchRsc: FetchRsc) {
           }
         })
         .catch((e) => {
+          if (isBuildIdMismatch(e)) {
+            window.location.reload();
+            return;
+          }
           console.error('Failed to fetch slice:', e);
         })
         .finally(() => {

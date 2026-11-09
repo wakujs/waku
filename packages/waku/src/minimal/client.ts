@@ -13,5 +13,6 @@ export {
   combineElements as unstable_combineElements,
   formatRscUrl as unstable_formatRscUrl,
   hasRenderCancellationDigest as unstable_hasRenderCancellationDigest,
+  isBuildIdMismatch as unstable_isBuildIdMismatch,
   isImmutableElement as unstable_isImmutableElement,
 } from './client-runtime.js';

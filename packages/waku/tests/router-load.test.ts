@@ -2,8 +2,10 @@
 import { createRequire } from 'node:module';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ETAGS_ID } from '../src/lib/utils-isomorphic/etags.js';
+import { createBuildIdMismatchForTest } from '../src/minimal/client-runtime.js';
 import { adoptElements } from '../src/minimal/client-utils/element-etags.js';
 import type { FetchRsc } from '../src/minimal/client-utils/root-store.js';
+import { unstable_isBuildIdMismatch as isBuildIdMismatch } from '../src/minimal/client.js';
 import { getRouterCacheForTest } from '../src/router/client-core-utils/caches.js';
 import {
   HAS404_ID,
@@ -303,7 +305,7 @@ describe('load', () => {
     });
   });
 
-  it('omits onBuildIdMismatch so fetchRsc keeps the reload default', async () => {
+  it('omits onBuildIdMismatch when the caller supplied none', async () => {
     fetchRsc.mockResolvedValue({ [ROUTE_ID]: ['/next', ''] });
     await cache.load(route('/next'), baseOpts());
     const options = fetchRsc.mock.calls[0]?.[2];
@@ -346,45 +348,63 @@ describe('load', () => {
     });
   });
 
+  it('fails a load that adopts a prefetch from a different build', async () => {
+    let respondStale!: () => void;
+    fetchRsc.mockImplementationOnce(
+      (_path, _params, options) =>
+        new Promise((resolve, reject) => {
+          // Minimal's build check: the deprecated callback, else a rejection
+          respondStale = () => {
+            if (options?.onBuildIdMismatch) {
+              options.onBuildIdMismatch();
+              resolve({});
+            } else {
+              reject(createBuildIdMismatchForTest());
+            }
+          };
+        }),
+    );
+    cache.prefetchRoute(route('/next'));
+    const pending = cache.load(route('/next'), baseOpts());
+    respondStale();
+    const outcome = await pending;
+    expect(outcome.type).toBe('failed');
+    expect(outcome.type === 'failed' && isBuildIdMismatch(outcome.error)).toBe(
+      true,
+    );
+  });
+
   it('notifies onInvalidate when a prefetch is dropped', async () => {
     const onInvalidate = vi.fn();
-    const controller = new AbortController();
-    let invalidate!: () => void;
-    fetchRsc.mockImplementationOnce((_path, _params, options) => {
-      invalidate = () =>
-        (
-          options as { onBuildIdMismatch?: () => void } | undefined
-        )?.onBuildIdMismatch?.();
-      return new Promise(() => {});
-    });
-    cache.prefetchRoute(route('/next'));
-    const pending = cache.load(
-      route('/next'),
-      baseOpts({ onInvalidate, signal: controller.signal }),
+    let rejectFetch!: (error: unknown) => void;
+    fetchRsc.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectFetch = reject;
+        }),
     );
-    invalidate();
+    cache.prefetchRoute(route('/next'));
+    const pending = cache.load(route('/next'), baseOpts({ onInvalidate }));
+    rejectFetch(createBuildIdMismatchForTest());
+    await expect(pending).resolves.toMatchObject({ type: 'failed' });
     expect(onInvalidate).toHaveBeenCalledWith(new URL('http://localhost/next'));
-    controller.abort();
-    await expect(pending).resolves.toEqual({ type: 'aborted' });
   });
 
   it('notifies the remaining load when a second adopter of the same prefetch aborts', async () => {
     const onInvalidateA = vi.fn();
     const onInvalidateB = vi.fn();
-    const controllerA = new AbortController();
     const controllerB = new AbortController();
-    let invalidate!: () => void;
-    fetchRsc.mockImplementationOnce((_path, _params, options) => {
-      invalidate = () =>
-        (
-          options as { onBuildIdMismatch?: () => void } | undefined
-        )?.onBuildIdMismatch?.();
-      return new Promise(() => {});
-    });
+    let rejectFetch!: (error: unknown) => void;
+    fetchRsc.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectFetch = reject;
+        }),
+    );
     cache.prefetchRoute(route('/next'));
     const pendingA = cache.load(
       route('/next'),
-      baseOpts({ onInvalidate: onInvalidateA, signal: controllerA.signal }),
+      baseOpts({ onInvalidate: onInvalidateA }),
     );
     const pendingB = cache.load(
       route('/next'),
@@ -392,13 +412,12 @@ describe('load', () => {
     );
     controllerB.abort();
     await expect(pendingB).resolves.toEqual({ type: 'aborted' });
-    invalidate();
+    rejectFetch(createBuildIdMismatchForTest());
+    await expect(pendingA).resolves.toMatchObject({ type: 'failed' });
     expect(onInvalidateA).toHaveBeenCalledWith(
       new URL('http://localhost/next'),
     );
     expect(onInvalidateB).not.toHaveBeenCalled();
-    controllerA.abort();
-    await expect(pendingA).resolves.toEqual({ type: 'aborted' });
   });
 
   it('returns aborted when the signal is already aborted', async () => {

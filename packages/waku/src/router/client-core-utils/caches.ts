@@ -1,4 +1,5 @@
 import {
+  unstable_isBuildIdMismatch as isBuildIdMismatch,
   unstable_isImmutableElement as isImmutableElement,
   useFetchRsc_UNSTABLE as useFetchRsc,
 } from 'waku/minimal/client';
@@ -31,9 +32,19 @@ type CachedLoadOptions = LoadOptions & {
   adopt?: Promise<Elements>;
   /** Retained elements used for etags and static-route reuse. */
   base: Elements;
-  /** Overrides Minimal's default build-mismatch reload when supplied. */
+  /**
+   * Receives the attempt's browser URL when its response comes from a
+   * different build.
+   * @deprecated Will be removed in a future release. Without it, the load
+   * fails; recognize the error with `unstable_isBuildIdMismatch`.
+   */
   onBuildIdMismatch?: (url: URL) => void;
-  /** Observes prefetch invalidation with the affected attempt's browser URL. */
+  /**
+   * Observes prefetch invalidation with the affected attempt's browser URL.
+   * @deprecated Will be removed in a future release. A prefetch from a
+   * different build rejects, failing the load that adopts it; recognize the
+   * error with `unstable_isBuildIdMismatch`.
+   */
   onInvalidate?: (url: URL) => void;
 };
 
@@ -91,12 +102,15 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
         rscPath,
         route.query,
         (base, invalidate) =>
-          fetchRouteElements(rscPath, createRscParams(route.query), {
-            ...(base ? { unstable_base: base } : {}),
-            onBuildIdMismatch: () => {
+          fetchRouteElements(
+            rscPath,
+            createRscParams(route.query),
+            base ? { unstable_base: base } : {},
+          ).catch((error: unknown) => {
+            if (isBuildIdMismatch(error)) {
               invalidate();
-              manager.clear();
-            },
+            }
+            throw error;
           }),
         options,
       );

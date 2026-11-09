@@ -45,10 +45,7 @@ const pinForSwr =
       isImmutableElement(getResolvedElements(), key));
 export const pinForSwrForTest = pinForSwr;
 
-export function useStartInstantPaint(
-  getElements: () => Elements,
-  reloadWithUrl: (url: URL) => void,
-) {
+export function useStartInstantPaint(getElements: () => Elements) {
   const mergeInstantElements = useMergeInstantElements();
   const cache = useRouterCache();
   return useCallback(
@@ -77,7 +74,6 @@ export function useStartInstantPaint(
             createRscParams(attempt.route.query),
             {
               signal,
-              onBuildIdMismatch: () => reloadWithUrl(attempt.url),
               ...(prefetchedElements
                 ? { unstable_base: prefetchedElements }
                 : {}),
@@ -90,6 +86,6 @@ export function useStartInstantPaint(
         overlay,
       );
     },
-    [cache, getElements, mergeInstantElements, reloadWithUrl],
+    [cache, getElements, mergeInstantElements],
   );
 }

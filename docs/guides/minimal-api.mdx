@@ -40,6 +40,7 @@ The Minimal API consists of server handler contracts and client rendering primit
 | `waku/minimal/server` | `unstable_cancelRenderStream`                                                                    | Discarding a render stream with a cancellation signal.                |
 | `waku/minimal/server` | `unstable_createWeakPromise`                                                                     | Publishing optional data without keeping an RSC render open.          |
 | `waku/minimal/client` | `unstable_hasRenderCancellationDigest`                                                           | Rethrowing cancellation in custom boundaries.                         |
+| `waku/minimal/client` | `unstable_isBuildIdMismatch`                                                                     | Recognizing a response from a different build.                        |
 | `waku/minimal/client` | `Root_UNSTABLE`                                                                                  | Installing the minimal client runtime.                                |
 | `waku/minimal/client` | `Slot_UNSTABLE`                                                                                  | Rendering a server element by RSC ID.                                 |
 | `waku/minimal/client` | `Children_UNSTABLE`                                                                              | Placing client-side `Slot` children inside a server-rendered element. |
@@ -695,6 +696,7 @@ Important behavior:
 - Each slot's etag stays with the element map Minimal made it in. Passing a map as `unstable_base` to `fetchRsc` sends its etags, so the server can skip the slots it holds. A map made by `combineElements` keeps them; a copy made with a spread or `Object.assign` does not.
 - If you return only `InnerApp`, previously rendered elements such as `App` stay mounted.
 - If the refetch fails, the existing element map stays in place.
+- If the response comes from a different build, such as after a deploy, `fetchRsc` rejects with an error that `unstable_isBuildIdMismatch` recognizes. Reload the page to load the new build. The Root's initial fetch and server function calls reload on their own.
 
 With `unstable_base`, `fetchRsc` sends the base's validators and returns only
 the response entries. Omitted slots are not filled from the base. Passing this

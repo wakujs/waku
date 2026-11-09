@@ -14,6 +14,11 @@ export type PrefetchOptions = {
 export type PrefetchEntry = {
   promise: Promise<Elements>;
   expiresAt: number;
+  /**
+   * @deprecated Will be removed in a future release. A prefetch from a
+   * different build rejects `promise` with an error that
+   * `unstable_isBuildIdMismatch` recognizes.
+   */
   onInvalidate: (callback: () => void) => () => void;
 };
 

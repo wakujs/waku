@@ -1,8 +1,10 @@
 /** @vitest-environment happy-dom */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ETAGS_ID, IMMUTABLE_ETAG } from '../src/lib/utils-isomorphic/etags.js';
+import { createBuildIdMismatchForTest } from '../src/minimal/client-runtime.js';
 import { adoptElements } from '../src/minimal/client-utils/element-etags.js';
 import type { FetchRsc } from '../src/minimal/client-utils/root-store.js';
+import { unstable_isBuildIdMismatch as isBuildIdMismatch } from '../src/minimal/client.js';
 import {
   createRscParams,
   getRouterCacheForTest,
@@ -142,9 +144,7 @@ describe('layer-1 router caches', () => {
     expect(rscParams).toBeInstanceOf(URLSearchParams);
     expect((rscParams as URLSearchParams).get('query')).toBe('x=1');
     expect(fetchRsc.mock.calls[0]?.[0]).toBe(encodeRoutePath('/next'));
-    expect(fetchRsc.mock.calls[0]?.[2]).toEqual({
-      onBuildIdMismatch: expect.any(Function),
-    });
+    expect(fetchRsc.mock.calls[0]?.[2]).toEqual({});
   });
 
   it('createRscParams is a plain factory and does not memoize', () => {
@@ -191,28 +191,16 @@ describe('layer-1 router caches', () => {
     expect(cache.getPrefetch(route('/p', 'q=2'))).toBeUndefined();
   });
 
-  it('a build-id mismatch drops the prefetch store and keeps static paths', async () => {
+  it('a build-id mismatch rejects and drops only that prefetch', async () => {
     await settlePrefetch('/a', '', { a: 1 });
-    cache.learnStaticFromElements({
-      [ROUTE_ID]: ['/static', ''],
-      [IS_STATIC_ID]: true,
-    });
-    fetchRsc.mockImplementationOnce(pending);
+    fetchRsc.mockRejectedValueOnce(createBuildIdMismatchForTest());
     cache.prefetchRoute(route('/c'));
-    const onBuildIdMismatch = fetchRsc.mock.calls.at(-1)?.[2]
-      ?.onBuildIdMismatch as (() => void) | undefined;
-    onBuildIdMismatch?.();
-    expect(cache.getPrefetchedElements(route('/a'))).toBeUndefined();
+    const error = await cache
+      .getPrefetch(route('/c'))
+      ?.promise.catch((e: unknown) => e);
+    expect(isBuildIdMismatch(error)).toBe(true);
     expect(cache.getPrefetch(route('/c'))).toBeUndefined();
-    expect(
-      cache.canReuseStaticRoute(route('/static'), {
-        [getRouteSlotId('/static')]: 'page',
-      }),
-    ).toBe(true);
-    fetchRsc.mockClear();
-    fetchRsc.mockImplementation(pending);
-    cache.prefetchRoute(route('/static'));
-    expect(fetchRsc).toHaveBeenCalled();
+    expect(cache.getPrefetchedElements(route('/a'))).toBeDefined();
   });
 
   it('getPrefetch is undefined after ttl expiry', () => {
