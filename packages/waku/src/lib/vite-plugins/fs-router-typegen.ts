@@ -11,7 +11,12 @@ import {
 import { EXTENSIONS, SRC_PAGES, SRC_SERVER_ENTRY } from '../constants.js';
 import { joinPath } from '../utils-isomorphic/path.js';
 
-const NON_PAGE_DIRS = new Set(['_slices', '_api', '_interceptors']);
+type FsRouterDirs = {
+  pagesDir?: string;
+  apiDir?: string;
+  slicesDir?: string;
+  interceptorsDir?: string;
+};
 
 type ProgramNode = ParseResult['program'];
 type ImportDeclaration = ProgramNode['body'][number] & {
@@ -105,25 +110,39 @@ const getExportedName = (specifier: ExportSpecifier) =>
     ? specifier.exported.name
     : String(specifier.exported.value);
 
-export function fsRouterTypegenPlugin(opts: { srcDir: string }): Plugin {
+/**
+ * Generates `pages.gen.ts` for fsRouter while the dev server runs. Waku adds it
+ * by default. `srcDir` is Waku's `srcDir`, and the other options are fsRouter's
+ * directory options with the same defaults. To match an fsRouter configured with
+ * custom directories, add it to `vite.plugins` in `waku.config.ts` with the same
+ * options; it replaces the default one.
+ *
+ * @example
+ * import { unstable_fsRouterTypegenPlugin as fsRouterTypegenPlugin } from 'waku/vite-plugins';
+ *
+ * fsRouterTypegenPlugin({ srcDir: 'src', slicesDir: '_fragments' });
+ */
+export function fsRouterTypegenPlugin(
+  opts: { srcDir: string } & FsRouterDirs,
+): Plugin {
   return {
     name: 'waku:vite-plugins:fs-router-typegen',
     apply: 'serve',
     configureServer(server) {
-      const srcDir = joinPath(server.config.root, opts.srcDir);
-      const pagesDir = joinPath(srcDir, SRC_PAGES);
+      const srcPath = joinPath(server.config.root, opts.srcDir);
+      const pagesPath = joinPath(srcPath, opts.pagesDir ?? SRC_PAGES);
 
-      const outputFile = joinPath(srcDir, 'pages.gen.ts');
+      const outputFile = joinPath(srcPath, 'pages.gen.ts');
       const updateGeneratedFile = async (file: string | undefined) => {
         // skip when the changed file is the generated file itself
         if (file && outputFile.endsWith(file)) {
           return;
         }
         // skip when the entries file exists or pages dir does not exist
-        if (!existsSync(pagesDir) || !(await detectFsRouterUsage(srcDir))) {
+        if (!existsSync(pagesPath) || !(await detectFsRouterUsage(srcPath))) {
           return;
         }
-        const generation = await generateFsRouterTypes(pagesDir);
+        const generation = await generateFsRouterTypes(srcPath, opts);
         if (!generation) {
           // skip failures
           return;
@@ -184,7 +203,18 @@ export async function detectFsRouterUsage(srcDir: string): Promise<boolean> {
   }
 }
 
-export async function generateFsRouterTypes(pagesDir: string) {
+export async function generateFsRouterTypes(
+  srcPath: string,
+  opts?: FsRouterDirs,
+) {
+  const {
+    pagesDir = SRC_PAGES,
+    apiDir = '_api',
+    slicesDir = '_slices',
+    interceptorsDir = '_interceptors',
+  } = opts || {};
+  const pagesPath = joinPath(srcPath, pagesDir);
+  const nonPageDirs = new Set([apiDir, slicesDir, interceptorsDir]);
   // Recursively collect `.tsx` files in the given directory
   const collectFiles = async (
     dir: string,
@@ -199,7 +229,7 @@ export async function generateFsRouterTypes(pagesDir: string) {
         await collectFiles(fullPath, files);
       } else {
         if (entry.name.endsWith('.tsx')) {
-          files.push(fullPath.slice(pagesDir.length));
+          files.push(fullPath.slice(pagesPath.length));
         }
       }
     }
@@ -207,7 +237,7 @@ export async function generateFsRouterTypes(pagesDir: string) {
   };
 
   const fileExportsGetConfig = async (filePath: string) => {
-    const file = await parseModule(pagesDir + filePath);
+    const file = await parseModule(pagesPath + filePath);
     return file.body.some((node) => {
       if (node.type !== 'ExportNamedDeclaration') {
         return false;
@@ -252,7 +282,7 @@ export async function generateFsRouterTypes(pagesDir: string) {
 
       if (
         isIgnoredPath(filePath.split('/')) ||
-        NON_PAGE_DIRS.has(filePath.split('/')[1]!) ||
+        nonPageDirs.has(filePath.split('/')[1]!) ||
         filePath.endsWith('/_root.tsx')
       ) {
         continue;
@@ -294,7 +324,7 @@ export async function generateFsRouterTypes(pagesDir: string) {
         const moduleName = moduleNames[file.src];
         lines.push(
           `// prettier-ignore`,
-          `import type { getConfig as ${moduleName}_getConfig } from './${SRC_PAGES}/${file.src.replace('.tsx', '')}';`,
+          `import type { getConfig as ${moduleName}_getConfig } from './${pagesDir}/${file.src.replace('.tsx', '')}';`,
         );
       }
     }
@@ -350,7 +380,7 @@ export async function generateFsRouterTypes(pagesDir: string) {
     return result;
   };
 
-  const files = (await collectFiles(pagesDir)).sort();
+  const files = (await collectFiles(pagesPath)).sort();
   if (!files.length) {
     return;
   }

@@ -77,7 +77,7 @@ describe('vite-plugin-fs-router-typegen', () => {
 
   test('creates the expected imports the generated entries file', async () => {
     const generated = await generateFsRouterTypes(
-      path.join(fixturesDir, 'plugin-fs-router-typegen', 'pages'),
+      path.join(fixturesDir, 'plugin-fs-router-typegen'),
     );
     expect(generated).toContain(
       `// prettier-ignore
@@ -169,25 +169,31 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
   test('returns undefined when there are no page files to scan', async () => {
     expect(
       await generateFsRouterTypes(
-        path.join(fixturesDir, 'plugin-fs-router-typegen-empty', 'pages'),
+        path.join(fixturesDir, 'plugin-fs-router-typegen-empty'),
       ),
     ).toBeUndefined();
   });
 
+  test('follows custom fsRouter directory names', async () => {
+    const generated = await generateFsRouterTypes(
+      path.join(fixturesDir, 'plugin-fs-router-typegen-custom-dirs'),
+      { pagesDir: 'routes', slicesDir: '_fragments' },
+    );
+    expect(generated).toContain("from './routes/index'");
+    expect(generated).toContain("path: '/_slices/legacy'");
+    expect(generated).not.toContain('_fragments');
+  });
+
   test('emits an empty page union when no file is a page', async () => {
     const generated = await generateFsRouterTypes(
-      path.join(fixturesDir, 'plugin-fs-router-typegen-root-only', 'pages'),
+      path.join(fixturesDir, 'plugin-fs-router-typegen-root-only'),
     );
     expect(generated).toContain('type Page = never;');
   });
 
   test('skips getConfig imports for pages without getConfig', async () => {
     const generated = await generateFsRouterTypes(
-      path.join(
-        fixturesDir,
-        'plugin-fs-router-typegen-missing-getconfig',
-        'pages',
-      ),
+      path.join(fixturesDir, 'plugin-fs-router-typegen-missing-getconfig'),
     );
 
     expect(generated).not.toContain('GetConfigResponse');
@@ -200,7 +206,7 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
 
   test('emits page and layout paths while skipping ignored files and missing getConfig', async () => {
     const generated = await generateFsRouterTypes(
-      path.join(fixturesDir, 'plugin-fs-router-typegen-complex', 'pages'),
+      path.join(fixturesDir, 'plugin-fs-router-typegen-complex'),
     );
 
     expect(generated).toBeTruthy();
