@@ -83,8 +83,6 @@ describe('vite-plugin-fs-router-typegen', () => {
       `// prettier-ignore
 import type { getConfig as File_CategoryTagsIndex_getConfig } from './pages/[category]/[...tags]/index';
 // prettier-ignore
-import type { getConfig as File_Root_getConfig } from './pages/_root';
-// prettier-ignore
 import type { getConfig as File_Index_getConfig } from './pages/index';
 // prettier-ignore
 import type { getConfig as File_OneTwoThree_getConfig } from './pages/one-two-three';
@@ -213,6 +211,8 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     expect(generated).not.toContain('_actions');
     expect(generated).not.toContain('_components');
     expect(generated).not.toContain('_hooks');
+    expect(generated).not.toContain('_root');
+    expect(generated).not.toContain('_slices');
     expect(generated).toContain(
       "| ({ path: '/landing' } & GetConfigResponse<typeof File_GroupLandingIndex_getConfig>)",
     );
