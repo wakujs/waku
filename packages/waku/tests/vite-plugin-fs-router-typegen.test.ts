@@ -174,6 +174,15 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     ).toBeUndefined();
   });
 
+  test('follows custom fsRouter directory names', async () => {
+    const generated = await generateFsRouterTypes(
+      path.join(fixturesDir, 'plugin-fs-router-typegen-complex', 'pages'),
+      { pagesDir: 'routes', slicesDir: '_fragments' },
+    );
+    expect(generated).toContain("from './routes/admin/dashboard'");
+    expect(generated).toContain("path: '/_slices/sidebar'");
+  });
+
   test('emits an empty page union when no file is a page', async () => {
     const generated = await generateFsRouterTypes(
       path.join(fixturesDir, 'plugin-fs-router-typegen-root-only', 'pages'),

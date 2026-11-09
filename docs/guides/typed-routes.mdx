@@ -279,6 +279,24 @@ export const productSearchCodec = {
 
 The schema validates inbound queries and outbound values independently. Query-state libraries such as [nuqs](https://nuqs.dev) can also supply parsers and serializers through an isomorphic module such as `nuqs/server`; return a query without its leading `?` and implement any required outbound validation in `serialize`. Waku's hooks do not require the library's client provider.
 
+## Custom fsRouter Directories
+
+While the dev server runs, Waku generates `src/pages.gen.ts` from fsRouter's default directory names. If your `waku.server.tsx` passes `pagesDir`, `apiDir`, `slicesDir`, or `interceptorsDir` to `fsRouter`, add the typegen plugin with the same options in `waku.config.ts`. It replaces the default one:
+
+```ts
+// waku.config.ts
+import { defineConfig } from 'waku/config';
+import { unstable_fsRouterTypegenPlugin as fsRouterTypegenPlugin } from 'waku/vite-plugins';
+
+export default defineConfig({
+  vite: {
+    plugins: [
+      fsRouterTypegenPlugin({ srcDir: 'src', slicesDir: '_fragments' }),
+    ],
+  },
+});
+```
+
 ## Migration
 
 The typed-navigation API changes are breaking, including for unstable exports.
