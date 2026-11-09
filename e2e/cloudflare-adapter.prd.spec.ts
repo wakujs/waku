@@ -29,6 +29,11 @@ test.describe('cloudflare adapter', () => {
     await expect(page.getByTestId('waku-env')).toHaveText('GREETING=hello');
   });
 
+  test('prerenders getEnv values into static pages', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/static-env`);
+    await expect(page.getByTestId('static-env')).toHaveText('GREETING=hello');
+  });
+
   test('build does not warn about Node.js imports in the ssr (worker) environment', () => {
     const output =
       (buildResult?.stdout ?? '') + '\n' + (buildResult?.stderr ?? '');
