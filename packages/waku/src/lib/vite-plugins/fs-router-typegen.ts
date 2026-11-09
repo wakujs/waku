@@ -129,20 +129,20 @@ export function fsRouterTypegenPlugin(
     name: 'waku:vite-plugins:fs-router-typegen',
     apply: 'serve',
     configureServer(server) {
-      const srcDir = joinPath(server.config.root, opts.srcDir);
-      const pagesDir = joinPath(srcDir, opts.pagesDir ?? SRC_PAGES);
+      const srcPath = joinPath(server.config.root, opts.srcDir);
+      const pagesPath = joinPath(srcPath, opts.pagesDir ?? SRC_PAGES);
 
-      const outputFile = joinPath(srcDir, 'pages.gen.ts');
+      const outputFile = joinPath(srcPath, 'pages.gen.ts');
       const updateGeneratedFile = async (file: string | undefined) => {
         // skip when the changed file is the generated file itself
         if (file && outputFile.endsWith(file)) {
           return;
         }
         // skip when the entries file exists or pages dir does not exist
-        if (!existsSync(pagesDir) || !(await detectFsRouterUsage(srcDir))) {
+        if (!existsSync(pagesPath) || !(await detectFsRouterUsage(srcPath))) {
           return;
         }
-        const generation = await generateFsRouterTypes(srcDir, opts);
+        const generation = await generateFsRouterTypes(srcPath, opts);
         if (!generation) {
           // skip failures
           return;
@@ -205,14 +205,14 @@ export async function detectFsRouterUsage(srcDir: string): Promise<boolean> {
 
 export async function generateFsRouterTypes(
   srcPath: string,
-  opts: FsRouterDirs = {},
+  opts?: FsRouterDirs,
 ) {
   const {
     pagesDir = SRC_PAGES,
     apiDir = '_api',
     slicesDir = '_slices',
     interceptorsDir = '_interceptors',
-  } = opts;
+  } = opts || {};
   const pagesPath = joinPath(srcPath, pagesDir);
   const nonPageDirs = new Set([apiDir, slicesDir, interceptorsDir]);
   // Recursively collect `.tsx` files in the given directory
