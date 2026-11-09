@@ -65,7 +65,7 @@ export function combinedPlugins(config: Required<Config>): PluginOption {
     privateDirPlugin(config),
     htmlShellPlugin(),
     htmlTransformPlugin(),
-    fsRouterTypegenPlugin(config),
+    fsRouterTypegenPlugin({ srcDir: config.srcDir }),
   ];
   return [
     extraPlugins(config),
