@@ -133,6 +133,7 @@ export default createServerEntryAdapter(
       let res: Response | Promise<Response>;
       if (cloudflareContext) {
         const { env, waitUntil, passThroughOnException } = cloudflareContext;
+        unstable_setAllEnv(env);
         res = app.fetch(req, env, {
           waitUntil,
           passThroughOnException,
@@ -189,10 +190,7 @@ export default createServerEntryAdapter(
       buildEnhancers: ['waku/adapters/cloudflare-build-enhancer'],
       defaultExport: {
         ...options?.handlers,
-        fetch(req: Request, env: Record<string, unknown>) {
-          unstable_setAllEnv(env);
-          return fetchFn(req);
-        },
+        fetch: fetchFn,
       },
     };
   },
