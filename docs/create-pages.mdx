@@ -462,6 +462,8 @@ export const BlogLayout = async ({ children }) => {
 };
 ```
 
+A layout at a path with params, such as `path: '/[lang]'`, receives them as props. A static layout renders once for each set of params known at build time: under static pages, each `staticPaths` entry. Above a dynamic page the values are not known at build time, so it renders once with the pattern (`lang: '[lang]'`). Use `render: 'dynamic'` for a layout that reads its params above dynamic pages.
+
 ### Root component
 
 Root component is a special component that is rendered at the root of html document. It is useful for customizing `<html>`, `<head>`, and `<body>` tags.

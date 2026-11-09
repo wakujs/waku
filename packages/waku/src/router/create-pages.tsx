@@ -1029,7 +1029,10 @@ export function createPages<
             : {}),
         };
       };
-      const buildLayoutElement = (layoutPath: string): ElementSpec => {
+      const buildLayoutElement = (
+        layoutPath: string,
+        layoutIdPath: string,
+      ): ElementSpec => {
         const dynamicEntry = dynamicLayoutEntryByPathPattern.get(layoutPath);
         const staticEntry = dynamicEntry
           ? undefined
@@ -1042,7 +1045,10 @@ export function createPages<
         const getLayoutPropsMapping = createLayoutPropsMapper(layoutPath);
         return buildElementSpec(
           layout,
-          (options) => getLayoutPropsMapping(options.routePath),
+          (options) =>
+            getLayoutPropsMapping(
+              dynamicEntry ? options.routePath : getGrouplessPath(layoutIdPath),
+            ),
           !dynamicEntry,
           sourceFile,
           dynamicEntry?.getEtag,
@@ -1054,7 +1060,7 @@ export function createPages<
         Object.fromEntries(
           matches.map(({ layoutPath, layoutIdPath }) => [
             getLayoutSlotId(layoutIdPath),
-            buildLayoutElement(layoutPath),
+            buildLayoutElement(layoutPath, layoutIdPath),
           ]),
         );
       const buildPageElement = <Props,>(

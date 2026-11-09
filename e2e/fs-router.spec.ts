@@ -262,6 +262,21 @@ test.describe('fs-router', () => {
     expect(res.status).toBe(404);
   });
 
+  test('static layout under a dynamic page renders once from its pattern', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/dynamic-layout/abc/def`);
+    await expect(
+      page.getByRole('heading', { name: 'abc / def' }),
+    ).toBeVisible();
+    await expect(page.getByTestId('dynamic-layout-id')).toHaveText('[id]');
+    await page.goto(`http://localhost:${port}/dynamic-layout/xyz/def`);
+    await expect(
+      page.getByRole('heading', { name: 'xyz / def' }),
+    ).toBeVisible();
+    await expect(page.getByTestId('dynamic-layout-id')).toHaveText('[id]');
+  });
+
   test('search params (fs-router getConfig codec, typegen)', async ({
     page,
   }) => {
