@@ -114,14 +114,10 @@ export default createServerEntryAdapter(
         });
       });
 
-    const fetchFn = async (req: Request) => {
-      if (
-        new URL(req.url).pathname === `/${internalPathToBuildStaticFiles}` &&
-        isLoopbackRequest(req) &&
-        !isProductionWorker(req)
-      ) {
-        return new Response(buildBody());
-      }
+    const fetchFn = async (
+      req: Request,
+      workerEnv?: Record<string, unknown>,
+    ) => {
       let cloudflareContext;
       try {
         cloudflareContext = await import(
@@ -130,9 +126,21 @@ export default createServerEntryAdapter(
       } catch {
         // Not in a Cloudflare environment
       }
+      // disallow_importable_env hides env from the import
+      const env = cloudflareContext && (workerEnv ?? cloudflareContext.env);
+      if (env) {
+        unstable_setAllEnv(env);
+      }
+      if (
+        new URL(req.url).pathname === `/${internalPathToBuildStaticFiles}` &&
+        isLoopbackRequest(req) &&
+        !isProductionWorker(req)
+      ) {
+        return new Response(buildBody());
+      }
       let res: Response | Promise<Response>;
       if (cloudflareContext) {
-        const { env, waitUntil, passThroughOnException } = cloudflareContext;
+        const { waitUntil, passThroughOnException } = cloudflareContext;
         res = app.fetch(req, env, {
           waitUntil,
           passThroughOnException,
@@ -189,10 +197,7 @@ export default createServerEntryAdapter(
       buildEnhancers: ['waku/adapters/cloudflare-build-enhancer'],
       defaultExport: {
         ...options?.handlers,
-        fetch(req: Request, env: Record<string, unknown>) {
-          unstable_setAllEnv(env);
-          return fetchFn(req);
-        },
+        fetch: fetchFn,
       },
     };
   },

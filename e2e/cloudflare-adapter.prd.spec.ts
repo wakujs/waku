@@ -26,6 +26,12 @@ test.describe('cloudflare adapter', () => {
     await expect(page.getByTestId('layout-marker')).toHaveText('LAYOUT_MARKER');
     await expect(page.getByTestId('page-marker')).toHaveText('PAGE_MARKER');
     await expect(page.getByTestId('cloudflare-env')).toHaveText('MAX_ITEMS=10');
+    await expect(page.getByTestId('waku-env')).toHaveText('GREETING=hello');
+  });
+
+  test('prerenders getEnv values into static pages', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/static-env`);
+    await expect(page.getByTestId('static-env')).toHaveText('GREETING=hello');
   });
 
   test('build does not warn about Node.js imports in the ssr (worker) environment', () => {

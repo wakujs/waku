@@ -10,7 +10,8 @@
     "html_handling": "drop-trailing-slash"
   },
   "vars": {
-    "MAX_ITEMS": 10
+    "MAX_ITEMS": 10,
+    "GREETING": "hello"
   },
   "queues": {
     "producers": [

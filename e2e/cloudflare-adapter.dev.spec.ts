@@ -15,6 +15,11 @@ test.describe('cloudflare adapter', () => {
     await stopApp();
   });
 
+  test('getEnv reads the worker env', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await expect(page.getByTestId('waku-env')).toHaveText('GREETING=hello');
+  });
+
   test('runs queue handlers', async ({ request }) => {
     const url = `http://localhost:${port}/queue`;
     const response = await request.post(url, { data: 'hello' });

@@ -1,5 +1,6 @@
 // eslint-disable-next-line import/no-unresolved
 import { env, waitUntil } from 'cloudflare:workers';
+import { getEnv } from 'waku';
 
 export default function HomePage() {
   waitUntil(Promise.resolve());
@@ -7,6 +8,7 @@ export default function HomePage() {
     <div>
       <div data-testid="page-marker">PAGE_MARKER</div>
       <div data-testid="cloudflare-env">MAX_ITEMS={env.MAX_ITEMS}</div>
+      <div data-testid="waku-env">GREETING={getEnv('GREETING')}</div>
     </div>
   );
 }
