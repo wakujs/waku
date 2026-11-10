@@ -5,7 +5,9 @@ export type RouteProps<Path extends string = string> = {
 };
 
 export function addBase(url: string, base: string) {
-  return base !== '/' && url.startsWith('/') ? base.slice(0, -1) + url : url;
+  return base !== '/' && url.startsWith('/') && !url.startsWith('//')
+    ? base.slice(0, -1) + url
+    : url;
 }
 
 export function removeBase(url: string, base: string) {

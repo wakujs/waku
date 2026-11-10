@@ -5,6 +5,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   useTransition,
 } from 'react';
 import type {
@@ -21,7 +22,9 @@ import {
   useRouterCache,
 } from '../client-core-utils/caches.js';
 import {
+  isSameOrigin,
   isSameRscRoute,
+  otherOriginError,
   parseRoute,
   resolveRouteHref,
 } from '../client-core-utils/route-url.js';
@@ -44,7 +47,11 @@ const prefetchIfNotCurrent = (
   if (!current) {
     return;
   }
-  const route = parseRoute(new URL(resolvedTo, window.location.href));
+  const url = new URL(resolvedTo, window.location.href);
+  if (!isSameOrigin(url)) {
+    return;
+  }
+  const route = parseRoute(url);
   if (!isSameRscRoute(route, current)) {
     preloadRouteModules(route.path);
     prefetchRouteUnlessReusable(cache, route, options, getElements);
@@ -195,6 +202,7 @@ export function Link({
         throw new Error('Missing Router');
       };
   const [isPending, startTransition] = useTransition();
+  const [refused, setRefused] = useState<Error>();
   const [ref, setRef] = useSharedRef<HTMLAnchorElement>(refProp);
   const cache = useRouterCache();
 
@@ -208,6 +216,10 @@ export function Link({
   );
   const internalOnClick = () => {
     const url = new URL(resolvedTo, window.location.href);
+    if (!isSameOrigin(url)) {
+      setRefused(otherOriginError(url));
+      return;
+    }
     if (url.href !== window.location.href) {
       const route = parseRoute(url);
       preloadRouteModules(route.path);
@@ -260,6 +272,9 @@ export function Link({
       }
     : props.onMouseEnter;
   const navigationStatus = useMemo(() => ({ pending: isPending }), [isPending]);
+  if (refused) {
+    throw refused;
+  }
   return (
     <NavigationStatusContext value={navigationStatus}>
       <a

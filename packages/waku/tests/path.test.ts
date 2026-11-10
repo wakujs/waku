@@ -5,6 +5,7 @@ import {
   parsePathWithSlug,
   pathSpecToRegExpSource,
 } from '../src/router/isomorphic-utils/path-spec.js';
+import { addBase } from '../src/router/isomorphic-utils/route-path.js';
 
 function matchPath(path: string, input: string) {
   return new RegExp(pathSpecToRegExpSource(parsePathWithSlug(path))).test(
@@ -254,6 +255,17 @@ describe('removeBase', () => {
   test('throws error when url does not start with base', () => {
     expect(() => removeBase('/other/path', '/custom/base/')).toThrow(
       'pathname must start with basePath',
+    );
+  });
+});
+
+describe('addBase', () => {
+  test('prefixes app paths and leaves network-path references alone', () => {
+    expect(addBase('/x', '/app/')).toBe('/app/x');
+    expect(addBase('/x', '/')).toBe('/x');
+    expect(addBase('//other.example/x', '/app/')).toBe('//other.example/x');
+    expect(addBase('https://other.example/x', '/app/')).toBe(
+      'https://other.example/x',
     );
   });
 });
