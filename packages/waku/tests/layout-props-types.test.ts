@@ -6,7 +6,10 @@ import type {
   LayoutProps,
   Unstable_SearchCodec,
 } from '../src/router/base-types.js';
-import type { PropsForPages } from '../src/router/create-pages-utils/inferred-path-types.js';
+import type {
+  LayoutParams,
+  PropsForPages,
+} from '../src/router/create-pages-utils/inferred-path-types.js';
 
 // In this suite CreatePagesConfig is not augmented, so LayoutPath resolves to
 // never and LayoutProps falls back to accepting any string (the pre-codegen
@@ -45,5 +48,37 @@ describe('LayoutProps', () => {
     );
     const props: Props = { children: null, aaa: 'x' };
     expect(props.aaa).toBe('x');
+  });
+});
+
+describe('LayoutParams', () => {
+  type Config = {
+    layouts:
+      | { path: '/[lang]'; render: 'static' }
+      | { path: '/[lang]/post'; render: 'static'; staticPaths: ['en'] }
+      | { path: '/blog/[slug]'; render: 'static' }
+      | { path: '/app/[id]'; render: 'dynamic' };
+    pages:
+      | { path: '/[lang]/post/[slug]'; render: 'dynamic' }
+      | { path: '/blog/[slug]'; render: 'static' }
+      | { path: '/app/[id]/settings'; render: 'dynamic' };
+  };
+
+  it('is undefined for a static layout without staticPaths above a dynamic page', () => {
+    expectType<
+      TypeEqual<LayoutParams<Config, '/[lang]'>, { lang: string | undefined }>
+    >(true);
+  });
+
+  it('is known with staticPaths, above static pages only, or when dynamic', () => {
+    expectType<
+      TypeEqual<LayoutParams<Config, '/[lang]/post'>, { lang: string }>
+    >(true);
+    expectType<
+      TypeEqual<LayoutParams<Config, '/blog/[slug]'>, { slug: string }>
+    >(true);
+    expectType<TypeEqual<LayoutParams<Config, '/app/[id]'>, { id: string }>>(
+      true,
+    );
   });
 });

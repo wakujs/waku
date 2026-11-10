@@ -143,7 +143,7 @@ const pages: ReturnType<typeof createPages> = createPages(
     }),
 
     createLayout({
-      render: 'dynamic',
+      render: 'static',
       path: '/nested/[id]',
       component: DeeplyNestedLayout,
     }),

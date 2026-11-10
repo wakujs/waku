@@ -291,6 +291,32 @@ describe('type tests', () => {
       // good
       createLayout({ render: 'static', path: '/', component: () => 'Hello' });
     });
+    it('static with params', () => {
+      const createLayout: CreateLayout = vi.fn();
+      createLayout({
+        render: 'static',
+        path: '/[lang]',
+        component: (props) => {
+          expectType<TypeEqual<typeof props.lang, string | undefined>>(true);
+          return props.children;
+        },
+      });
+      createLayout({
+        render: 'static',
+        path: '/[lang]',
+        staticPaths: ['en'],
+        component: (props) => {
+          expectType<TypeEqual<typeof props.lang, string>>(true);
+          return props.children;
+        },
+      });
+      // @ts-expect-error: lang is undefined where dynamic pages share the layout
+      createLayout({
+        render: 'static',
+        path: '/[lang]',
+        component: (_props: { lang: string; children: ReactNode }) => null,
+      });
+    });
     it('dynamic', () => {
       const createLayout: CreateLayout = vi.fn();
       // @ts-expect-error: path is invalid
@@ -947,26 +973,41 @@ describe('createPages pages and layouts', () => {
     ]);
   });
 
-  it('rejects a static layout with params above a dynamic page without staticPaths', async () => {
+  it('leaves params without staticPaths undefined in a static layout', async () => {
     const TestPage = () => null;
     const TestLayout = ({ children }: PropsWithChildren) => children;
     createPages(async ({ createPage, createLayout }) => [
       createLayout({
         render: 'static',
         path: '/[lang]',
+        staticPaths: ['en'],
+        component: TestLayout,
+      }),
+      createLayout({
+        render: 'static',
+        path: '/[lang]/[section]',
         component: TestLayout,
       }),
       createPage({
         render: 'dynamic',
-        path: '/[lang]/[slug]',
+        path: '/[lang]/[section]/[slug]',
         component: TestPage,
       }),
     ]);
 
     const { getConfigs } = injectedFunctions();
-    await expect(getConfigs).rejects.toThrowError(
-      'Static layout /[lang] needs staticPaths above the dynamic page /[lang]/[slug]',
-    );
+    const [config] = Array.from(await getConfigs()) as any[];
+    expect(Object.keys(config.elements)).toEqual([
+      'layout:/en',
+      'layout:/en/[section]',
+      'page:/[lang]/[section]/[slug]',
+    ]);
+    const layout = config.elements['layout:/en/[section]'].renderer({
+      routePath: '/en/docs/[slug]',
+      query: undefined,
+    });
+    expect(layout.props.lang).toBe('en');
+    expect(layout.props.section).toBeUndefined();
   });
 
   it('creates a simple static slice', async () => {
@@ -3479,8 +3520,8 @@ describe('createPages - grouped paths', () => {
     const TestPage = () => null;
     const TestLayout = (_props: {
       children: ReactNode;
-      lang: string;
-      section: string;
+      lang: string | undefined;
+      section: string | undefined;
     }) => null;
     createPages(async ({ createPage, createLayout }) => [
       createLayout({

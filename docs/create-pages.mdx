@@ -464,7 +464,11 @@ export const BlogLayout = async ({ children }) => {
 
 #### Layouts with params
 
-A layout at a path with params, such as `path: '/[lang]'`, receives them as props. A static layout renders once per value at build time, so above dynamic pages it lists the values in `staticPaths`, as a static page does. Those pages answer only the listed values, and other values are not found. To accept any value, use `render: 'dynamic'`.
+A layout at a path with params, such as `path: '/[lang]'`, receives them as props. A static layout renders at build time, once per value of the static pages below it. Above dynamic pages:
+
+- With `staticPaths`, it renders once per listed value, as a static page does. The dynamic pages below it answer only these values, and other values are not found.
+- Without `staticPaths`, it renders once, shared by every value, and its params are `undefined`. Its props type them as possibly `undefined`.
+- With `render: 'dynamic'`, it renders on each request with the request's values.
 
 ```tsx
 const pages = createPages(async ({ createLayout, createPage }) => [
@@ -482,7 +486,7 @@ const pages = createPages(async ({ createLayout, createPage }) => [
 ]);
 ```
 
-File-based layouts set it in `getConfig`:
+File-based layouts set `staticPaths` in `getConfig`:
 
 ```tsx
 // ./src/pages/[lang]/_layout.tsx

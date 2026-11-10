@@ -295,6 +295,26 @@ test.describe('fs-router', () => {
     expect(res.status).toBe(404);
   });
 
+  test('static layout without staticPaths is shared by dynamic pages', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/shared-layout/en/post/hello`);
+    await expect(
+      page.getByRole('heading', { name: 'en / hello' }),
+    ).toBeVisible();
+    await expect(page.getByTestId('shared-layout-lang')).toHaveText('any');
+    const renderedAt = await page
+      .getByTestId('shared-layout-rendered-at')
+      .textContent();
+    await page.goto(`http://localhost:${port}/shared-layout/fr/post/world`);
+    await expect(
+      page.getByRole('heading', { name: 'fr / world' }),
+    ).toBeVisible();
+    await expect(page.getByTestId('shared-layout-rendered-at')).toHaveText(
+      renderedAt!,
+    );
+  });
+
   test(
     'static layout with staticPaths renders at build time',
     { tag: '@prd' },

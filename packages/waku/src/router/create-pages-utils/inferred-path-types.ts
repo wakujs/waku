@@ -223,6 +223,34 @@ type SlugTypes<Path extends string> =
 /** Extracts route parameters from a route path. */
 export type RouteParams<Path extends string> = Prettify<SlugTypes<Path>>;
 
+/** Route params of a static layout that dynamic pages may share. */
+export type SharedLayoutParams<Path extends string> = {
+  [Key in keyof RouteParams<Path>]: RouteParams<Path>[Key] | undefined;
+};
+
+type IsSharedLayout<Layout> = Layout extends { render: 'static' }
+  ? Layout extends { staticPaths: unknown }
+    ? false
+    : true
+  : false;
+
+/**
+ * Route params of a registered layout: `undefined` when it is static without
+ * `staticPaths` and a dynamic page sits under it.
+ */
+export type LayoutParams<Config, Path extends string> = Config extends {
+  layouts: infer Layout;
+  pages: infer Page;
+}
+  ? true extends IsSharedLayout<Extract<Layout, { path: Path }>>
+    ? [
+        Extract<Page, { path: Path | `${Path}/${string}`; render: 'dynamic' }>,
+      ] extends [never]
+      ? RouteParams<Path>
+      : SharedLayoutParams<Path>
+    : RouteParams<Path>
+  : RouteParams<Path>;
+
 /** Context object passed to API route handlers with typed route parameters. */
 export interface ApiContext<Path extends string> {
   readonly params: RouteParams<Path>;

@@ -100,8 +100,12 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     );
     // layout paths (including dynamic ones) are emitted into a Layout union
     expect(generated).toContain('type Layout =');
-    expect(generated).toContain("| { path: '/' }");
-    expect(generated).toContain("| { path: '/[category]' }");
+    expect(generated).toContain(
+      "| ({ path: '/' } & GetConfigResponse<typeof File_Layout_getConfig>)",
+    );
+    expect(generated).toContain(
+      "| ({ path: '/[category]' } & GetConfigResponse<typeof File_CategoryLayout_getConfig>)",
+    );
     expect(generated).toContain('layouts: Layout;');
   });
 
@@ -238,7 +242,7 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     expect(generated).toContain("| { path: '/blog/[slug]'; render: 'static' }");
     // the layout at docs/_layout.tsx is emitted as a layout path
     expect(generated).toContain('type Layout =');
-    expect(generated).toContain("| { path: '/docs' }");
+    expect(generated).toContain("| { path: '/docs'; render: 'static' }");
     expect(generated).toContain('layouts: Layout;');
     expect(generated).toContain("declare module 'waku/router'");
   });
