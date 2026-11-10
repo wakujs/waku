@@ -1300,7 +1300,8 @@ export function createPages<
               const handler =
                 (Object.hasOwn(handlers, req.method)
                   ? handlers[req.method as Method]
-                  : undefined) ?? handlers.all;
+                  : undefined) ??
+                (Object.hasOwn(handlers, 'all') ? handlers.all : undefined);
               if (!handler) {
                 return new Response(null, {
                   status: 405,

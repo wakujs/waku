@@ -3013,6 +3013,26 @@ describe('createPages api', () => {
     }
   });
 
+  it('ignores an all handler the handlers object only inherits', async () => {
+    createPages(async ({ createApi }) => [
+      createApi({
+        path: '/test',
+        render: 'dynamic',
+        handlers: Object.assign(
+          Object.create({ all: async () => new Response('inherited') }),
+          { GET: async () => new Response('get') },
+        ),
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const [{ handler }] = Array.from(await getConfigs()) as any;
+    const res = await handler(
+      new Request('http://localhost:3000/test', { method: 'POST' }),
+    );
+    expect(res.status).toEqual(405);
+    expect(res.headers.get('allow')).toEqual('GET');
+  });
+
   it('sends a method the handlers object only inherits to all', async () => {
     createPages(async ({ createApi }) => [
       createApi({
