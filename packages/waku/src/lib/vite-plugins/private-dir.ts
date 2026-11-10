@@ -29,7 +29,6 @@ const requestedFilePath = (
   return normalizePath(path.resolve(root, pathname.slice(1)));
 };
 
-// File systems on macOS and Windows resolve paths case-insensitively
 const isInsidePrivateDir = (filePath: string, privatePath: string) => {
   const lowerFilePath = filePath.toLowerCase();
   const lowerPrivatePath = privatePath.toLowerCase();
