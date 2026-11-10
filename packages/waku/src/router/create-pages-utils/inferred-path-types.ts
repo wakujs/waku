@@ -229,7 +229,7 @@ export type SharedLayoutParams<Path extends string> = {
 };
 
 type IsSharedLayout<Layout> = Layout extends { render: 'static' }
-  ? Layout extends { staticPaths: unknown }
+  ? Layout extends { staticPaths: object }
     ? false
     : true
   : false;

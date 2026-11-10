@@ -310,6 +310,15 @@ describe('type tests', () => {
           return props.children;
         },
       });
+      createLayout({
+        render: 'static',
+        path: '/[lang]',
+        staticPaths: Math.random() < 0.5 ? ['en'] : undefined,
+        component: (props) => {
+          expectType<TypeEqual<typeof props.lang, string | undefined>>(true);
+          return props.children;
+        },
+      });
       // @ts-expect-error: lang is undefined where dynamic pages share the layout
       createLayout({
         render: 'static',
@@ -918,6 +927,35 @@ describe('createPages pages and layouts', () => {
       query: undefined,
     });
     expect(layout.props.lang).toBe('ja');
+  });
+
+  it('ranks an expanded dynamic page by its declared path', async () => {
+    const TestPage = () => null;
+    const TestLayout = ({ children }: PropsWithChildren) => children;
+    createPages(async ({ createPage, createLayout }) => [
+      createLayout({
+        render: 'static',
+        path: '/[lang]',
+        staticPaths: ['en'],
+        component: TestLayout,
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/[lang]/post/[slug]',
+        component: TestPage,
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/en/post/[slug]',
+        component: TestPage,
+      }),
+    ]);
+
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs()) as any[];
+    expect(
+      configs.map((config) => Object.keys(config.elements).at(-1)),
+    ).toEqual(['page:/en/post/[slug]', 'page:/[lang]/post/[slug]']);
   });
 
   it('expands nested static layouts by the staticPaths they share', async () => {

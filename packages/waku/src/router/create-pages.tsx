@@ -8,6 +8,7 @@ import { ErrorBoundary } from '../router/client.js';
 import type {
   ApiHandler,
   HandlerInterceptor,
+  RuntimeConfig,
 } from './create-pages-utils/config.js';
 import type {
   AnyPage,
@@ -1168,6 +1169,8 @@ export function createPages<
         ...(rootSourceFile ? { sourceFile: rootSourceFile } : {}),
         ...(rootGetEtag ? { getEtagFromOptions: () => rootGetEtag() } : {}),
       });
+      const withoutGroups = (pathSpec: PathSpec) =>
+        pathSpec.filter((part) => !part.name?.startsWith('('));
       const buildRouteConfigBase = (
         pathKey: string,
         pathSpec: PathSpec,
@@ -1176,7 +1179,7 @@ export function createPages<
         noSsr: boolean,
       ) => ({
         type: 'route' as const,
-        pathSpec: pathSpec.filter((part) => !part.name?.startsWith('(')),
+        pathSpec: withoutGroups(pathSpec),
         isStatic:
           rootIsStatic &&
           isAllElementsStatic(elements) &&
@@ -1234,43 +1237,49 @@ export function createPages<
           getEtag,
           searchCodec,
         }: DynamicPageEntry,
-      ) =>
-        expandByLayoutStaticPaths(pathSpec).map((expandedPathSpec) => {
-          const layouts = collectLayoutMatches(
-            pathSpec,
-            pathSpecAsString(expandedPathSpec),
-          );
-          const getPropsMapping = createPathPropsMapper(pathPattern);
-          const elements: Record<string, ElementSpec> =
-            buildLayoutElements(layouts);
-          elements[getPageSlotId(pathPattern)] = buildPageElement(
-            component,
-            getPropsMapping,
-            false,
-            sourceFile,
-            getEtag,
-            searchCodec,
-          );
-          return {
-            ...buildRouteConfigBase(
-              pathPattern,
-              expandedPathSpec,
-              layouts,
-              elements,
-              noSsr,
-            ),
-            ...(searchCodec ? { searchCodec } : {}),
-          };
-        });
+      ) => {
+        const configs = expandByLayoutStaticPaths(pathSpec).map(
+          (expandedPathSpec) => {
+            const layouts = collectLayoutMatches(
+              pathSpec,
+              pathSpecAsString(expandedPathSpec),
+            );
+            const getPropsMapping = createPathPropsMapper(pathPattern);
+            const elements: Record<string, ElementSpec> =
+              buildLayoutElements(layouts);
+            elements[getPageSlotId(pathPattern)] = buildPageElement(
+              component,
+              getPropsMapping,
+              false,
+              sourceFile,
+              getEtag,
+              searchCodec,
+            );
+            return {
+              ...buildRouteConfigBase(
+                pathPattern,
+                expandedPathSpec,
+                layouts,
+                elements,
+                noSsr,
+              ),
+              ...(searchCodec ? { searchCodec } : {}),
+            };
+          },
+        );
+        const priority = {
+          type: 'route' as const,
+          pathSpec: withoutGroups(pathSpec),
+        };
+        return [priority, configs] as const;
+      };
       const buildDynamicRouteConfigs = () =>
-        Array.from(dynamicPageEntryByPathPattern).flatMap(
-          ([pathPattern, entry]) =>
-            buildDynamicLikeRouteConfigs(pathPattern, entry),
+        Array.from(dynamicPageEntryByPathPattern, ([pathPattern, entry]) =>
+          buildDynamicLikeRouteConfigs(pathPattern, entry),
         );
       const buildWildcardRouteConfigs = () =>
-        Array.from(wildcardPageEntryByPathPattern).flatMap(
-          ([pathPattern, entry]) =>
-            buildDynamicLikeRouteConfigs(pathPattern, entry),
+        Array.from(wildcardPageEntryByPathPattern, ([pathPattern, entry]) =>
+          buildDynamicLikeRouteConfigs(pathPattern, entry),
         );
       const buildApiConfigs = () =>
         Array.from(
@@ -1323,14 +1332,19 @@ export function createPages<
           },
         );
 
-      const routeConfigs = [
-        ...buildStaticRouteConfigs(),
+      const pathConfigs = [
+        ...buildStaticRouteConfigs().map(
+          (config) => [config, [config]] as const,
+        ),
         ...buildDynamicRouteConfigs(),
         ...buildWildcardRouteConfigs(),
-      ];
-      const pathConfigs = [...routeConfigs, ...buildApiConfigs()]
+        ...buildApiConfigs().map((config) => [config, [config]] as const),
+      ]
         // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
-        .sort((configA, configB) => compareRoutePriority(configA, configB));
+        .sort(([priorityA], [priorityB]) =>
+          compareRoutePriority(priorityA, priorityB),
+        )
+        .flatMap<RuntimeConfig>(([, configs]) => configs);
       return [...pathConfigs, ...buildSliceConfigs()];
     },
     ...(options?.unstable_skipBuild && {

@@ -57,16 +57,28 @@ describe('LayoutParams', () => {
       | { path: '/[lang]'; render: 'static' }
       | { path: '/[lang]/post'; render: 'static'; staticPaths: ['en'] }
       | { path: '/blog/[slug]'; render: 'static' }
-      | { path: '/app/[id]'; render: 'dynamic' };
+      | { path: '/app/[id]'; render: 'dynamic' }
+      | {
+          path: '/[region]';
+          render: 'static';
+          staticPaths: readonly ['eu'] | undefined;
+        };
     pages:
       | { path: '/[lang]/post/[slug]'; render: 'dynamic' }
       | { path: '/blog/[slug]'; render: 'static' }
-      | { path: '/app/[id]/settings'; render: 'dynamic' };
+      | { path: '/app/[id]/settings'; render: 'dynamic' }
+      | { path: '/[region]/[slug]'; render: 'dynamic' };
   };
 
   it('is undefined for a static layout without staticPaths above a dynamic page', () => {
     expectType<
       TypeEqual<LayoutParams<Config, '/[lang]'>, { lang: string | undefined }>
+    >(true);
+    expectType<
+      TypeEqual<
+        LayoutParams<Config, '/[region]'>,
+        { region: string | undefined }
+      >
     >(true);
   });
 
