@@ -46,6 +46,11 @@ type Method =
   | 'PATCH'
   | 'QUERY';
 
+const allowedMethods = (handlers: Partial<Record<Method | 'all', unknown>>) =>
+  Object.keys(handlers).filter(
+    (method) => method !== 'all' && handlers[method as Method],
+  );
+
 const getPathMappingWithoutGroups: typeof getPathMapping = (
   pathSpec,
   pathname,
@@ -1292,13 +1297,15 @@ export function createPages<
               req: Request,
               apiContext: Parameters<ApiHandler>[1],
             ) => {
-              const path = new URL(req.url).pathname;
-              const method = req.method;
-              const handler = handlers[method as Method] ?? handlers.all;
+              const handler =
+                (Object.hasOwn(handlers, req.method)
+                  ? handlers[req.method as Method]
+                  : undefined) ?? handlers.all;
               if (!handler) {
-                throw new Error(
-                  'API method not found: ' + method + 'for path: ' + path,
-                );
+                return new Response(null, {
+                  status: 405,
+                  headers: { allow: allowedMethods(handlers).join(', ') },
+                });
               }
               return handler(
                 req,
