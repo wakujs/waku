@@ -62,15 +62,23 @@ describe('LayoutParams', () => {
           path: '/[region]';
           render: 'static';
           staticPaths: readonly ['eu'] | undefined;
-        };
+        }
+      | { path: '/[team]' }
+      | { path: '/[country]'; render: string }
+      | { path: '/[org]'; render: 'static' }
+      | { path: '/[locale]'; staticPaths: readonly ['en'] };
     pages:
       | { path: '/[lang]/post/[slug]'; render: 'dynamic' }
       | { path: '/blog/[slug]'; render: 'static' }
       | { path: '/app/[id]/settings'; render: 'dynamic' }
-      | { path: '/[region]/[slug]'; render: 'dynamic' };
+      | { path: '/[region]/[slug]'; render: 'dynamic' }
+      | { path: '/[team]/[slug]'; render: 'dynamic' }
+      | { path: '/[country]/[slug]'; render: 'dynamic' }
+      | { path: '/[org]/[slug]'; render: 'static' | 'dynamic' }
+      | { path: '/[locale]/[slug]'; render: 'dynamic' };
   };
 
-  it('is undefined for a static layout without staticPaths above a dynamic page', () => {
+  it('is possibly undefined when a static layout without staticPaths may be above a dynamic page', () => {
     expectType<
       TypeEqual<LayoutParams<Config, '/[lang]'>, { lang: string | undefined }>
     >(true);
@@ -79,6 +87,18 @@ describe('LayoutParams', () => {
         LayoutParams<Config, '/[region]'>,
         { region: string | undefined }
       >
+    >(true);
+    expectType<
+      TypeEqual<LayoutParams<Config, '/[team]'>, { team: string | undefined }>
+    >(true);
+    expectType<
+      TypeEqual<
+        LayoutParams<Config, '/[country]'>,
+        { country: string | undefined }
+      >
+    >(true);
+    expectType<
+      TypeEqual<LayoutParams<Config, '/[org]'>, { org: string | undefined }>
     >(true);
   });
 
@@ -92,5 +112,8 @@ describe('LayoutParams', () => {
     expectType<TypeEqual<LayoutParams<Config, '/app/[id]'>, { id: string }>>(
       true,
     );
+    expectType<
+      TypeEqual<LayoutParams<Config, '/[locale]'>, { locale: string }>
+    >(true);
   });
 });

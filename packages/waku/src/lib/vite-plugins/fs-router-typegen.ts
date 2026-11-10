@@ -310,13 +310,10 @@ export async function generateFsRouterTypes(
       }
     }
 
-    const hasAnyGetConfig = [...fileInfo, ...layoutInfo].some(
+    const hasAnyGetConfig = fileInfo.some((file) => file.hasGetConfig);
+    const getConfigFiles = [...fileInfo, ...layoutInfo].filter(
       (file) => file.hasGetConfig,
     );
-    const getRouteType = (file: FileInfo) =>
-      file.hasGetConfig
-        ? `({ path: '${file.path}' } & GetConfigResponse<typeof ${moduleNames[file.src]}_getConfig>)`
-        : `{ path: '${file.path}'; render: 'static' }`;
     const lines: string[] = [
       '// deno-fmt-ignore-file',
       '// biome-ignore-all format: generated types do not need formatting',
@@ -326,12 +323,9 @@ export async function generateFsRouterTypes(
         : "import type { PathsForPages } from 'waku/router';",
     ];
 
-    if (hasAnyGetConfig) {
+    if (getConfigFiles.length) {
       lines.push('');
-      for (const file of [...fileInfo, ...layoutInfo]) {
-        if (!file.hasGetConfig) {
-          continue;
-        }
+      for (const file of getConfigFiles) {
         const moduleName = moduleNames[file.src];
         lines.push(
           `// prettier-ignore`,
@@ -346,14 +340,26 @@ export async function generateFsRouterTypes(
       fileInfo.length ? 'type Page =' : 'type Page = never',
     );
     for (const file of fileInfo) {
-      lines.push(`| ${getRouteType(file)}`);
+      const moduleName = moduleNames[file.src];
+      if (file.hasGetConfig) {
+        lines.push(
+          `| ({ path: '${file.path}' } & GetConfigResponse<typeof ${moduleName}_getConfig>)`,
+        );
+      } else {
+        lines.push(`| { path: '${file.path}'; render: 'static' }`);
+      }
     }
     lines[lines.length - 1] += ';';
 
     if (layoutInfo.length) {
       lines.push('', '// prettier-ignore', 'type Layout =');
       for (const file of layoutInfo) {
-        lines.push(`| ${getRouteType(file)}`);
+        const moduleName = moduleNames[file.src];
+        lines.push(
+          file.hasGetConfig
+            ? `| ({ path: '${file.path}' } & Awaited<ReturnType<typeof ${moduleName}_getConfig>>)`
+            : `| { path: '${file.path}' }`,
+        );
       }
       lines[lines.length - 1] += ';';
     }

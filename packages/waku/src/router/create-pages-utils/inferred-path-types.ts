@@ -228,24 +228,33 @@ export type SharedLayoutParams<Path extends string> = {
   [Key in keyof RouteParams<Path>]: RouteParams<Path>[Key] | undefined;
 };
 
-type IsSharedLayout<Layout> = Layout extends { render: 'static' }
-  ? Layout extends { staticPaths: object }
-    ? false
-    : true
-  : false;
+type IsSharedLayout<Layout> = Layout extends { staticPaths: object }
+  ? false
+  : Layout extends { render: infer Render }
+    ? 'static' extends Render
+      ? true
+      : false
+    : true;
+
+type DynamicPageUnder<Page, Path extends string> = Page extends {
+  path: Path | `${Path}/${string}`;
+  render: infer Render;
+}
+  ? 'dynamic' extends Render
+    ? Page
+    : never
+  : never;
 
 /**
- * Route params of a registered layout: `undefined` when it is static without
- * `staticPaths` and a dynamic page sits under it.
+ * Route params of a registered layout: possibly `undefined` when it may be
+ * static without `staticPaths` and a page under it may be dynamic.
  */
 export type LayoutParams<Config, Path extends string> = Config extends {
   layouts: infer Layout;
   pages: infer Page;
 }
   ? true extends IsSharedLayout<Extract<Layout, { path: Path }>>
-    ? [
-        Extract<Page, { path: Path | `${Path}/${string}`; render: 'dynamic' }>,
-      ] extends [never]
+    ? [DynamicPageUnder<Page, Path>] extends [never]
       ? RouteParams<Path>
       : SharedLayoutParams<Path>
     : RouteParams<Path>

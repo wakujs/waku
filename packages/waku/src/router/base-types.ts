@@ -47,7 +47,7 @@ export type PageProps<
  * the layout's own route params (a layout receives neither `path`, `query`, nor
  * `search` at runtime). Validated against the generated layout paths, which can
  * include layout-only paths that have no co-located page. A static layout
- * without `staticPaths` above a dynamic page gets `undefined` params.
+ * without `staticPaths` above a dynamic page may get `undefined` params.
  */
 export type LayoutProps<
   Path extends ([LayoutPath<CreatePagesConfig>] extends [never]

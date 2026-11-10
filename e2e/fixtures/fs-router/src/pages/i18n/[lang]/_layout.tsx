@@ -14,7 +14,6 @@ const LangLayout = ({ lang, children }: LayoutProps<'/i18n/[lang]'>) => {
 
 export const getConfig = () => {
   return {
-    render: 'static',
     staticPaths: ['en', 'ja'],
   } as const;
 };
