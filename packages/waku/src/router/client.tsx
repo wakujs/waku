@@ -19,7 +19,12 @@ import type { PrefetchOptions } from './client-core-utils/caches.js';
 import { RouterHostContext } from './client-core-utils/host.js';
 import type { RouterHost } from './client-core-utils/host.js';
 import { useInitialRscParams } from './client-core-utils/initial-route.js';
-import { parseRoute, resolveRouteHref } from './client-core-utils/route-url.js';
+import {
+  isSameOrigin,
+  otherOriginError,
+  parseRoute,
+  resolveRouteHref,
+} from './client-core-utils/route-url.js';
 import type { ServerFunctionRouting } from './client-core-utils/server-function-routing.js';
 import { createServerFunctionRouting } from './client-core-utils/server-function-routing.js';
 import { useNavigation } from './client-utils/navigation.js';
@@ -86,12 +91,14 @@ type NavigateOptions = {
 /**
  * Resolves once the requested navigation has been handled: after its response
  * when the route needs one, right away when it does not, and when a newer
- * navigation supersedes it (see `unstable_onSuperseded`). Rejects when the
- * route fetch fails, including an HTTP 404 without a custom page. A network
- * HTTP 404 follows the custom page before this resolves. A streamed redirect
- * or not-found intent can be handled after this resolves, including handing
- * an absolute redirect to the browser. It does not wait for React to
- * render, so the address bar may still show the previous URL.
+ * navigation supersedes it (see `unstable_onSuperseded`). Rejects and leaves
+ * the page as it is when the href is on another origin. Rejects and reports
+ * through the router error boundary when the route fetch fails, including an
+ * HTTP 404 without a custom page. A network HTTP 404 follows the custom page
+ * before this resolves. A streamed redirect or not-found intent can be
+ * handled after this resolves, including handing an absolute redirect to the
+ * browser. It does not wait for React to render, so the address bar may still
+ * show the previous URL.
  * After a browser handoff, recovery from a cancelled departure requires a new
  * navigation or reload. Use a native anchor for cancelable document navigation.
  */
@@ -129,12 +136,15 @@ export function useRouter() {
   const { route, changeRoute, getElements } = router;
   const cache = useRouterCache();
   const navigate = useCallback(
-    (
+    async (
       history: 'push' | 'replace',
       to: NavigationHref,
       options?: NavigateOptions,
     ) => {
       const url = new URL(resolveRouteHref(to), window.location.href);
+      if (!isSameOrigin(url)) {
+        throw otherOriginError(url);
+      }
       return dispatchChangeRoute(changeRoute, parseRoute(url), {
         shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
         history,
@@ -171,6 +181,9 @@ export function useRouter() {
   const prefetch = useCallback<Prefetch>(
     (to, options) => {
       const url = new URL(resolveRouteHref(to), window.location.href);
+      if (!isSameOrigin(url)) {
+        return;
+      }
       const next = parseRoute(url);
       preloadRouteModules(next.path);
       prefetchRouteUnlessReusable(cache, next, options, getElements);
@@ -231,8 +244,11 @@ const InnerRouter = ({
     (intentError?.scope === getRouterState(elements) ? intentError : undefined);
 
   const navigate = useCallback<RouterHost['navigate']>(
-    (href, opts) => {
+    async (href, opts) => {
       const url = new URL(href, window.location.href);
+      if (!isSameOrigin(url)) {
+        throw otherOriginError(url);
+      }
       return dispatchChangeRoute(changeRoute, parseRoute(url), {
         shouldScroll: opts.scroll ?? shouldScrollByDefault(url),
         history: opts.history,

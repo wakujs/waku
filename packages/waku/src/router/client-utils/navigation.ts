@@ -18,8 +18,10 @@ import { useHmrRefetch } from '../client-core-utils/hmr.js';
 import { useInitialRoute } from '../client-core-utils/initial-route.js';
 import {
   getRouteUrl,
+  isSameOrigin,
   isSameRoute,
   isSameRscRoute,
+  otherOriginError,
   parseRoute,
 } from '../client-core-utils/route-url.js';
 import type { ServerFunctionRouting } from '../client-core-utils/server-function-routing.js';
@@ -199,6 +201,11 @@ export function useNavigation(
 
   const changeRoute: ChangeRoute = useCallback(
     async function changeRoute(nextRoute, options) {
+      if (options.url && !isSameOrigin(options.url)) {
+        const error = otherOriginError(options.url);
+        setNavigationError({ error });
+        throw error;
+      }
       const elements = getElements();
       const settledRoute =
         getRouterState(elements)?.failedFrom ??

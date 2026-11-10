@@ -70,3 +70,13 @@ export function parseRedirectUrl(location: string, base: string | URL) {
 export function redactCredentials(location: string) {
   return location.replace(/\/\/[^/@]*@/, '//');
 }
+
+export function isSameOrigin(url: URL) {
+  return url.origin === window.location.origin;
+}
+
+export function otherOriginError(url: URL) {
+  return new Error(
+    `cannot navigate to another origin: ${redactCredentials(url.href)}`,
+  );
+}

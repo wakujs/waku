@@ -48,6 +48,7 @@ import {
   RouterHostContext,
   useRouterHost,
 } from '../src/router/client-core-utils/host.js';
+import type { RouterHost } from '../src/router/client-core-utils/host.js';
 import { PREFETCH_LIMIT_FOR_TEST } from '../src/router/client-core-utils/prefetch-cache.js';
 import {
   unstable_encodeRoutePath,
@@ -57,6 +58,7 @@ import {
   unstable_parseRoute,
 } from '../src/router/client-core.js';
 import { RouterContext } from '../src/router/client-utils/router-context.js';
+import type { ChangeRoute } from '../src/router/client-utils/router-context.js';
 import {
   ErrorBoundary,
   INTERNAL_ServerRouter,
@@ -1497,7 +1499,7 @@ describe('useRouter + Link with context', () => {
     }
   });
 
-  test('Link intercepts external, target, and download clicks', async () => {
+  test('Link intercepts target and download clicks', async () => {
     const changeRoute = vi.fn(async () => {});
     const prefetchRoute = spyPrefetchRoute();
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -1510,9 +1512,6 @@ describe('useRouter + Link with context', () => {
         }}
       >
         <>
-          <Link to="https://example.com/external" data-testid="external-link">
-            external
-          </Link>
           <Link to="/next" target="_blank" data-testid="target-link">
             target
           </Link>
@@ -1529,14 +1528,10 @@ describe('useRouter + Link with context', () => {
         cancelable: true,
         button: 0,
       });
-    const externalClick = click();
     const targetClick = click();
     const secondTargetClick = click();
     const downloadClick = click();
     const secondDownloadClick = click();
-    view.container
-      .querySelector('[data-testid="external-link"]')
-      ?.dispatchEvent(externalClick);
     view.container
       .querySelector('[data-testid="target-link"]')
       ?.dispatchEvent(targetClick);
@@ -1551,13 +1546,12 @@ describe('useRouter + Link with context', () => {
       ?.dispatchEvent(secondDownloadClick);
     await flush();
 
-    expect(externalClick.defaultPrevented).toBe(true);
     expect(targetClick.defaultPrevented).toBe(true);
     expect(secondTargetClick.defaultPrevented).toBe(true);
     expect(downloadClick.defaultPrevented).toBe(true);
     expect(secondDownloadClick.defaultPrevented).toBe(true);
     expect(prefetchRoute).not.toHaveBeenCalled();
-    expect(changeRoute).toHaveBeenCalledTimes(5);
+    expect(changeRoute).toHaveBeenCalledTimes(4);
     expect(warnSpy).toHaveBeenCalledTimes(4);
     expect(warnSpy).toHaveBeenCalledWith(
       '[Link] `target` is discouraged. Use `<a>` for this case.',
@@ -1568,6 +1562,62 @@ describe('useRouter + Link with context', () => {
 
     view.unmount();
     warnSpy.mockRestore();
+  });
+
+  test('Link refuses another origin without prefetching or preloading', async () => {
+    const changeRoute = vi.fn(async () => {});
+    const prefetchRoute = spyPrefetchRoute();
+    const preload = vi.fn();
+    (globalThis as Record<string, unknown>).__WAKU_ROUTER_PREFETCH__ = preload;
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const view = await renderApp(
+      <ErrorBoundary>
+        <RouterContext
+          value={{
+            route: { path: '/start', query: '', hash: '' },
+            changeRoute,
+          }}
+        >
+          <Link
+            to="https://user:pw@other.example/dashboard"
+            unstable_prefetchOnEnter={{}}
+            data-testid="external-link"
+          >
+            external
+          </Link>
+        </RouterContext>
+      </ErrorBoundary>,
+    );
+    try {
+      const link = view.container.querySelector(
+        '[data-testid="external-link"]',
+      )!;
+      link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      const click = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+      });
+      await act(async () => {
+        link.dispatchEvent(click);
+      });
+      await flush();
+
+      expect(click.defaultPrevented).toBe(true);
+      expect(prefetchRoute).not.toHaveBeenCalled();
+      expect(preload).not.toHaveBeenCalled();
+      expect(changeRoute).not.toHaveBeenCalled();
+      expect(view.container.textContent).toContain(
+        'cannot navigate to another origin: https://other.example/dashboard',
+      );
+    } finally {
+      consoleErrorSpy.mockRestore();
+      delete (globalThis as Record<string, unknown>).__WAKU_ROUTER_PREFETCH__;
+      view.unmount();
+    }
   });
 
   test('Link handles prefetchOnEnter and prefetchOnView', async () => {
@@ -1991,6 +2041,125 @@ describe('Router integration', () => {
     };
     return Probe;
   };
+
+  const startElements = (probe: ReactElement) => ({
+    [unstable_getRouteSlotId('/start')]: probe,
+    [ROUTE_ID]: ['/start', ''],
+    [IS_STATIC_ID]: false,
+  });
+
+  test('push and replace reject another origin without a request', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = installRefetch(vi.fn<RefetchInner>(async () => ({})));
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      startElements(<Probe />),
+    );
+    const href = window.location.href;
+    try {
+      await expect(
+        capture.router!.push('https://user:pw@other.example/start'),
+      ).rejects.toThrow(
+        'cannot navigate to another origin: https://other.example/start',
+      );
+      await expect(
+        capture.router!.replace('//other.example/start'),
+      ).rejects.toThrow('cannot navigate to another origin');
+      expect(refetch).not.toHaveBeenCalled();
+      expect(window.location.href).toBe(href);
+    } finally {
+      view.unmount();
+    }
+  });
+
+  test('push rejects another origin under a base path', async () => {
+    vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/app/');
+    window.history.replaceState({}, '', '/app/start');
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = installRefetch(vi.fn<RefetchInner>(async () => ({})));
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      startElements(<Probe />),
+    );
+    try {
+      for (const to of [
+        'https://other.example/start',
+        '//other.example/start',
+      ]) {
+        await expect(capture.router!.push(to)).rejects.toThrow(
+          'cannot navigate to another origin',
+        );
+      }
+      expect(refetch).not.toHaveBeenCalled();
+      expect(window.location.pathname).toBe('/app/start');
+    } finally {
+      view.unmount();
+      vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/');
+    }
+  });
+
+  test('the router host rejects another origin', async () => {
+    const capture = { navigate: null as RouterHost['navigate'] | null };
+    const Probe = () => {
+      capture.navigate = useRouterHost().navigate;
+      return null;
+    };
+    const refetch = installRefetch(vi.fn<RefetchInner>(async () => ({})));
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      startElements(<Probe />),
+    );
+    try {
+      await expect(
+        capture.navigate!('https://other.example/start', { history: 'push' }),
+      ).rejects.toThrow('cannot navigate to another origin');
+      expect(refetch).not.toHaveBeenCalled();
+    } finally {
+      view.unmount();
+    }
+  });
+
+  test('changeRoute refuses another origin through the boundary', async () => {
+    const capture = { changeRoute: null as ChangeRoute | null };
+    const Probe = () => {
+      capture.changeRoute = useContext(RouterContext)!.changeRoute;
+      return null;
+    };
+    const refetch = installRefetch(vi.fn<RefetchInner>(async () => ({})));
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    testHoisted.elements = startElements(<Probe />);
+    const view = await renderApp(
+      <ErrorBoundary>
+        <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+      </ErrorBoundary>,
+    );
+    try {
+      await act(async () => {
+        await expect(
+          capture.changeRoute!(
+            { path: '/start', query: '', hash: '' },
+            {
+              shouldScroll: false,
+              history: 'push',
+              url: new URL('https://other.example/start'),
+            },
+          ),
+        ).rejects.toThrow('cannot navigate to another origin');
+        await flush();
+      });
+      expect(refetch).not.toHaveBeenCalled();
+      expect(view.container.textContent).toContain(
+        'cannot navigate to another origin: https://other.example/start',
+      );
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  });
 
   test('initializes Root with encoded route and query params', async () => {
     const capture = { router: null as RouterApi | null };
