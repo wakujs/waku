@@ -2991,6 +2991,64 @@ describe('createPages api', () => {
     expect(res.status).toEqual(200);
   });
 
+  it('answers 405 with Allow for a method without a handler', async () => {
+    createPages(async ({ createApi }) => [
+      createApi({
+        path: '/test',
+        render: 'dynamic',
+        handlers: {
+          GET: async () => new Response('get'),
+          POST: async () => new Response('post'),
+        },
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const [{ handler }] = Array.from(await getConfigs()) as any;
+    for (const method of ['DELETE', 'constructor']) {
+      const res = await handler(
+        new Request('http://localhost:3000/test', { method }),
+      );
+      expect(res.status, method).toEqual(405);
+      expect(res.headers.get('allow'), method).toEqual('GET, POST');
+    }
+  });
+
+  it('ignores an all handler the handlers object only inherits', async () => {
+    createPages(async ({ createApi }) => [
+      createApi({
+        path: '/test',
+        render: 'dynamic',
+        handlers: Object.assign(
+          Object.create({ all: async () => new Response('inherited') }),
+          { GET: async () => new Response('get') },
+        ),
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const [{ handler }] = Array.from(await getConfigs()) as any;
+    const res = await handler(
+      new Request('http://localhost:3000/test', { method: 'POST' }),
+    );
+    expect(res.status).toEqual(405);
+    expect(res.headers.get('allow')).toEqual('GET');
+  });
+
+  it('sends a method the handlers object only inherits to all', async () => {
+    createPages(async ({ createApi }) => [
+      createApi({
+        path: '/test',
+        render: 'dynamic',
+        handlers: { all: async () => new Response('all') },
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const [{ handler }] = Array.from(await getConfigs()) as any;
+    const res = await handler(
+      new Request('http://localhost:3000/test', { method: 'constructor' }),
+    );
+    expect(await res.text()).toEqual('all');
+  });
+
   it('dispatches a QUERY handler and prefers it over all', async () => {
     createPages(async ({ createApi }) => [
       createApi({

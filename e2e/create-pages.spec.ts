@@ -590,6 +590,22 @@ test.describe(`create-pages`, () => {
     expect(await res.text()).toBe('POST to hello world! from the test!');
   });
 
+  test('api hi with a method it has no handler for', async () => {
+    const res = await fetch(`http://localhost:${port}/api/hi`, {
+      method: 'DELETE',
+    });
+    expect(res.status).toBe(405);
+    expect(res.headers.get('allow')).toBe('GET, POST');
+  });
+
+  test('static api with a method other than GET', async () => {
+    const res = await fetch(`http://localhost:${port}/api/hi.txt`, {
+      method: 'POST',
+    });
+    expect(res.status).toBe(405);
+    expect(res.headers.get('allow')).toBe('GET');
+  });
+
   test('api static paths', async () => {
     const res1 = await fetch(`http://localhost:${port}/api/static-paths/foo`);
     expect(res1.status).toBe(200);
