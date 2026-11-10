@@ -462,6 +462,46 @@ export const BlogLayout = async ({ children }) => {
 };
 ```
 
+#### Layouts with params
+
+A layout at a path with params, such as `path: '/[lang]'`, receives them as props. A static layout renders at build time, once per value that a `staticPaths` on its route lists: its own, another layout's or a static page's. Above dynamic pages:
+
+- With `staticPaths`, it renders once per listed value, as a static page does. The dynamic pages below it answer only these values, and other values are not found.
+- Without `staticPaths`, params that no other `staticPaths` lists are `undefined`, and it renders once for all their values. Its props type its params as possibly `undefined`.
+- With `render: 'dynamic'`, it renders on each request with the request's values.
+
+```tsx
+const pages = createPages(async ({ createLayout, createPage }) => [
+  createLayout({
+    render: 'static',
+    path: '/[lang]',
+    staticPaths: ['en', 'ja'],
+    component: LangLayout,
+  }),
+  createPage({
+    render: 'dynamic',
+    path: '/[lang]/post/[slug]',
+    component: PostPage,
+  }),
+]);
+```
+
+File-based layouts set `staticPaths` in `getConfig`:
+
+```tsx
+// ./src/pages/[lang]/_layout.tsx
+export default async function LangLayout({ lang, children }) {
+  return <div lang={lang}>{children}</div>;
+}
+
+export const getConfig = async () => {
+  return {
+    render: 'static',
+    staticPaths: ['en', 'ja'],
+  } as const;
+};
+```
+
 ### Root component
 
 Root component is a special component that is rendered at the root of html document. It is useful for customizing `<html>`, `<head>`, and `<body>` tags.

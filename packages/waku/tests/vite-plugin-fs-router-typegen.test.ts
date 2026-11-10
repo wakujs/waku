@@ -100,8 +100,12 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     );
     // layout paths (including dynamic ones) are emitted into a Layout union
     expect(generated).toContain('type Layout =');
-    expect(generated).toContain("| { path: '/' }");
-    expect(generated).toContain("| { path: '/[category]' }");
+    expect(generated).toContain(
+      "| ({ path: '/' } & Awaited<ReturnType<typeof File_Layout_getConfig>>)",
+    );
+    expect(generated).toContain(
+      "| ({ path: '/[category]' } & Awaited<ReturnType<typeof File_CategoryLayout_getConfig>>)",
+    );
     expect(generated).toContain('layouts: Layout;');
   });
 

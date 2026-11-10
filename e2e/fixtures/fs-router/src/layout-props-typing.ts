@@ -9,6 +9,8 @@ export function assertLayoutPropsTyping(
   rootProps: LayoutProps<'/'>,
   layoutOnlyProps: LayoutProps<'/cache-check'>,
   dynamicProps: LayoutProps<'/dynamic-layout/[id]'>,
+  sharedProps: LayoutProps<'/shared-layout/[lang]'>,
+  staticPathsProps: LayoutProps<'/i18n/[lang]'>,
 ) {
   void rootProps.children;
   void layoutOnlyProps.children;
@@ -18,6 +20,13 @@ export function assertLayoutPropsTyping(
   void id;
   // @ts-expect-error a child page param ([sub]) does not leak into the layout
   void dynamicProps.sub;
+  const sharedLang: string | undefined = sharedProps.lang;
+  void sharedLang;
+  // @ts-expect-error a static layout shared by dynamic pages lacks its param
+  const sharedLangString: string = sharedProps.lang;
+  void sharedLangString;
+  const staticPathsLang: string = staticPathsProps.lang;
+  void staticPathsLang;
 }
 
 // @ts-expect-error an unknown layout path is not a known layout

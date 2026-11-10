@@ -6,7 +6,10 @@ import type {
   LayoutProps,
   Unstable_SearchCodec,
 } from '../src/router/base-types.js';
-import type { PropsForPages } from '../src/router/create-pages-utils/inferred-path-types.js';
+import type {
+  LayoutParams,
+  PropsForPages,
+} from '../src/router/create-pages-utils/inferred-path-types.js';
 
 // In this suite CreatePagesConfig is not augmented, so LayoutPath resolves to
 // never and LayoutProps falls back to accepting any string (the pre-codegen
@@ -45,5 +48,72 @@ describe('LayoutProps', () => {
     );
     const props: Props = { children: null, aaa: 'x' };
     expect(props.aaa).toBe('x');
+  });
+});
+
+describe('LayoutParams', () => {
+  type Config = {
+    layouts:
+      | { path: '/[lang]'; render: 'static' }
+      | { path: '/[lang]/post'; render: 'static'; staticPaths: ['en'] }
+      | { path: '/blog/[slug]'; render: 'static' }
+      | { path: '/app/[id]'; render: 'dynamic' }
+      | {
+          path: '/[region]';
+          render: 'static';
+          staticPaths: readonly ['eu'] | undefined;
+        }
+      | { path: '/[team]' }
+      | { path: '/[country]'; render: string }
+      | { path: '/[org]'; render: 'static' }
+      | { path: '/[locale]'; staticPaths: readonly ['en'] };
+    pages:
+      | { path: '/[lang]/post/[slug]'; render: 'dynamic' }
+      | { path: '/blog/[slug]'; render: 'static' }
+      | { path: '/app/[id]/settings'; render: 'dynamic' }
+      | { path: '/[region]/[slug]'; render: 'dynamic' }
+      | { path: '/[team]/[slug]'; render: 'dynamic' }
+      | { path: '/[country]/[slug]'; render: 'dynamic' }
+      | { path: '/[org]/[slug]'; render: 'static' | 'dynamic' }
+      | { path: '/[locale]/[slug]'; render: 'dynamic' };
+  };
+
+  it('is possibly undefined when a static layout without staticPaths may be above a dynamic page', () => {
+    expectType<
+      TypeEqual<LayoutParams<Config, '/[lang]'>, { lang: string | undefined }>
+    >(true);
+    expectType<
+      TypeEqual<
+        LayoutParams<Config, '/[region]'>,
+        { region: string | undefined }
+      >
+    >(true);
+    expectType<
+      TypeEqual<LayoutParams<Config, '/[team]'>, { team: string | undefined }>
+    >(true);
+    expectType<
+      TypeEqual<
+        LayoutParams<Config, '/[country]'>,
+        { country: string | undefined }
+      >
+    >(true);
+    expectType<
+      TypeEqual<LayoutParams<Config, '/[org]'>, { org: string | undefined }>
+    >(true);
+  });
+
+  it('is known with staticPaths, above static pages only, or when dynamic', () => {
+    expectType<
+      TypeEqual<LayoutParams<Config, '/[lang]/post'>, { lang: string }>
+    >(true);
+    expectType<
+      TypeEqual<LayoutParams<Config, '/blog/[slug]'>, { slug: string }>
+    >(true);
+    expectType<TypeEqual<LayoutParams<Config, '/app/[id]'>, { id: string }>>(
+      true,
+    );
+    expectType<
+      TypeEqual<LayoutParams<Config, '/[locale]'>, { locale: string }>
+    >(true);
   });
 });

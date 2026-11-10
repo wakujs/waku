@@ -266,8 +266,9 @@ export async function generateFsRouterTypes(
   };
 
   const generateFile = async (filePaths: string[]): Promise<string | null> => {
-    const fileInfo: { path: string; src: string; hasGetConfig: boolean }[] = [];
-    const layoutPaths: string[] = [];
+    type FileInfo = { path: string; src: string; hasGetConfig: boolean };
+    const fileInfo: FileInfo[] = [];
+    const layoutInfo: FileInfo[] = [];
     const moduleNames = getImportModuleNames(filePaths);
 
     for (const filePath of filePaths) {
@@ -288,7 +289,11 @@ export async function generateFsRouterTypes(
         continue;
       } else if (filePath.endsWith('/_layout.tsx')) {
         const path = filePath.slice(0, -'/_layout.tsx'.length);
-        layoutPaths.push(getGrouplessPath(path) || '/');
+        layoutInfo.push({
+          path: getGrouplessPath(path) || '/',
+          src,
+          hasGetConfig,
+        });
       } else if (filePath.endsWith('/index.tsx')) {
         const path = filePath.slice(0, -'/index.tsx'.length);
         fileInfo.push({
@@ -306,6 +311,9 @@ export async function generateFsRouterTypes(
     }
 
     const hasAnyGetConfig = fileInfo.some((file) => file.hasGetConfig);
+    const getConfigFiles = [...fileInfo, ...layoutInfo].filter(
+      (file) => file.hasGetConfig,
+    );
     const lines: string[] = [
       '// deno-fmt-ignore-file',
       '// biome-ignore-all format: generated types do not need formatting',
@@ -315,12 +323,9 @@ export async function generateFsRouterTypes(
         : "import type { PathsForPages } from 'waku/router';",
     ];
 
-    if (hasAnyGetConfig) {
+    if (getConfigFiles.length) {
       lines.push('');
-      for (const file of fileInfo) {
-        if (!file.hasGetConfig) {
-          continue;
-        }
+      for (const file of getConfigFiles) {
         const moduleName = moduleNames[file.src];
         lines.push(
           `// prettier-ignore`,
@@ -346,11 +351,15 @@ export async function generateFsRouterTypes(
     }
     lines[lines.length - 1] += ';';
 
-    const uniqueLayoutPaths = [...new Set(layoutPaths)];
-    if (uniqueLayoutPaths.length) {
+    if (layoutInfo.length) {
       lines.push('', '// prettier-ignore', 'type Layout =');
-      for (const path of uniqueLayoutPaths) {
-        lines.push(`| { path: '${path}' }`);
+      for (const file of layoutInfo) {
+        const moduleName = moduleNames[file.src];
+        lines.push(
+          file.hasGetConfig
+            ? `| ({ path: '${file.path}' } & Awaited<ReturnType<typeof ${moduleName}_getConfig>>)`
+            : `| { path: '${file.path}' }`,
+        );
       }
       lines[lines.length - 1] += ';';
     }
@@ -364,7 +373,7 @@ export async function generateFsRouterTypes(
       '  }',
       '  interface CreatePagesConfig {',
       '    pages: Page;',
-      ...(uniqueLayoutPaths.length ? ['    layouts: Layout;'] : []),
+      ...(layoutInfo.length ? ['    layouts: Layout;'] : []),
       '  }',
       ...(hasAnyGetConfig
         ? [

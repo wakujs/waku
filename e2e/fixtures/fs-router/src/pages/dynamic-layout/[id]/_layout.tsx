@@ -10,4 +10,10 @@ const DynamicLayout = ({
   </div>
 );
 
+export const getConfig = () => {
+  return {
+    render: 'dynamic',
+  } as const;
+};
+
 export default DynamicLayout;
