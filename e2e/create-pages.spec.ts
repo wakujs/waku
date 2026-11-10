@@ -1003,6 +1003,27 @@ test.describe(`create-pages`, () => {
       page.getByRole('heading', { name: 'Version: Mr.-Mime' }),
     ).toBeVisible();
   });
+
+  test('does not serve files under the private directory', async ({
+    mode,
+    request,
+  }) => {
+    const res = await request.get(`http://localhost:${port}/private/hi.txt`);
+    expect(res.status()).toBe(mode === 'DEV' ? 403 : 404);
+  });
+
+  test(
+    'does not serve files under the private directory through /@fs/',
+    { tag: '@dev' },
+    async ({ request }) => {
+      const fixturePath = new URL('./fixtures/create-pages', import.meta.url)
+        .pathname;
+      const res = await request.get(
+        `http://localhost:${port}/@fs${fixturePath}/private/hi.txt`,
+      );
+      expect(res.status()).toBe(403);
+    },
+  );
 });
 
 test.describe(`create-pages STATIC`, { tag: '@prd' }, () => {
