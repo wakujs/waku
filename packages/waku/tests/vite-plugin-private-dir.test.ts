@@ -1,98 +1,115 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
-import type { Connect, ResolvedConfig, ViteDevServer } from 'vite';
-import { expect, test } from 'vitest';
-import { privateDirPlugin } from '../src/lib/vite-plugins/private-dir.js';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import type { InlineConfig, ViteDevServer } from 'vite';
+import {
+  createServer,
+  isFileLoadingAllowed,
+  normalizePath,
+  resolveConfig,
+} from 'vite';
+import { afterAll, beforeAll, expect, test } from 'vitest';
+import {
+  VITE_DEFAULT_FS_DENY_FOR_TEST,
+  privateDirPlugin,
+} from '../src/lib/vite-plugins/private-dir.js';
 
-const root = '/app';
+const root = normalizePath(
+  mkdtempSync(path.join(tmpdir(), 'waku (private) [dir]+')),
+);
+const inlineConfig = (overrides: InlineConfig = {}): InlineConfig => ({
+  root,
+  configFile: false,
+  logLevel: 'silent',
+  plugins: [privateDirPlugin({ privateDir: 'private' })],
+  ...overrides,
+});
 
-const createRequestStatus = async ({
-  base = '/',
-  privateDir = 'private',
-} = {}) => {
-  const plugin = privateDirPlugin({ privateDir });
-  const { configResolved, configureServer } = plugin;
-  if (
-    typeof configResolved !== 'function' ||
-    typeof configureServer !== 'function'
-  ) {
-    throw new Error('Plugin hooks are not defined');
+let server: ViteDevServer;
+let port: number;
+
+const requestStatus = (rawPath: string) =>
+  new Promise<number>((resolve, reject) => {
+    http
+      .get({ host: '127.0.0.1', port, path: rawPath }, (res) => {
+        res.resume();
+        resolve(res.statusCode!);
+      })
+      .on('error', reject);
+  });
+
+beforeAll(async () => {
+  for (const [file, content] of [
+    ['private/hi.txt', 'hello'],
+    ['private/nested/.secret.json', '{}'],
+    ['src/hi.txt', 'public'],
+    ['.env', 'KEY=value'],
+  ] as const) {
+    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    writeFileSync(path.join(root, file), content);
   }
-  const config = { root, base } as ResolvedConfig;
-  let middleware: Connect.NextHandleFunction | undefined;
-  await configResolved.call({} as never, config);
-  await configureServer.call(
-    {} as never,
-    {
-      config,
-      middlewares: {
-        use: (handler: Connect.NextHandleFunction) => {
-          middleware = handler;
-        },
-      },
-    } as unknown as ViteDevServer,
+  server = await createServer(
+    inlineConfig({
+      server: { host: '127.0.0.1' },
+      resolve: { alias: [{ find: '/shared', replacement: `${root}/private` }] },
+    }),
   );
-  if (!middleware) {
-    throw new Error('Middleware is not registered');
-  }
-  const handle = middleware;
-  return (url: string): number | 'next' => {
-    let status: number | 'next' = 'next';
-    const res = {
-      set statusCode(code: number) {
-        status = code;
-      },
-      end: () => {},
-    } as unknown as ServerResponse;
-    handle({ url } as IncomingMessage, res, () => {});
-    return status;
-  };
-};
+  await server.listen();
+  port = (server.httpServer!.address() as AddressInfo).port;
+});
 
-test('rejects requests for files under privateDir', async () => {
-  const requestStatus = await createRequestStatus();
-  for (const url of [
+afterAll(async () => {
+  await server.close();
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('refuses files under privateDir however the request names them', async () => {
+  for (const rawPath of [
     '/private/hi.txt',
-    '/private/nested/hi.txt',
-    '/private/',
-    '/private',
-    '/Private/hi.txt',
+    '/private/nested/.secret.json',
+    '/private/hi.txt?raw',
     '/%70rivate/hi.txt',
-    '/private%2Fhi.txt',
-    '/src/../private/hi.txt',
-    '/private/hi.txt?import',
-    '/private/hi.txt?raw#hash',
-    `/@fs${root}/private/hi.txt`,
-    `/@fs/${root}/private/hi.txt`,
+    encodeURI(`/@fs${root}/private/hi.txt`),
+    encodeURI(`/@fs/../abcd${root}/private/hi.txt`),
+    '/shared/hi.txt',
   ]) {
-    expect(requestStatus(url), url).toBe(403);
+    expect(await requestStatus(rawPath), rawPath).toBe(403);
   }
 });
 
-test('passes requests for files outside privateDir', async () => {
-  const requestStatus = await createRequestStatus();
-  for (const url of [
-    '/',
-    '/index.html',
-    '/src/pages/index.tsx',
-    '/privateer/hi.txt',
-    '/public/private/hi.txt',
-    '/private/../src/hi.txt',
-    `/@fs${root}/src/private-notes.txt`,
-    `/@fs/other/private/hi.txt`,
-  ]) {
-    expect(requestStatus(url), url).toBe('next');
-  }
+test('keeps serving other files and routes', async () => {
+  expect(await requestStatus('/src/hi.txt')).toBe(200);
+  expect(await requestStatus('/private/account')).toBe(404);
 });
 
-test('rejects requests with and without the base path', async () => {
-  const requestStatus = await createRequestStatus({ base: '/base/' });
-  expect(requestStatus('/base/private/hi.txt')).toBe(403);
-  expect(requestStatus('/private/hi.txt')).toBe(403);
-  expect(requestStatus('/base/src/hi.txt')).toBe('next');
+test("keeps Vite's default deny list", async () => {
+  expect(await requestStatus('/.env')).toBe(403);
+  const config = await resolveConfig(
+    { root, configFile: false, logLevel: 'silent' },
+    'serve',
+  );
+  expect(config.server.fs.deny).toEqual(VITE_DEFAULT_FS_DENY_FOR_TEST);
 });
 
-test('respects a custom privateDir', async () => {
-  const requestStatus = await createRequestStatus({ privateDir: 'secrets' });
-  expect(requestStatus('/secrets/hi.txt')).toBe(403);
-  expect(requestStatus('/private/hi.txt')).toBe('next');
+test("keeps the user's deny list", async () => {
+  const config = await resolveConfig(
+    inlineConfig({ server: { fs: { deny: ['*.secret'] } } }),
+    'serve',
+  );
+  expect(config.server.fs.deny).toEqual(['*.secret', expect.any(String)]);
+  expect(isFileLoadingAllowed(config, `${root}/private/hi.txt`)).toBe(false);
+  expect(isFileLoadingAllowed(config, `${root}/Private/hi.txt`)).toBe(false);
+  expect(isFileLoadingAllowed(config, `${root}/src/hi.txt`)).toBe(true);
+});
+
+test('denies a custom privateDir only', async () => {
+  const config = await resolveConfig(
+    inlineConfig({ plugins: [privateDirPlugin({ privateDir: 'secrets' })] }),
+    'serve',
+  );
+  expect(isFileLoadingAllowed(config, `${root}/secrets/hi.txt`)).toBe(false);
+  expect(isFileLoadingAllowed(config, `${root}/private/hi.txt`)).toBe(true);
+  expect(isFileLoadingAllowed(config, `${root}/src/secrets/hi.txt`)).toBe(true);
 });
