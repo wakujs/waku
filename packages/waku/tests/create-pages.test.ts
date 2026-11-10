@@ -856,6 +856,119 @@ describe('createPages pages and layouts', () => {
     ]);
   });
 
+  it('expands a dynamic page by its static layout staticPaths', async () => {
+    const TestPage = () => null;
+    const TestLayout = ({ children }: PropsWithChildren) => children;
+    createPages(async ({ createPage, createLayout }) => [
+      createLayout({
+        render: 'static',
+        path: '/[lang]',
+        staticPaths: ['en', 'ja'],
+        component: TestLayout,
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/[lang]/post/[slug]',
+        component: TestPage,
+      }),
+    ]);
+
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs()) as any[];
+    expect(
+      configs.map((config) => [config.pathSpec, Object.keys(config.elements)]),
+    ).toEqual(
+      ['en', 'ja'].map((lang) => [
+        [
+          { type: 'literal', name: lang },
+          { type: 'literal', name: 'post' },
+          { type: 'group', name: 'slug' },
+        ],
+        [`layout:/${lang}`, 'page:/[lang]/post/[slug]'],
+      ]),
+    );
+    const layout = configs[1].elements['layout:/ja'].renderer({
+      routePath: '/ja/post/[slug]',
+      query: undefined,
+    });
+    expect(layout.props.lang).toBe('ja');
+  });
+
+  it('expands nested static layouts by the staticPaths they share', async () => {
+    const TestPage = () => null;
+    const TestLayout = ({ children }: PropsWithChildren) => children;
+    createPages(async ({ createPage, createLayout }) => [
+      createLayout({
+        render: 'static',
+        path: '/[lang]',
+        staticPaths: ['en', 'ja'],
+        component: TestLayout,
+      }),
+      createLayout({
+        render: 'static',
+        path: '/[lang]/[section]',
+        staticPaths: [
+          ['en', 'docs'],
+          ['fr', 'blog'],
+        ],
+        component: TestLayout,
+      }),
+      createLayout({
+        render: 'static',
+        path: '/[lang]/[section]/post',
+        component: TestLayout,
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/[lang]/[section]/post/[slug]',
+        component: TestPage,
+      }),
+    ]);
+
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs()) as any[];
+    expect(
+      configs.map((config) => [config.pathSpec, Object.keys(config.elements)]),
+    ).toEqual([
+      [
+        [
+          { type: 'literal', name: 'en' },
+          { type: 'literal', name: 'docs' },
+          { type: 'literal', name: 'post' },
+          { type: 'group', name: 'slug' },
+        ],
+        [
+          'layout:/en',
+          'layout:/en/docs',
+          'layout:/en/docs/post',
+          'page:/[lang]/[section]/post/[slug]',
+        ],
+      ],
+    ]);
+  });
+
+  it('rejects a static layout with params above a dynamic page without staticPaths', async () => {
+    const TestPage = () => null;
+    const TestLayout = ({ children }: PropsWithChildren) => children;
+    createPages(async ({ createPage, createLayout }) => [
+      createLayout({
+        render: 'static',
+        path: '/[lang]',
+        component: TestLayout,
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/[lang]/[slug]',
+        component: TestPage,
+      }),
+    ]);
+
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs).rejects.toThrowError(
+      'Static layout /[lang] needs staticPaths above the dynamic page /[lang]/[slug]',
+    );
+  });
+
   it('creates a simple static slice', async () => {
     const TestPage = () => null;
     const TestSlice = () => null;

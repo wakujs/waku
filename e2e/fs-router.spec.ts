@@ -262,20 +262,51 @@ test.describe('fs-router', () => {
     expect(res.status).toBe(404);
   });
 
-  test('static layout under a dynamic page renders once from its pattern', async ({
-    page,
-  }) => {
+  test('dynamic layout with params', async ({ page }) => {
     await page.goto(`http://localhost:${port}/dynamic-layout/abc/def`);
     await expect(
       page.getByRole('heading', { name: 'abc / def' }),
     ).toBeVisible();
-    await expect(page.getByTestId('dynamic-layout-id')).toHaveText('[id]');
+    await expect(page.getByTestId('dynamic-layout-id')).toHaveText('abc');
     await page.goto(`http://localhost:${port}/dynamic-layout/xyz/def`);
     await expect(
       page.getByRole('heading', { name: 'xyz / def' }),
     ).toBeVisible();
-    await expect(page.getByTestId('dynamic-layout-id')).toHaveText('[id]');
+    await expect(page.getByTestId('dynamic-layout-id')).toHaveText('xyz');
   });
+
+  test('static layout with staticPaths above a dynamic page', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/i18n/ja/post/hello`);
+    await expect(
+      page.getByRole('heading', { name: 'ja / hello' }),
+    ).toBeVisible();
+    await expect(page.getByTestId('i18n-lang')).toHaveText('ja');
+    const renderedAt = await page.getByTestId('i18n-rendered-at').textContent();
+    await page.goto(`http://localhost:${port}/i18n/ja/post/world`);
+    await expect(
+      page.getByRole('heading', { name: 'ja / world' }),
+    ).toBeVisible();
+    await expect(page.getByTestId('i18n-rendered-at')).toHaveText(renderedAt!);
+    await page.goto(`http://localhost:${port}/i18n/en/post/hello`);
+    await expect(page.getByTestId('i18n-lang')).toHaveText('en');
+    const res = await fetch(`http://localhost:${port}/i18n/fr/post/hello`);
+    expect(res.status).toBe(404);
+  });
+
+  test(
+    'static layout with staticPaths renders at build time',
+    { tag: '@prd' },
+    async ({ page }) => {
+      const curr = Date.now();
+      await page.goto(`http://localhost:${port}/i18n/en/post/hello`);
+      const rendered = Number(
+        (await page.getByTestId('i18n-rendered-at').textContent()) ?? '',
+      );
+      expect(rendered).toBeLessThan(curr);
+    },
+  );
 
   test('search params (fs-router getConfig codec, typegen)', async ({
     page,

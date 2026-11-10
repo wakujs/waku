@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { createPages } from '../src/router/create-pages.js';
 
@@ -41,5 +42,43 @@ describe('createPages - build-time pruning', () => {
     });
 
     expect(register).toHaveBeenCalledWith('pages/_slices/preset/[id].tsx');
+  });
+
+  it('keeps a static layout with staticPaths', async () => {
+    const Layout = ({ children }: { children: ReactNode }) => children;
+    const router = createPages(async ({ createLayout, createPage }) => [
+      createLayout({
+        render: 'static',
+        path: '/',
+        component: Layout,
+        unstable_sourceFile: 'pages/_layout.tsx',
+      }),
+      createLayout({
+        render: 'static',
+        path: '/[lang]',
+        staticPaths: ['en'],
+        component: Layout,
+        unstable_sourceFile: 'pages/[lang]/_layout.tsx',
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/[lang]/[slug]',
+        component: () => null,
+      }),
+    ]);
+
+    const register = vi.fn();
+    await router.handleBuild({
+      renderRsc: () => Promise.resolve(makeStream()),
+      renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
+      rscPathToFileName: (rscPath: string) => `dist/${rscPath}.txt`,
+      saveBuildMetadata: vi.fn().mockResolvedValue(undefined),
+      generateFile: vi.fn().mockResolvedValue(undefined),
+      generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
+      unstable_registerPrunableFile: register,
+    });
+
+    expect(register).toHaveBeenCalledWith('pages/_layout.tsx');
+    expect(register).not.toHaveBeenCalledWith('pages/[lang]/_layout.tsx');
   });
 });

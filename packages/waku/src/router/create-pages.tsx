@@ -290,6 +290,12 @@ export type CreateLayout = <Path extends string>(
         component: FunctionComponent<
           { children: ReactNode } & RouteParams<Path>
         >;
+        /**
+         * The param values to prerender the layout with. A layout with params
+         * needs them above dynamic pages, which then answer only these values;
+         * other values are not found.
+         */
+        staticPaths?: StaticSlugRoutePaths<Path>;
         unstable_sourceFile?: string | undefined;
       }
     | {
@@ -526,6 +532,10 @@ export function createPages<
   const dynamicPageEntryByPathPattern = new Map<string, DynamicPageEntry>();
   const wildcardPageEntryByPathPattern = new Map<string, DynamicPageEntry>();
   const dynamicLayoutEntryByPathPattern = new Map<string, LayoutEntry>();
+  const staticPathsByLayoutPath = new Map<
+    string,
+    readonly (string | readonly string[])[]
+  >();
   const apiEntryByPathKey = new Map<
     string,
     {
@@ -793,8 +803,12 @@ export function createPages<
     const sourceFile = layout.unstable_sourceFile;
     const getEtag = layout.unstable_getEtag;
     if (layout.render === 'static') {
+      if (layout.staticPaths) {
+        staticPathsByLayoutPath.set(pathPattern, layout.staticPaths);
+      }
+      const prunableSourceFile = layout.staticPaths ? undefined : sourceFile;
       const id = getStaticComponentId(pathPattern, 'layout');
-      registerStaticComponent(id, layout.component, sourceFile);
+      registerStaticComponent(id, layout.component, prunableSourceFile);
     } else if (layout.render === 'dynamic') {
       if (dynamicLayoutEntryByPathPattern.has(pathPattern)) {
         throw new Error(`Duplicated dynamic path: ${layout.path}`);
@@ -992,14 +1006,58 @@ export function createPages<
       type LayoutMatch = { layoutPath: string; layoutIdPath: string };
       const collectLayoutMatches = (
         spec: PathSpec,
-        groupedPath?: string,
+        groupedPath: string,
       ): LayoutMatch[] =>
         getLayouts(spec).map((layoutPath) => ({
           layoutPath,
-          layoutIdPath: groupedPath
-            ? getLayoutIdPath(layoutPath, groupedPath)
-            : layoutPath,
+          layoutIdPath: getLayoutIdPath(layoutPath, groupedPath),
         }));
+      const expandByLayoutStaticPaths = (pathSpec: PathSpec): PathSpec[] => {
+        let prefixes: string[][] = [[]];
+        let prefixLength = 0;
+        for (const layoutPath of getLayouts(pathSpec)) {
+          const layoutSpec = parsePathWithSlug(layoutPath);
+          const hasParamsFrom = (start: number) =>
+            pathSpec
+              .slice(start, layoutSpec.length)
+              .some((item) => item.type !== 'literal');
+          if (
+            dynamicLayoutEntryByPathPattern.has(layoutPath) ||
+            !hasParamsFrom(0)
+          ) {
+            continue;
+          }
+          const staticPaths = staticPathsByLayoutPath.get(layoutPath);
+          if (!staticPaths) {
+            if (!hasParamsFrom(prefixLength)) {
+              continue;
+            }
+            throw new Error(
+              `Static layout ${layoutPath} needs staticPaths above the dynamic page ${pathSpecAsString(pathSpec)}, or use render: 'dynamic'`,
+            );
+          }
+          const nextPrefixes: string[][] = [];
+          forEachConcreteStaticPath(
+            layoutSpec,
+            staticPaths,
+            ({ pathItems }) => {
+              if (
+                prefixes.some((prefix) =>
+                  prefix.every((item, index) => item === pathItems[index]),
+                )
+              ) {
+                nextPrefixes.push(pathItems);
+              }
+            },
+          );
+          prefixes = nextPrefixes;
+          prefixLength = layoutSpec.length;
+        }
+        return prefixes.map((prefix) => [
+          ...prefix.map((name) => ({ type: 'literal' as const, name })),
+          ...pathSpec.slice(prefixLength),
+        ]);
+      };
       // Memoize so component and getEtag get the same props reference.
       const buildElementSpec = <Props,>(
         component: FunctionComponent<Props>,
@@ -1029,10 +1087,7 @@ export function createPages<
             : {}),
         };
       };
-      const buildLayoutElement = (
-        layoutPath: string,
-        layoutIdPath: string,
-      ): ElementSpec => {
+      const buildLayoutElement = (layoutPath: string): ElementSpec => {
         const dynamicEntry = dynamicLayoutEntryByPathPattern.get(layoutPath);
         const staticEntry = dynamicEntry
           ? undefined
@@ -1045,10 +1100,7 @@ export function createPages<
         const getLayoutPropsMapping = createLayoutPropsMapper(layoutPath);
         return buildElementSpec(
           layout,
-          (options) =>
-            getLayoutPropsMapping(
-              dynamicEntry ? options.routePath : getGrouplessPath(layoutIdPath),
-            ),
+          (options) => getLayoutPropsMapping(options.routePath),
           !dynamicEntry,
           sourceFile,
           dynamicEntry?.getEtag,
@@ -1060,7 +1112,7 @@ export function createPages<
         Object.fromEntries(
           matches.map(({ layoutPath, layoutIdPath }) => [
             getLayoutSlotId(layoutIdPath),
-            buildLayoutElement(layoutPath, layoutIdPath),
+            buildLayoutElement(layoutPath),
           ]),
         );
       const buildPageElement = <Props,>(
@@ -1156,7 +1208,7 @@ export function createPages<
             };
           },
         );
-      const buildDynamicLikeRouteConfig = (
+      const buildDynamicLikeRouteConfigs = (
         pathPattern: string,
         {
           pathSpec,
@@ -1166,37 +1218,43 @@ export function createPages<
           getEtag,
           searchCodec,
         }: DynamicPageEntry,
-      ) => {
-        const layouts = collectLayoutMatches(pathSpec);
-        const getPropsMapping = createPathPropsMapper(pathPattern);
-        const elements: Record<string, ElementSpec> =
-          buildLayoutElements(layouts);
-        elements[getPageSlotId(pathPattern)] = buildPageElement(
-          component,
-          getPropsMapping,
-          false,
-          sourceFile,
-          getEtag,
-          searchCodec,
-        );
-        return {
-          ...buildRouteConfigBase(
-            pathPattern,
+      ) =>
+        expandByLayoutStaticPaths(pathSpec).map((expandedPathSpec) => {
+          const layouts = collectLayoutMatches(
             pathSpec,
-            layouts,
-            elements,
-            noSsr,
-          ),
-          ...(searchCodec ? { searchCodec } : {}),
-        };
-      };
+            pathSpecAsString(expandedPathSpec),
+          );
+          const getPropsMapping = createPathPropsMapper(pathPattern);
+          const elements: Record<string, ElementSpec> =
+            buildLayoutElements(layouts);
+          elements[getPageSlotId(pathPattern)] = buildPageElement(
+            component,
+            getPropsMapping,
+            false,
+            sourceFile,
+            getEtag,
+            searchCodec,
+          );
+          return {
+            ...buildRouteConfigBase(
+              pathPattern,
+              expandedPathSpec,
+              layouts,
+              elements,
+              noSsr,
+            ),
+            ...(searchCodec ? { searchCodec } : {}),
+          };
+        });
       const buildDynamicRouteConfigs = () =>
-        Array.from(dynamicPageEntryByPathPattern, ([pathPattern, entry]) =>
-          buildDynamicLikeRouteConfig(pathPattern, entry),
+        Array.from(dynamicPageEntryByPathPattern).flatMap(
+          ([pathPattern, entry]) =>
+            buildDynamicLikeRouteConfigs(pathPattern, entry),
         );
       const buildWildcardRouteConfigs = () =>
-        Array.from(wildcardPageEntryByPathPattern, ([pathPattern, entry]) =>
-          buildDynamicLikeRouteConfig(pathPattern, entry),
+        Array.from(wildcardPageEntryByPathPattern).flatMap(
+          ([pathPattern, entry]) =>
+            buildDynamicLikeRouteConfigs(pathPattern, entry),
         );
       const buildApiConfigs = () =>
         Array.from(
