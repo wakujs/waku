@@ -173,8 +173,9 @@ export type LinkProps = {
 /**
  * Client-side navigation link. Renders an `<a>`; click handling pushes through
  * the router unless the click is modified or prevented. A non-`_self` `target`
- * is discouraged and still routes in place (use `<a>` instead). Failures
- * surface through the router error boundary rather than a returned promise.
+ * is discouraged and still routes in place (use `<a>` instead). A `to` on
+ * another origin is a failure; use `<a>` for external URLs. Failures surface
+ * through the router error boundary rather than a returned promise.
  */
 export function Link({
   to,

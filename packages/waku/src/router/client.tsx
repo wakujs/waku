@@ -87,11 +87,12 @@ type NavigateOptions = {
  * Resolves once the requested navigation has been handled: after its response
  * when the route needs one, right away when it does not, and when a newer
  * navigation supersedes it (see `unstable_onSuperseded`). Rejects when the
- * route fetch fails, including an HTTP 404 without a custom page. A network
- * HTTP 404 follows the custom page before this resolves. A streamed redirect
- * or not-found intent can be handled after this resolves, including handing
- * an absolute redirect to the browser. It does not wait for React to
- * render, so the address bar may still show the previous URL.
+ * href is on another origin, and when the route fetch fails, including an
+ * HTTP 404 without a custom page. A network HTTP 404 follows the custom page
+ * before this resolves. A streamed redirect or not-found intent can be
+ * handled after this resolves, including handing an absolute redirect to the
+ * browser. It does not wait for React to render, so the address bar may still
+ * show the previous URL.
  * After a browser handoff, recovery from a cancelled departure requires a new
  * navigation or reload. Use a native anchor for cancelable document navigation.
  */

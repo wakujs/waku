@@ -1992,6 +1992,44 @@ describe('Router integration', () => {
     return Probe;
   };
 
+  test('refuses to navigate to another origin', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = installRefetch(vi.fn<RefetchInner>(async () => ({})));
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const view = await renderApp(
+      <ErrorBoundary>
+        <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+      </ErrorBoundary>,
+    );
+    const href = window.location.href;
+    try {
+      await act(async () => {
+        await expect(
+          capture.router!.push('https://user:pw@other.example/start'),
+        ).rejects.toThrow(
+          'cannot navigate to another origin: https://other.example/start',
+        );
+        await flush();
+      });
+      expect(refetch).not.toHaveBeenCalled();
+      expect(window.location.href).toBe(href);
+      expect(view.container.textContent).toContain(
+        'cannot navigate to another origin',
+      );
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('initializes Root with encoded route and query params', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
