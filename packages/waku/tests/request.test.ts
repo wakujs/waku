@@ -142,6 +142,25 @@ describe('getInput request URLs', () => {
 });
 
 describe('getInput server action request validation', () => {
+  it('answers 404 when the server function id names no function', async () => {
+    for (const exported of [undefined, 'text', { call: () => {} }]) {
+      const decodeReply = vi.fn().mockResolvedValue([]);
+      const status = await getStatus(
+        getInput(
+          makeRequest({ origin: 'https://app.test' }),
+          makeConfig(),
+          undefined,
+          decodeReply,
+          vi.fn(),
+          vi.fn(),
+          vi.fn().mockResolvedValue(exported),
+        ),
+      );
+      expect(status, String(exported)).toBe(404);
+      expect(decodeReply).not.toHaveBeenCalled();
+    }
+  });
+
   it('completes hydrated and form actions after cancellation without continuing their bodies', async () => {
     const continued = vi.fn();
     const action = vi.fn(async () => {
