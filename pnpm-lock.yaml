@@ -94,8 +94,8 @@ importers:
   e2e/fixtures/broken-links:
     dependencies:
       hono:
-        specifier: ^4.12.14
-        version: 4.12.14
+        specifier: ^4.13.17
+        version: 4.13.17
       react:
         specifier: ~19.3.1
         version: 19.3.1
@@ -150,8 +150,8 @@ importers:
   e2e/fixtures/cloudflare-adapter:
     dependencies:
       hono:
-        specifier: ^4.12.14
-        version: 4.12.14
+        specifier: ^4.13.17
+        version: 4.13.17
       react:
         specifier: ~19.3.1
         version: 19.3.1
@@ -420,8 +420,8 @@ importers:
   e2e/fixtures/instant-nav:
     dependencies:
       hono:
-        specifier: ^4.12.14
-        version: 4.12.14
+        specifier: ^4.13.17
+        version: 4.13.17
       react:
         specifier: ~19.3.1
         version: 19.3.1
@@ -451,8 +451,8 @@ importers:
         specifier: ^2.0.1
         version: 2.0.1
       hono:
-        specifier: ^4.12.14
-        version: 4.12.14
+        specifier: ^4.13.17
+        version: 4.13.17
       jotai:
         specifier: ^3.0.1
         version: 3.0.1(@types/react@19.3.0)(react@19.3.1)
@@ -500,8 +500,8 @@ importers:
   e2e/fixtures/nav-api-spike:
     dependencies:
       hono:
-        specifier: ^4.12.14
-        version: 4.12.14
+        specifier: ^4.13.17
+        version: 4.13.17
       react:
         specifier: ~19.3.1
         version: 19.3.1
@@ -961,8 +961,8 @@ importers:
   e2e/fixtures/ssr-catch-error:
     dependencies:
       hono:
-        specifier: ^4.12.14
-        version: 4.12.14
+        specifier: ^4.13.17
+        version: 4.13.17
       react:
         specifier: ~19.3.1
         version: 19.3.1
@@ -1042,8 +1042,8 @@ importers:
   e2e/fixtures/ssr-nonce-middleware:
     dependencies:
       hono:
-        specifier: ^4.12.14
-        version: 4.12.14
+        specifier: ^4.13.17
+        version: 4.13.17
       react:
         specifier: ~19.3.1
         version: 19.3.1
@@ -1359,7 +1359,7 @@ importers:
     dependencies:
       '@hono/node-server':
         specifier: ^2.1.5
-        version: 2.1.5(hono@4.12.14)
+        version: 2.1.5(hono@4.13.17)
       '@vitejs/plugin-react':
         specifier: ^6.0.1
         version: 6.0.1(@rolldown/plugin-babel@0.2.4(@babel/core@7.29.7)(@babel/runtime@7.29.10)(rolldown@1.2.14)(vite@8.3.2(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.2(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
@@ -1370,8 +1370,8 @@ importers:
         specifier: ^18.0.8
         version: 18.0.8
       hono:
-        specifier: ^4.12.14
-        version: 4.12.14
+        specifier: ^4.13.17
+        version: 4.13.17
       magic-string:
         specifier: ^1.4.3
         version: 1.4.3
@@ -1480,8 +1480,8 @@ importers:
   templates/01_basic:
     dependencies:
       hono:
-        specifier: ^4.12.14
-        version: 4.12.14
+        specifier: ^4.13.17
+        version: 4.13.17
       react:
         specifier: ~19.3.1
         version: 19.3.1
@@ -1523,8 +1523,8 @@ importers:
   templates/02_basic-js:
     dependencies:
       hono:
-        specifier: ^4.12.14
-        version: 4.12.14
+        specifier: ^4.13.17
+        version: 4.13.17
       react:
         specifier: ~19.3.1
         version: 19.3.1
@@ -4755,8 +4755,8 @@ packages:
     resolution: {integrity: sha512-Ox1pJVrDCyGHMG9CFg1tmrRUMRPRsAWYc/PinY0XzJU4K7y7vjNoLKIQ7BR5UJMCxNN8EM1MNDmHWA/B3aZUuw==}
     engines: {node: '>=6'}
 
-  hono@4.12.14:
-    resolution: {integrity: sha512-am5zfg3yu6sqn5yjKBNqhnTX7Cv+m00ox+7jbaKkrLMRJ4rAdldd1xPd/JzbBWspqaQv6RSTrgFN95EsfhC+7w==}
+  hono@4.13.17:
+    resolution: {integrity: sha512-vZIcbkvjOR5hHRWERbGkr8fGfF0GGM1ooYkuH448iO3b2AdVEr3AXZSw4Z3Kn+1L5z0CVoVeyV29VGYmFh05kQ==}
     engines: {node: '>=16.9.0'}
 
   html-void-elements@3.0.0:
@@ -7465,9 +7465,9 @@ snapshots:
 
   '@fontsource/inter@5.3.0': {}
 
-  '@hono/node-server@2.1.5(hono@4.12.14)':
+  '@hono/node-server@2.1.5(hono@4.13.17)':
     dependencies:
-      hono: 4.12.14
+      hono: 4.13.17
 
   '@humanfs/core@0.19.1': {}
 
@@ -10244,7 +10244,7 @@ snapshots:
 
   hex-rgb@4.3.0: {}
 
-  hono@4.12.14: {}
+  hono@4.13.17: {}
 
   html-void-elements@3.0.0: {}
 

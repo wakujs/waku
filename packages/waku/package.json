@@ -102,7 +102,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "@vitejs/plugin-rsc": "^0.5.33",
     "dotenv": "^18.0.8",
-    "hono": "^4.12.14",
+    "hono": "^4.13.17",
     "magic-string": "^1.4.3",
     "picocolors": "^1.1.1",
     "rsc-html-stream": "^0.0.8",
