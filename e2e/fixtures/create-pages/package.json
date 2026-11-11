@@ -14,7 +14,7 @@
     "react-dom": "~19.3.1",
     "react-error-boundary": "^6.1.6",
     "react-server-dom-webpack": "~19.3.1",
-    "serve": "^14.2.6",
+    "serve": "^14.2.7",
     "waku": "latest"
   },
   "devDependencies": {
