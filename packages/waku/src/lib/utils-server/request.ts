@@ -43,9 +43,12 @@ export async function getInput(
   if (parsed.type !== 'http') {
     if (parsed.type === 'call') {
       validateSameOriginPost(req);
+      const serverFunction = await loadServerAction(parsed.serverFunctionId);
+      if (typeof serverFunction !== 'function') {
+        throw new Response('Not Found', { status: 404 });
+      }
       const body = await readRequestBody(req);
       const args = await decodeReply(body, { temporaryReferences });
-      const serverFunction = await loadServerAction(parsed.serverFunctionId);
       input = {
         type: 'call',
         fn: (...args) =>
