@@ -1,22 +1,22 @@
 'use client';
 
 import {
-  useRouterHost_UNSTABLE as useRouterHost,
+  useRouter,
   useSearch_UNSTABLE as useSearch,
   useSetSearch_UNSTABLE as useSetSearch,
-} from 'waku/router/client-core';
-import { spikeSearchCodec } from '../lib/search.js';
+} from 'waku-navigation';
+import { querySearchCodec } from '../lib/search.js';
 
-const searchRoute = { path: '/search', searchCodec: spikeSearchCodec } as const;
+const searchRoute = { path: '/search', searchCodec: querySearchCodec } as const;
 
 export const SearchProbe = () => {
-  const { route } = useRouterHost();
+  const { hash } = useRouter();
   const search = useSearch(searchRoute);
   const setSearch = useSetSearch(searchRoute);
   return (
     <>
       <p data-testid="search">{search ? search.q : 'none'}</p>
-      <p data-testid="host-hash">{route.hash}</p>
+      <p data-testid="host-hash">{hash}</p>
       <a href="#a" data-testid="hash-a">
         #a
       </a>

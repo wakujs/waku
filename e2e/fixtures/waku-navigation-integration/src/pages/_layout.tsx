@@ -1,11 +1,9 @@
 import type { ReactNode } from 'react';
-import { OwningFollowCount } from '../nav-binding.js';
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
     <div>
-      <OwningFollowCount />
-      <title>nav-api-spike</title>
+      <title>waku-navigation-integration</title>
       <nav>
         <a href="/" data-testid="go-home">
           Home
@@ -13,7 +11,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         <a href="/static" data-testid="go-static">
           Static
         </a>
-        <a href="/hello/spike" data-testid="go-hello">
+        <a href="/hello/nav" data-testid="go-hello">
           Hello
         </a>
         <a href="/search?q=hi" data-testid="go-search">
@@ -40,11 +38,14 @@ export default function Layout({ children }: { children: ReactNode }) {
         <a href="/search?q=from-follow" data-testid="go-search-from-follow">
           Search from follow
         </a>
-        <a href="/mix" data-testid="go-mix">
-          Mix
-        </a>
-        <a href="/mix-budget" data-testid="go-mix-budget">
+        <a href="/mix-budget-a" data-testid="go-mix-budget">
           Mix budget
+        </a>
+        <a href="/mix-budget-a?mixcycle=same" data-testid="go-mix-budget-same">
+          Mix budget same
+        </a>
+        <a href="/late-redirect" data-testid="go-late-redirect">
+          Late redirect
         </a>
         <a href="/fragment-target#comments" data-testid="go-fragment-target">
           Fragment target
