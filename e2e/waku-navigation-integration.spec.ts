@@ -1,22 +1,8 @@
-import { type Page, type Request, expect } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
+import { type Page, expect } from '@playwright/test';
 import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('waku-navigation-integration');
-
-// The late redirect resolves when its page's RSC stream ends; the request
-// can report that as finished or as aborted.
-const waitForLateRedirect = (page: Page) => {
-  const predicate = (request: Request) =>
-    new URL(request.url()).pathname === '/RSC/R/late-redirect.txt';
-  const ended = [
-    page.waitForEvent('requestfinished', { predicate }),
-    page.waitForEvent('requestfailed', { predicate }),
-  ];
-  for (const event of ended) {
-    event.catch(() => {});
-  }
-  return Promise.race(ended);
-};
 
 const waitForFrames = (page: Page) =>
   page.evaluate(
@@ -303,13 +289,39 @@ test.describe('waku-navigation', () => {
     await expect(page).toHaveURL(/\/rerender-action#details$/);
   });
 
+  // /late-redirect requests its redirect only once the spec releases it, and
+  // renders `late-redirect-sent` after the request, so the marker showing
+  // means the redirect reached the client.
+  const openLateRedirect = async (page: Page) => {
+    const id = randomUUID();
+    await page.evaluate(
+      (url) => window.navigation.navigate(url).finished,
+      `/late-redirect?id=${id}`,
+    );
+    await expect(page.getByTestId('late-redirect')).toBeVisible();
+    return () =>
+      page.request.post(
+        `http://localhost:${port}/release-late-redirect?id=${id}`,
+      );
+  };
+
+  const countNewFetches = (page: Page) => {
+    const fetches = { count: 0 };
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === '/RSC/R/new.txt') {
+        fetches.count += 1;
+      }
+    });
+    return fetches;
+  };
+
   test('a late redirect follows when no newer navigation started', async ({
     page,
   }) => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
-    await page.getByTestId('go-late-redirect').click();
-    await expect(page.getByTestId('late-redirect')).toBeVisible();
+    const releaseRedirect = await openLateRedirect(page);
+    await releaseRedirect();
     await expect(page.getByTestId('redirect-new')).toHaveText('New');
     await expect(page).toHaveURL(/\/new$/);
   });
@@ -317,61 +329,49 @@ test.describe('waku-navigation', () => {
   test('a late redirect does not cancel a newer navigation', async ({
     page,
   }) => {
-    let newFetches = 0;
-    page.on('request', (request) => {
-      if (new URL(request.url()).pathname === '/RSC/R/new.txt') {
-        newFetches += 1;
-      }
-    });
+    const newFetches = countNewFetches(page);
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
-    const release = Promise.withResolvers<void>();
+    const releaseLatest = Promise.withResolvers<void>();
     await page.route('**/RSC/R/hello/latest.txt*', async (route) => {
       const response = await route.fetch();
-      await release.promise;
+      await releaseLatest.promise;
       await route.fulfill({ response });
     });
     try {
-      const lateRedirect = waitForLateRedirect(page);
-      await page.getByTestId('go-late-redirect').click();
-      await expect(page.getByTestId('late-redirect')).toBeVisible();
+      const releaseRedirect = await openLateRedirect(page);
       await page.evaluate(() => {
         void window.navigation
           .navigate('/hello/latest')
           .finished?.catch(() => {});
       });
       await expect(page).toHaveURL(/\/hello\/latest$/);
-      await lateRedirect;
+      await releaseRedirect();
+      // the late redirect page stays on screen while /hello/latest is held
+      await expect(page.getByTestId('late-redirect-sent')).toBeVisible();
       await waitForFrames(page);
-      release.resolve();
+      releaseLatest.resolve();
       await expect(page.getByTestId('hello')).toHaveText('Hello latest');
       await expect(page).toHaveURL(/\/hello\/latest$/);
-      expect(newFetches).toBe(0);
+      expect(newFetches.count).toBe(0);
     } finally {
-      release.resolve();
+      releaseLatest.resolve();
     }
   });
 
   test('a late redirect does not override a fragment-only navigation', async ({
     page,
   }) => {
-    let newFetches = 0;
-    page.on('request', (request) => {
-      if (new URL(request.url()).pathname === '/RSC/R/new.txt') {
-        newFetches += 1;
-      }
-    });
+    const newFetches = countNewFetches(page);
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
-    const lateRedirect = waitForLateRedirect(page);
-    await page.getByTestId('go-late-redirect').click();
-    await expect(page.getByTestId('late-redirect')).toBeVisible();
+    const releaseRedirect = await openLateRedirect(page);
     await page.evaluate(() => window.navigation.navigate('#details').finished);
-    await lateRedirect;
+    await releaseRedirect();
+    await expect(page.getByTestId('late-redirect-sent')).toBeVisible();
     await waitForFrames(page);
-    await expect(page).toHaveURL(/\/late-redirect#details$/);
-    await expect(page.getByTestId('late-redirect')).toBeVisible();
-    expect(newFetches).toBe(0);
+    await expect(page).toHaveURL(/\/late-redirect\?id=[^#]+#details$/);
+    expect(newFetches.count).toBe(0);
   });
 
   for (const { path, buttonId, contentId } of [

@@ -44,9 +44,6 @@ export default function Layout({ children }: { children: ReactNode }) {
         <a href="/mix-budget-a?mixcycle=same" data-testid="go-mix-budget-same">
           Mix budget same
         </a>
-        <a href="/late-redirect" data-testid="go-late-redirect">
-          Late redirect
-        </a>
         <a href="/fragment-target#comments" data-testid="go-fragment-target">
           Fragment target
         </a>
