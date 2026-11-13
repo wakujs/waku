@@ -166,6 +166,21 @@ describe('create-waku CLI with args', () => {
     );
   });
 
+  test('rejects a whitespace-only project name without touching cwd', () => {
+    createNonEmptyDir();
+    const { stdout, exitCode } = run(
+      ['--project-name', ' ', '--skip-install'],
+      { cwd: genPath, reject: false },
+    );
+    expect(stdout).toContain('Project name must not be empty');
+    expect(stdout).not.toContain('Setting up project...');
+    expect(exitCode).toBe(1);
+    expect(fs.readdirSync(genPath)).toEqual(['package.json']);
+    expect(fs.readFileSync(path.join(genPath, 'package.json'), 'utf8')).toBe(
+      '{ "foo": "bar" }',
+    );
+  });
+
   test('asks to overwrite non-empty target directory with subfolder', () => {
     createNonEmptyDir(genPathWithSubfolder);
     const { stdout } = run(['--project-name', `.test/${projectName}`], {
