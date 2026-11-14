@@ -580,6 +580,7 @@ Paths below are relative to `packages/waku/src/router`.
 
 `packages/waku/tests/router-protocol.test.tsx` exercises server responses through
 Minimal's client and Router's public helpers, substituting only Flight
-serialization. The executable alternative binding in
-`e2e/fixtures/nav-api-spike/src/nav-binding.tsx` uses public Minimal and client-core
-APIs; its browser tests exercise the real transport.
+serialization. [waku-navigation](https://github.com/wakujs/waku-navigation) is an
+alternative binding built on the Navigation API with public Minimal and
+client-core APIs; `e2e/waku-navigation-integration.spec.ts` runs it against this
+repository's Waku over the real transport.

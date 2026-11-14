@@ -1,4 +1,4 @@
-import { Slice_UNSTABLE as Slice } from 'waku/router/client-core';
+import { Slice } from 'waku-navigation';
 
 export default function WithSlicePage() {
   return (
