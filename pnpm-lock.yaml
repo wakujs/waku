@@ -497,34 +497,6 @@ importers:
         specifier: latest
         version: link:../../../packages/waku
 
-  e2e/fixtures/nav-api-spike:
-    dependencies:
-      hono:
-        specifier: ^4.13.17
-        version: 4.13.17
-      react:
-        specifier: ~19.3.1
-        version: 19.3.1
-      react-dom:
-        specifier: ~19.3.1
-        version: 19.3.1(react@19.3.1)
-      react-server-dom-webpack:
-        specifier: ~19.3.1
-        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
-      waku:
-        specifier: latest
-        version: link:../../../packages/waku
-    devDependencies:
-      '@types/react':
-        specifier: ^19.3.0
-        version: 19.3.0
-      '@types/react-dom':
-        specifier: ^19.3.0
-        version: 19.3.0(@types/react@19.3.0)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
   e2e/fixtures/partial-build:
     dependencies:
       react:
@@ -1286,6 +1258,37 @@ importers:
       waku-jotai:
         specifier: ^0.8.0
         version: 0.8.0(jotai@3.0.2(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)(waku@packages+waku)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  e2e/fixtures/waku-navigation-integration:
+    dependencies:
+      hono:
+        specifier: ^4.13.17
+        version: 4.13.17
+      react:
+        specifier: ~19.3.1
+        version: 19.3.1
+      react-dom:
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
+      react-server-dom-webpack:
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
+      waku:
+        specifier: latest
+        version: link:../../../packages/waku
+      waku-navigation:
+        specifier: ^0.0.8
+        version: 0.0.8(react@19.3.1)(waku@packages+waku)
     devDependencies:
       '@types/react':
         specifier: ^19.3.0
@@ -6777,6 +6780,12 @@ packages:
       jotai: '>=3.0.0'
       react: '>=19.0.0'
       waku: '>=1.0.0-rc.4'
+
+  waku-navigation@0.0.8:
+    resolution: {integrity: sha512-+GLm7f50oXzzzXLGxMce9CRBSvadIgb6wC1BQ/ijuUo8mqWFpDYatLMFpNhnXSs7GHx7TqrE8VCmVChuLe8xBQ==}
+    peerDependencies:
+      react: '>=19.0.0'
+      waku: '>=1.0.0-rc.5'
 
   watchpack@2.6.4:
     resolution: {integrity: sha512-5H3Tce2GfzWbcr9VnSqyak2whFaONw4BdmI5BDnMXold4qSlCFd64XaMQESRh2vkDKmdUkv6rUo17UvZ9f9nXw==}
@@ -12504,6 +12513,11 @@ snapshots:
   waku-jotai@0.8.0(jotai@3.0.2(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)(waku@packages+waku):
     dependencies:
       jotai: 3.0.2(@types/react@19.3.0)(react@19.3.1)
+      react: 19.3.1
+      waku: link:packages/waku
+
+  waku-navigation@0.0.8(react@19.3.1)(waku@packages+waku):
+    dependencies:
       react: 19.3.1
       waku: link:packages/waku
 

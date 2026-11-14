@@ -1,20 +1,20 @@
 import type { Unstable_SearchCodec } from 'waku/router';
 
-export type SpikeSearch = { q: string };
+export type QuerySearch = { q: string };
 
-export const spikeSearchCodec = {
-  parse: (query: string): SpikeSearch => {
+export const querySearchCodec = {
+  parse: (query: string): QuerySearch => {
     const sp = new URLSearchParams(query);
     return { q: sp.get('q') ?? '' };
   },
-  serialize: (search: SpikeSearch): string =>
+  serialize: (search: QuerySearch): string =>
     new URLSearchParams({ q: search.q }).toString(),
 } as const;
 
-spikeSearchCodec satisfies Unstable_SearchCodec<SpikeSearch>;
+querySearchCodec satisfies Unstable_SearchCodec<QuerySearch>;
 
 declare module 'waku/router' {
   interface SearchCodecsConfig {
-    '/search': typeof spikeSearchCodec;
+    '/search': typeof querySearchCodec;
   }
 }

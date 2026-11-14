@@ -1,153 +1,18 @@
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { expect } from '@playwright/test';
-import { settleNavigateFinished } from './fixtures/nav-api-spike/src/settle-navigate-finished.js';
+import { randomUUID } from 'node:crypto';
+import { type Page, expect } from '@playwright/test';
 import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
-const startApp = prepareNormalSetup('nav-api-spike');
+const startApp = prepareNormalSetup('waku-navigation-integration');
 
-const ALLOWED_IMPORT_PREFIXES = [
-  'react',
-  'waku/minimal/client',
-  'waku/router/client-core',
-];
-
-const listFixtureSources = (dir: string): string[] => {
-  const files: string[] = [];
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const next = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...listFixtureSources(next));
-    } else if (/\.[cm]?[jt]sx?$/.test(entry.name)) {
-      files.push(next);
-    }
-  }
-  return files;
-};
-
-test.describe('settleNavigateFinished', () => {
-  test('resolves when finished fulfills', async () => {
-    await expect(
-      settleNavigateFinished(Promise.resolve()),
-    ).resolves.toBeUndefined();
-  });
-
-  test('resolves when finished is missing', async () => {
-    await expect(settleNavigateFinished(undefined)).resolves.toBeUndefined();
-  });
-
-  test('resolves when finished rejects with AbortError', async () => {
-    await expect(
-      settleNavigateFinished(
-        Promise.reject(new DOMException('Aborted', 'AbortError')),
+const waitForFrames = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
       ),
-    ).resolves.toBeUndefined();
-  });
+  );
 
-  test('rejects when finished rejects with a failure', async () => {
-    const error = new Error('failed');
-    await expect(settleNavigateFinished(Promise.reject(error))).rejects.toBe(
-      error,
-    );
-  });
-});
-
-test.describe('nav-api-spike imports', () => {
-  test('binding imports stay on the L1 surface', () => {
-    const bindingPath = fileURLToPath(
-      new URL('./fixtures/nav-api-spike/src/nav-binding.tsx', import.meta.url),
-    );
-    const src = readFileSync(bindingPath, 'utf8');
-    expect(src).not.toMatch(
-      /client\.tsx|router-state|client-utils|client-core-utils/,
-    );
-    const specs = [...src.matchAll(/from ['"]([^'"]+)['"]/g)].map(
-      (match) => match[1]!,
-    );
-    expect(specs.length).toBeGreaterThan(0);
-    const packageSpecs = specs.filter(
-      (spec) => !spec.startsWith('./') && !spec.startsWith('../'),
-    );
-    expect(packageSpecs.length).toBeGreaterThan(0);
-    for (const spec of packageSpecs) {
-      expect(
-        ALLOWED_IMPORT_PREFIXES.some((prefix) => spec.includes(prefix)),
-        spec,
-      ).toBe(true);
-    }
-  });
-
-  test('navigate maps Navigation API finished onto the host contract', () => {
-    const bindingPath = fileURLToPath(
-      new URL('./fixtures/nav-api-spike/src/nav-binding.tsx', import.meta.url),
-    );
-    const src = readFileSync(bindingPath, 'utf8');
-    expect(src).toContain('settleNavigateFinished(result.finished)');
-  });
-
-  test('navigate intercept honors scroll: false', () => {
-    const bindingPath = fileURLToPath(
-      new URL('./fixtures/nav-api-spike/src/nav-binding.tsx', import.meta.url),
-    );
-    const src = readFileSync(bindingPath, 'utf8');
-    expect(src).toContain('info: { scroll: opts.scroll }');
-    expect(src).toContain("info?.scroll === false ? { scroll: 'manual' } : {}");
-  });
-
-  test('slot follow count is not module state', () => {
-    const bindingPath = fileURLToPath(
-      new URL('./fixtures/nav-api-spike/src/nav-binding.tsx', import.meta.url),
-    );
-    const src = readFileSync(bindingPath, 'utf8');
-    expect(src).not.toMatch(/\bslotFollows\b/);
-    expect(src).not.toMatch(/^let lastFollowHref/m);
-    expect(src).not.toMatch(/^const lastFollowHref/m);
-    expect(src).toContain('state: { follows: nextFollows }');
-    expect(src).toContain("typeof info?.follows === 'number'");
-    expect(src).not.toContain("event.navigationType !== 'replace'");
-    const chainIdx = src.indexOf("typeof info?.follows === 'number'");
-    const samePathIdx = src.indexOf('next.path === current.path');
-    expect(chainIdx).toBeGreaterThan(-1);
-    expect(chainIdx).toBeLessThan(samePathIdx);
-    expect(src).toContain('last.href === href && last.follows === follows');
-    expect(src).toContain('setFollows(outcome.follows)');
-    expect(src).toContain('data-testid="owning-follow-count"');
-    expect(src).not.toContain(
-      "ownsNavigation ? 'owning-follow-count' : 'follow-count'",
-    );
-  });
-
-  test('mix-b RSC is HTTP 404 so load can 404-follow', () => {
-    const src = readFileSync(
-      fileURLToPath(
-        new URL(
-          './fixtures/nav-api-spike/src/middleware/http-404-mix-b.ts',
-          import.meta.url,
-        ),
-      ),
-      'utf8',
-    );
-    expect(src).toContain('/RSC/R/mix-b.txt');
-  });
-
-  test('fixture sources import nothing from waku/router/client', () => {
-    const root = fileURLToPath(
-      new URL('./fixtures/nav-api-spike/src/', import.meta.url),
-    );
-    const files = listFixtureSources(root);
-    expect(files.length).toBeGreaterThan(0);
-    // client-core is allowed; this matches the history-binding entry only
-    const leak = /from ['"]waku\/router\/client['"]/;
-    for (const file of files) {
-      expect(readFileSync(file, 'utf8'), file.slice(root.length)).not.toMatch(
-        leak,
-      );
-    }
-  });
-});
-
-test.describe('nav-api-spike', () => {
+test.describe('waku-navigation', () => {
   let port: number;
   let stopApp: () => Promise<void>;
 
@@ -171,8 +36,8 @@ test.describe('nav-api-spike', () => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
     await page.getByTestId('go-hello').click();
-    await expect(page.getByTestId('hello')).toHaveText('Hello spike');
-    await expect(page).toHaveURL(/\/hello\/spike$/);
+    await expect(page.getByTestId('hello')).toHaveText('Hello nav');
+    await expect(page).toHaveURL(/\/hello\/nav$/);
   });
 
   test('a missing route follows the 404 page', async ({ page }) => {
@@ -182,12 +47,12 @@ test.describe('nav-api-spike', () => {
     await expect(page.getByTestId('not-found')).toHaveText('Custom 404');
   });
 
-  test('useParams and useSearch work under the spike binding', async ({
+  test('useParams and useSearch work under waku-navigation', async ({
     page,
   }) => {
-    await page.goto(`http://localhost:${port}/hello/spike`);
+    await page.goto(`http://localhost:${port}/hello/nav`);
     await waitForHydration(page);
-    await expect(page.getByTestId('params')).toHaveText('spike');
+    await expect(page.getByTestId('params')).toHaveText('nav');
     await page.getByTestId('go-search').click();
     await expect(page.getByTestId('search')).toHaveText('hi');
   });
@@ -207,7 +72,7 @@ test.describe('nav-api-spike', () => {
     await page.getByTestId('go-static').click();
     await expect(page.getByTestId('static')).toHaveText('Static');
     await page.getByTestId('go-hello').click();
-    await expect(page.getByTestId('hello')).toHaveText('Hello spike');
+    await expect(page.getByTestId('hello')).toHaveText('Hello nav');
     await page.getByTestId('go-static').click();
     await expect(page).toHaveURL(/\/static$/);
     await expect(page.getByTestId('static')).toHaveText('Static');
@@ -244,10 +109,10 @@ test.describe('nav-api-spike', () => {
     await waitForHydration(page);
     await page.evaluate(async () => {
       await window.navigation.navigate('/old').finished;
-      await window.navigation.navigate('/hello/spike').finished;
+      await window.navigation.navigate('/hello/nav').finished;
     });
-    await expect(page.getByTestId('hello')).toHaveText('Hello spike');
-    await expect(page).toHaveURL(/\/hello\/spike$/);
+    await expect(page.getByTestId('hello')).toHaveText('Hello nav');
+    await expect(page).toHaveURL(/\/hello\/nav$/);
   });
 
   test('a same-path query redirect renders the target', async ({ page }) => {
@@ -271,72 +136,14 @@ test.describe('nav-api-spike', () => {
   });
 
   test('a query redirect cycle stops at the follow limit', async ({ page }) => {
-    // 20 intercepted follows through Vite; the suite's 30s test timeout
-    // and a 30s expect both fire while the chain is still in flight on
-    // chromium-dev
-    test.slow();
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
     await page.getByTestId('go-bounce').click();
     await expect(page.getByTestId('follow-error')).toHaveText(
       'too many redirect or 404 follows',
-      { timeout: 90_000 },
+      { timeout: 30_000 },
     );
     await expect(page).toHaveURL(/\/bounce\?v=[ab]$/);
-  });
-
-  test('the owning follow count stays zero while an inner host exhausts', async ({
-    page,
-  }) => {
-    test.setTimeout(60_000);
-    await page.goto(`http://localhost:${port}/two-hosts`);
-    await waitForHydration(page);
-    await expect(page.getByTestId('two-hosts')).toHaveText('two hosts');
-    await expect(
-      page.getByTestId('second-host').getByTestId('follow-error'),
-    ).toHaveText('too many redirect or 404 follows', { timeout: 30_000 });
-    await expect(
-      page.getByTestId('second-host').getByTestId('follow-count'),
-    ).toHaveText('20');
-    await expect(page.getByTestId('owning-follow-count')).toHaveText('0');
-  });
-
-  test('two spike instances can follow the same href', async ({ page }) => {
-    await page.goto(`http://localhost:${port}/two-same-href`);
-    await waitForHydration(page);
-    await expect(page.getByTestId('two-same-href')).toHaveText('two same href');
-    await expect(
-      page.getByTestId('first-host').getByTestId('canonical'),
-    ).toHaveText('Canonical new');
-    await expect(
-      page.getByTestId('second-host').getByTestId('canonical'),
-    ).toHaveText('Canonical new');
-  });
-
-  test('useSetSearch replace after a follow gets a fresh budget', async ({
-    page,
-  }) => {
-    await page.goto(`http://localhost:${port}/`);
-    await waitForHydration(page);
-    await page.getByTestId('go-search-from-follow').click();
-    await expect(page.getByTestId('search')).toHaveText('spent');
-    await expect(page.getByTestId('owning-follow-count')).toHaveText('1');
-    await page.getByTestId('set-search-replace').click();
-    await expect(page.getByTestId('search')).toHaveText('x');
-    await expect(page.getByTestId('owning-follow-count')).toHaveText('0');
-  });
-
-  test('a hash-only user navigation after a follow clears the count', async ({
-    page,
-  }) => {
-    await page.goto(`http://localhost:${port}/`);
-    await waitForHydration(page);
-    await page.getByTestId('go-search-from-follow').click();
-    await expect(page.getByTestId('search')).toHaveText('spent');
-    await expect(page.getByTestId('owning-follow-count')).toHaveText('1');
-    await page.getByTestId('hash-a').click();
-    await expect(page).toHaveURL(/\/search\?q=spent#a$/);
-    await expect(page.getByTestId('owning-follow-count')).toHaveText('0');
   });
 
   test('fresh same-query intents share the follow budget', async ({ page }) => {
@@ -346,36 +153,32 @@ test.describe('nav-api-spike', () => {
         mixBFetches += 1;
       }
     });
-    await page.goto(`http://localhost:${port}/mix-budget?same=1`);
+    await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
-    const host = page.getByTestId('mix-budget-host');
-    await expect(host.getByTestId('follow-error')).toHaveText(
+    await page.getByTestId('go-mix-budget-same').click();
+    await expect(page.getByTestId('follow-error')).toHaveText(
       'too many redirect or 404 follows',
       { timeout: 30_000 },
     );
-    await expect(host.getByTestId('follow-count')).toHaveText('20');
     expect(mixBFetches).toBe(10);
   });
 
   test('redirect and not-found intents share the follow limit', async ({
     page,
   }) => {
-    test.setTimeout(60_000);
     let mixBFetches = 0;
     page.on('request', (request) => {
       if (new URL(request.url()).pathname === '/RSC/R/mix-b.txt') {
         mixBFetches += 1;
       }
     });
-    await page.goto(`http://localhost:${port}/mix-budget`);
+    await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
-    await expect(page.getByTestId('mix-budget')).toHaveText('mix budget');
-    await expect(
-      page.getByTestId('mix-budget-host').getByTestId('follow-error'),
-    ).toHaveText('too many redirect or 404 follows', { timeout: 30_000 });
-    await expect(
-      page.getByTestId('mix-budget-host').getByTestId('follow-count'),
-    ).toHaveText('20');
+    await page.getByTestId('go-mix-budget').click();
+    await expect(page.getByTestId('follow-error')).toHaveText(
+      'too many redirect or 404 follows',
+      { timeout: 30_000 },
+    );
     expect(mixBFetches).toBe(10);
   });
 
@@ -401,18 +204,6 @@ test.describe('nav-api-spike', () => {
     await page.getByTestId('go-fragment-target').click();
     await expect(page).toHaveURL(/\/fragment-target#comments$/);
     await expect(page.getByTestId('comments')).toBeInViewport();
-  });
-
-  test('navigate finished settles after the destination commits', async ({
-    page,
-  }) => {
-    await page.goto(`http://localhost:${port}/`);
-    await waitForHydration(page);
-    const committed = await page.evaluate(async () => {
-      await window.navigation.navigate('/fragment-target').finished;
-      return document.querySelector('[data-testid="fragment-target"]') !== null;
-    });
-    expect(committed).toBe(true);
   });
 
   test('an action rerenders the route it was called from', async ({ page }) => {
@@ -483,6 +274,104 @@ test.describe('nav-api-spike', () => {
     } finally {
       release.resolve();
     }
+  });
+
+  test('requestRefresh updates the page after a fragment-only navigation', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/rerender-action`);
+    await waitForHydration(page);
+    await page.evaluate(() => window.navigation.navigate('#details').finished);
+    const count = page.getByTestId('rerender-count');
+    const before = Number(await count.textContent());
+    await page.getByTestId('rerender').click();
+    await expect(count).toHaveText(String(before + 1));
+    await expect(page).toHaveURL(/\/rerender-action#details$/);
+  });
+
+  // /late-redirect requests its redirect only once the spec releases it, and
+  // renders `late-redirect-sent` after the request, so the marker showing
+  // means the redirect reached the client.
+  const openLateRedirect = async (page: Page) => {
+    const id = randomUUID();
+    await page.evaluate(
+      (url) => window.navigation.navigate(url).finished,
+      `/late-redirect?id=${id}`,
+    );
+    await expect(page.getByTestId('late-redirect')).toBeVisible();
+    return () =>
+      page.request.post(
+        `http://localhost:${port}/release-late-redirect?id=${id}`,
+      );
+  };
+
+  const countNewFetches = (page: Page) => {
+    const fetches = { count: 0 };
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === '/RSC/R/new.txt') {
+        fetches.count += 1;
+      }
+    });
+    return fetches;
+  };
+
+  test('a late redirect follows when no newer navigation started', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    const releaseRedirect = await openLateRedirect(page);
+    await releaseRedirect();
+    await expect(page.getByTestId('redirect-new')).toHaveText('New');
+    await expect(page).toHaveURL(/\/new$/);
+  });
+
+  test('a late redirect does not cancel a newer navigation', async ({
+    page,
+  }) => {
+    const newFetches = countNewFetches(page);
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    const releaseLatest = Promise.withResolvers<void>();
+    await page.route('**/RSC/R/hello/latest.txt*', async (route) => {
+      const response = await route.fetch();
+      await releaseLatest.promise;
+      await route.fulfill({ response });
+    });
+    try {
+      const releaseRedirect = await openLateRedirect(page);
+      await page.evaluate(() => {
+        void window.navigation
+          .navigate('/hello/latest')
+          .finished?.catch(() => {});
+      });
+      await expect(page).toHaveURL(/\/hello\/latest$/);
+      await releaseRedirect();
+      // the late redirect page stays on screen while /hello/latest is held
+      await expect(page.getByTestId('late-redirect-sent')).toBeVisible();
+      await waitForFrames(page);
+      releaseLatest.resolve();
+      await expect(page.getByTestId('hello')).toHaveText('Hello latest');
+      await expect(page).toHaveURL(/\/hello\/latest$/);
+      expect(newFetches.count).toBe(0);
+    } finally {
+      releaseLatest.resolve();
+    }
+  });
+
+  test('a late redirect does not override a fragment-only navigation', async ({
+    page,
+  }) => {
+    const newFetches = countNewFetches(page);
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    const releaseRedirect = await openLateRedirect(page);
+    await page.evaluate(() => window.navigation.navigate('#details').finished);
+    await releaseRedirect();
+    await expect(page.getByTestId('late-redirect-sent')).toBeVisible();
+    await waitForFrames(page);
+    await expect(page).toHaveURL(/\/late-redirect\?id=[^#]+#details$/);
+    expect(newFetches.count).toBe(0);
   });
 
   for (const { path, buttonId, contentId } of [
