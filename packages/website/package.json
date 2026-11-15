@@ -30,7 +30,7 @@
     "@vercel/og": "1.0.1",
     "prettier": "^3.9.10",
     "prettier-plugin-tailwindcss": "^0.8.1",
-    "shiki": "^4.6.0",
+    "shiki": "^4.5.0",
     "tailwindcss": "4.3.5",
     "typescript": "^6.0.3"
   }
