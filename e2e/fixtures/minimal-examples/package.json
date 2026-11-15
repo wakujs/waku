@@ -9,9 +9,9 @@
     "start": "waku start"
   },
   "dependencies": {
-    "cookie": "^2.0.1",
+    "cookie": "^2.0.2",
     "hono": "^4.13.17",
-    "jotai": "^3.0.1",
+    "jotai": "^3.0.2",
     "react": "~19.3.1",
     "react-dom": "~19.3.1",
     "react-server-dom-webpack": "~19.3.1",
