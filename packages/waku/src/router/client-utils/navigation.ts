@@ -82,7 +82,7 @@ type Navigation = {
 };
 
 const commitHistory = (url: URL, mode: HistoryIntent): void => {
-  if (window.location.href === url.href) {
+  if (mode === null || window.location.href === url.href) {
     return;
   }
   if (mode === 'push') {
@@ -367,9 +367,8 @@ export function useNavigation(
           return {};
         }
         const historyIntent =
-          instantResponse &&
           outcome.follows > initialFollows &&
-          options.history !== null
+          (instantResponse || options.history === null)
             ? 'replace'
             : options.history;
         if (outcome.type === 'leave') {
@@ -576,8 +575,8 @@ export function useNavigation(
             nextRoute,
             getSettledRoute(),
           ),
-          history: null, // the browser already moved the address bar
-          // keep the url it moved to; an interceptor rewrite needs a new one
+          history: 'replace',
+          // keep the url the browser moved to; an interceptor rewrite replaces it
           url: isSameRoute(nextRoute, popped)
             ? new URL(window.location.href)
             : getRouteUrl(nextRoute),
