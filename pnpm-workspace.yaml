@@ -14,6 +14,7 @@ minimumReleaseAgeExclude:
   - 'react-server-dom-webpack'
   - 'scheduler'
   - 'waku-jotai'
+  - 'waku-navigation'
 allowBuilds:
   '@swc/core': false
   esbuild: false

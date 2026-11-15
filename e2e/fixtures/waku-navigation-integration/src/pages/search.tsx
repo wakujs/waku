@@ -1,6 +1,6 @@
 import { unstable_redirect as redirect } from 'waku/router/server';
 import { SearchProbe } from '../components/search-probe.js';
-import { spikeSearchCodec } from '../lib/search.js';
+import { querySearchCodec } from '../lib/search.js';
 
 export default function SearchPage({ query = '' }: { query?: string }) {
   if (new URLSearchParams(query).get('q') === 'from-follow') {
@@ -18,5 +18,5 @@ export default function SearchPage({ query = '' }: { query?: string }) {
 export const getConfig = () =>
   ({
     render: 'dynamic',
-    unstable_searchCodec: spikeSearchCodec,
+    unstable_searchCodec: querySearchCodec,
   }) as const;
