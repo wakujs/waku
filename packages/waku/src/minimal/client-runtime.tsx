@@ -88,7 +88,6 @@ const mergeElementsPromise = (
 type FetchRscElementsOptions = {
   type?: 'rsc' | 'call';
   signal?: AbortSignal;
-  onBuildIdMismatch?: () => void;
   etags?: Etags;
   initial?: NonNullable<ReturnType<typeof consumeInitialRscEntry>>;
 };
@@ -152,16 +151,10 @@ const createBuildIdMismatch = () =>
   });
 export const createBuildIdMismatchForTest = createBuildIdMismatch;
 
-const checkBuildId = (
-  data: Elements,
-  onBuildIdMismatch: (() => void) | undefined,
-): Elements => {
+const checkBuildId = (data: Elements): Elements => {
   const buildId = import.meta.env?.WAKU_BUILD_ID;
   if (buildId && data._buildId !== buildId) {
-    if (!onBuildIdMismatch) {
-      throw createBuildIdMismatch();
-    }
-    onBuildIdMismatch();
+    throw createBuildIdMismatch();
   }
   return data;
 };
@@ -207,7 +200,7 @@ const fetchRscElements = (
       responsePromise,
       temporaryReferences,
       debug?.debugChannel,
-    ).then((data) => checkBuildId(data, options.onBuildIdMismatch));
+    ).then(checkBuildId);
     return elements.then((data) =>
       type === 'call'
         ? { elements: adoptElements(data), value: data._value }
@@ -266,9 +259,6 @@ const fetchRsc = (
     {
       etags: collectEtags(options?.unstable_base ?? {}),
       ...(options?.signal ? { signal: options.signal } : {}),
-      ...(options?.onBuildIdMismatch
-        ? { onBuildIdMismatch: options.onBuildIdMismatch }
-        : {}),
     },
     store?.rscEnhancers,
   ).then(({ elements }) => elements);

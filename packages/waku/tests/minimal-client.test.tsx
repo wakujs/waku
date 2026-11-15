@@ -869,22 +869,7 @@ describe('minimal/client server actions', () => {
 });
 
 describe('minimal/client build id mismatch', () => {
-  test('a stale build id triggers the provided handler', async () => {
-    vi.stubEnv('WAKU_BUILD_ID', 'build-1');
-    mocks.createFromFetch.mockResolvedValueOnce({
-      _value: null,
-      _buildId: 'build-2',
-    });
-    stubFetch();
-    const onBuildIdMismatch = vi.fn();
-
-    await fetchRsc('R/x.txt', undefined, { onBuildIdMismatch });
-    await wait();
-
-    expect(onBuildIdMismatch).toHaveBeenCalledTimes(1);
-  });
-
-  test('a stale build id rejects without a handler', async () => {
+  test('a stale build id rejects', async () => {
     vi.stubEnv('WAKU_BUILD_ID', 'build-1');
     mocks.createFromFetch.mockResolvedValueOnce({
       _value: null,
@@ -945,19 +930,15 @@ describe('minimal/client build id mismatch', () => {
     }
   });
 
-  test('a matching build id does not trigger the handler', async () => {
+  test('a matching build id resolves', async () => {
     vi.stubEnv('WAKU_BUILD_ID', 'build-1');
     mocks.createFromFetch.mockResolvedValueOnce({
       _value: null,
       _buildId: 'build-1',
     });
     stubFetch();
-    const onBuildIdMismatch = vi.fn();
 
-    await fetchRsc('R/y.txt', undefined, { onBuildIdMismatch });
-    await wait();
-
-    expect(onBuildIdMismatch).not.toHaveBeenCalled();
+    await expect(fetchRsc('R/y.txt')).resolves.toBeDefined();
   });
 });
 

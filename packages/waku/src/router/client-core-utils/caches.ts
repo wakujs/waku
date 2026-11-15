@@ -1,5 +1,4 @@
 import {
-  unstable_isBuildIdMismatch as isBuildIdMismatch,
   unstable_isImmutableElement as isImmutableElement,
   useFetchRsc_UNSTABLE as useFetchRsc,
 } from 'waku/minimal/client';
@@ -32,27 +31,13 @@ type CachedLoadOptions = LoadOptions & {
   adopt?: Promise<Elements>;
   /** Retained elements used for etags and static-route reuse. */
   base: Elements;
-  /**
-   * Receives the attempt's browser URL when its response comes from a
-   * different build.
-   * @deprecated Will be removed in a future release. Without it, the load
-   * fails; recognize the error with `unstable_isBuildIdMismatch`.
-   */
-  onBuildIdMismatch?: (url: URL) => void;
-  /**
-   * Observes prefetch invalidation with the affected attempt's browser URL.
-   * @deprecated Will be removed in a future release. A prefetch from a
-   * different build rejects, failing the load that adopts it; recognize the
-   * error with `unstable_isBuildIdMismatch`.
-   */
-  onInvalidate?: (url: URL) => void;
 };
 
 export type FetchRsc = ReturnType<typeof useFetchRsc>;
 
 export type { PrefetchOptions } from './prefetch-cache.js';
 
-export type PrefetchHandle = Pick<PrefetchEntry, 'promise' | 'onInvalidate'>;
+export type PrefetchHandle = Pick<PrefetchEntry, 'promise'>;
 
 export function createRscParams(query: string): URLSearchParams {
   return new URLSearchParams({ query });
@@ -101,17 +86,12 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
       manager.prefetch(
         rscPath,
         route.query,
-        (base, invalidate) =>
+        (base) =>
           fetchRouteElements(
             rscPath,
             createRscParams(route.query),
             base ? { unstable_base: base } : {},
-          ).catch((error: unknown) => {
-            if (isBuildIdMismatch(error)) {
-              invalidate();
-            }
-            throw error;
-          }),
+          ),
         options,
       );
     },
@@ -142,60 +122,33 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
       opts: CachedLoadOptions,
     ): Promise<LoadOutcome> => {
       const initialFollows = opts.follows ?? 0;
-      let unsubscribe: (() => void) | undefined;
-      try {
-        return await load(
-          async (attempt, signal) => {
-            const unsubscribePrevious = unsubscribe;
-            unsubscribe = undefined;
-            try {
-              const first = attempt.follows === initialFollows;
-              if (
-                !(first && opts.adopt !== undefined) &&
-                (canReuseStaticRoute(attempt.route, opts.base) ||
-                  (first && opts.refetch === false))
-              ) {
-                return;
-              }
-              const cached = manager.get(
-                encodeRoutePath(attempt.route.path),
-                attempt.route.query,
-              );
-              unsubscribe = cached?.onInvalidate(() => {
-                if (!signal.aborted) {
-                  opts.onInvalidate?.(attempt.url);
-                }
-              });
-              const onBuildIdMismatch = opts.onBuildIdMismatch;
-              const pending =
-                first && opts.adopt !== undefined
-                  ? opts.adopt
-                  : cached?.promise;
-              return await (pending ??
-                fetchRouteElements(
+      return load(
+        async (attempt, signal) => {
+          const first = attempt.follows === initialFollows;
+          if (
+            !(first && opts.adopt !== undefined) &&
+            (canReuseStaticRoute(attempt.route, opts.base) ||
+              (first && opts.refetch === false))
+          ) {
+            return;
+          }
+          const pending =
+            first && opts.adopt !== undefined
+              ? opts.adopt
+              : manager.get(
                   encodeRoutePath(attempt.route.path),
-                  createRscParams(attempt.route.query),
-                  {
-                    signal,
-                    ...(onBuildIdMismatch
-                      ? {
-                          onBuildIdMismatch: () =>
-                            onBuildIdMismatch(attempt.url),
-                        }
-                      : {}),
-                    unstable_base: opts.base,
-                  },
-                ));
-            } finally {
-              unsubscribePrevious?.();
-            }
-          },
-          requested,
-          opts,
-        );
-      } finally {
-        unsubscribe?.();
-      }
+                  attempt.route.query,
+                )?.promise;
+          return await (pending ??
+            fetchRouteElements(
+              encodeRoutePath(attempt.route.path),
+              createRscParams(attempt.route.query),
+              { signal, unstable_base: opts.base },
+            ));
+        },
+        requested,
+        opts,
+      );
     },
     learnStaticFromElements,
     clearCaches: (): void => {
