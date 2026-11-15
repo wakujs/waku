@@ -1,4 +1,3 @@
-import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
 import type { Unstable_Handlers as Handlers } from 'waku/minimal/server';
 import { createBuildHandler } from './define-router-utils/build-handler.js';
 import type {
@@ -26,19 +25,9 @@ import type {
 } from './define-router-utils/route-entries.js';
 import type { NavigationHref } from './isomorphic-utils/build-route-href.js';
 import { pathnameToRoutePath } from './isomorphic-utils/route-path.js';
-import { encodeRoutePath } from './isomorphic-utils/router-protocol.js';
 
 export { getRequest, getRscPath, getRscParams, setNonce };
 export type { HandlerInterceptor };
-
-const encodePathname = (pathname: string) => {
-  if (!pathname.startsWith('/')) {
-    throw new Error('Pathname must start with `/`: ' + pathname);
-  }
-  const url = new URL('http://localhost');
-  url.pathname = pathname;
-  return url.pathname;
-};
 
 /**
  * Requests a refresh of the calling route after the current server function
@@ -65,41 +54,6 @@ export function requestRefresh(): void {
 }
 
 /**
- * Schedules the calling route to render after the server function finishes,
- * unless a route intent was recorded. The client drops the rerender if the user
- * has left that route or any navigation is pending.
- * Only the last rerender requested by a server function is applied.
- * @deprecated Use `requestRefresh()`. Will be removed in a future release.
- */
-export function rerenderRoute(): void;
-/**
- * Schedules a route to render after the current server function finishes.
- * A recorded route intent skips scheduled renders. `pathname`
- * is serialized as a URL pathname, so dot segments are resolved and unescaped
- * non-ASCII characters are percent-encoded. `query` is the search string
- * without `?`, serialized as URL search params, so `q=a b` becomes `q=a+b`.
- * Only the last rerender requested by a server function is applied.
- * @deprecated Use `requestRedirect()` to navigate. Will be removed in a future release.
- */
-export function rerenderRoute(pathname: string, query?: string): void;
-export function rerenderRoute(pathname?: string, query?: string) {
-  if (pathname === undefined) {
-    requestRefresh();
-    return;
-  }
-  const rscPath = encodeRoutePath(
-    pathnameToRoutePath(encodePathname(pathname)),
-  );
-  const encodedQuery = new URLSearchParams(query).toString();
-  const context = getServerFunctionContext();
-  context.legacyTarget = [
-    rscPath,
-    encodedQuery && new URLSearchParams({ query: encodedQuery }),
-  ];
-  context.refreshRequested = false;
-}
-
-/**
  * Requests the not-found view without terminating execution. Return from the
  * current component or server function after calling it. Before the document
  * response is returned this can produce HTTP 404; after the shell the client
@@ -116,16 +70,6 @@ export function rerenderRoute(pathname?: string, query?: string) {
  */
 export function requestNotFound(): void {
   getRouteIntent().record({ status: 404 });
-}
-
-/**
- * @deprecated Use `requestNotFound()` and `cancelRender()` to control termination.
- * In handler interceptors, use `requestNotFound()` and return `next()`.
- * An uncaught cancellation there returns HTTP 204 or an empty RSC payload.
- */
-export function notFound(): never {
-  requestNotFound();
-  cancelRender();
 }
 
 const staysInTheApp = (location: string) =>
@@ -187,19 +131,6 @@ export function requestRedirect(
   if (!intent.value) {
     intent.record({ status, location: getRedirectLocation(to) });
   }
-}
-
-/**
- * @deprecated Use `requestRedirect()` and `cancelRender()` to control termination.
- * In handler interceptors, use `requestRedirect()` and return `next()`.
- * An uncaught cancellation there returns HTTP 204 or an empty RSC payload.
- */
-export function redirect(
-  to: NavigationHref | `http://${string}` | `https://${string}` | URL,
-  status: 303 | 307 | 308 = 307,
-): never {
-  requestRedirect(to, status);
-  cancelRender();
 }
 
 const throwNotBuilt = (id: string): never => {

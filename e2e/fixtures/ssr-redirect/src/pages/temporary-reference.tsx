@@ -1,4 +1,4 @@
-import { unstable_rerenderRoute } from 'waku/router/server';
+import { requestRefresh } from 'waku/router/server';
 import { TemporaryReferenceProbe } from '../components/temporary-reference-probe';
 
 let received: unknown;
@@ -6,7 +6,7 @@ let received: unknown;
 async function roundTrip(value: unknown) {
   'use server';
   received = value;
-  unstable_rerenderRoute();
+  requestRefresh();
 }
 
 export default function TemporaryReferencePage() {

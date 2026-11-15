@@ -1,13 +1,15 @@
 import { Suspense } from 'react';
-import { unstable_redirect as redirect } from 'waku/router/server';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
+import { requestRedirect } from 'waku/router/server';
 
 const Late = async () => {
   await new Promise((resolve) => setTimeout(resolve, 100));
-  redirect(
+  requestRedirect(
     new URL('/from-late', String(process.env.WAKU_E2E_EXTERNAL_ORIGIN))
       .href as '/',
     303,
   );
+  cancelRender();
 };
 
 export default async function ExternalLatePage() {

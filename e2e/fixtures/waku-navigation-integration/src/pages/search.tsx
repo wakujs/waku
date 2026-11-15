@@ -1,10 +1,12 @@
-import { unstable_redirect as redirect } from 'waku/router/server';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
+import { requestRedirect } from 'waku/router/server';
 import { SearchProbe } from '../components/search-probe.js';
 import { querySearchCodec } from '../lib/search.js';
 
 export default function SearchPage({ query = '' }: { query?: string }) {
   if (new URLSearchParams(query).get('q') === 'from-follow') {
-    redirect('/search?q=spent');
+    requestRedirect('/search?q=spent');
+    cancelRender();
   }
   return (
     <div>

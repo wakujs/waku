@@ -1,8 +1,10 @@
-import { unstable_notFound as notFound } from 'waku/router/server';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
+import { requestNotFound } from 'waku/router/server';
 
 export default async function SyncPage() {
   await new Promise((resolve) => setTimeout(resolve, 100));
-  notFound();
+  requestNotFound();
+  cancelRender();
 }
 
 export const getConfig = async () => {

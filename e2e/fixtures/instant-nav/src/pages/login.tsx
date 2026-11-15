@@ -1,9 +1,9 @@
-import { unstable_rerenderRoute as rerenderRoute } from 'waku/router/server';
+import { requestRefresh } from 'waku/router/server';
 import { StaticRedirect } from '../components/static-redirect';
 
 async function rerender() {
   'use server';
-  rerenderRoute('/login');
+  requestRefresh();
   return 'done';
 }
 

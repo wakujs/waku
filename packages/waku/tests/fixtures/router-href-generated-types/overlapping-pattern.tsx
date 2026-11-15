@@ -1,6 +1,6 @@
 import { unstable_createRouteHref } from 'waku/router';
 import { Link, useRouter } from 'waku/router/client';
-import { unstable_redirect } from 'waku/router/server';
+import { requestRedirect } from 'waku/router/server';
 
 const nestedProduct = unstable_createRouteHref({
   path: '/products/foo/[slug]',
@@ -23,5 +23,5 @@ export function OverlappingPatternProbe() {
 
 export function OverlappingPatternRedirectProbe() {
   // @ts-expect-error a matching raw href prefix does not register this pattern
-  unstable_redirect(href);
+  requestRedirect(href);
 }

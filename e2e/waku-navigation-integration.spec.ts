@@ -230,16 +230,6 @@ test.describe('waku-navigation', () => {
     await expect(page).toHaveURL(/\/missing$/);
   });
 
-  test('an action that renders another route moves the address bar', async ({
-    page,
-  }) => {
-    await page.goto(`http://localhost:${port}/rerender-action`);
-    await waitForHydration(page);
-    await page.getByTestId('render-static').click();
-    await expect(page.getByTestId('static')).toHaveText('Static');
-    await expect(page).toHaveURL(/\/static$/);
-  });
-
   test('a newer navigation supersedes an action redirect that is loading', async ({
     page,
   }) => {
@@ -373,54 +363,4 @@ test.describe('waku-navigation', () => {
     await expect(page).toHaveURL(/\/late-redirect\?id=[^#]+#details$/);
     expect(newFetches.count).toBe(0);
   });
-
-  for (const { path, buttonId, contentId } of [
-    { path: '/static', buttonId: 'render-static', contentId: 'static' },
-    {
-      path: '/rerender-action',
-      buttonId: 'render-same',
-      contentId: 'rerender-count',
-    },
-  ]) {
-    test(`an action response for ${path} supersedes an older navigation that is loading`, async ({
-      page,
-    }) => {
-      await page.goto(`http://localhost:${port}/rerender-action`);
-      await waitForHydration(page);
-      const requested = Promise.withResolvers<void>();
-      const release = Promise.withResolvers<void>();
-      const sent = Promise.withResolvers<void>();
-      await page.route('**/RSC/R/hello/older.txt*', async (route) => {
-        const response = await route.fetch();
-        requested.resolve();
-        await release.promise;
-        await route.fulfill({ response });
-        sent.resolve();
-      });
-      try {
-        await page.evaluate(() => {
-          void window.navigation
-            .navigate('/hello/older')
-            .finished?.catch(() => {});
-        });
-        await requested.promise;
-        const cancelled = page.waitForEvent('requestfailed', {
-          predicate: (request) =>
-            request.url().includes('/RSC/R/hello/older.txt'),
-        });
-        await page
-          .getByTestId(buttonId)
-          .evaluate((button: HTMLButtonElement) => button.click());
-        await cancelled;
-        await expect(page.getByTestId(contentId)).toBeVisible();
-        release.resolve();
-        await sent.promise;
-        await page.evaluate(() => window.navigation.transition?.finished);
-        await expect(page).toHaveURL(`http://localhost:${port}${path}`);
-        await expect(page.getByTestId(contentId)).toBeVisible();
-      } finally {
-        release.resolve();
-      }
-    });
-  }
 });

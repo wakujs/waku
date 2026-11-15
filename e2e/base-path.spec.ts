@@ -74,7 +74,7 @@ test.describe(`base-path`, () => {
   });
 
   test('redirect Location carries basePath', async ({ request }) => {
-    // unstable_redirect('/static') must emit a base-prefixed Location so the
+    // requestRedirect('/static') must emit a base-prefixed Location so the
     // browser stays within the app (the redirect is built app-relative)
     const res = await request.get(
       `http://localhost:${port}/custom/base/redirect`,

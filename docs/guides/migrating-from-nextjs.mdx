@@ -182,8 +182,7 @@ produces content only. Server functions can record intents when they run.
 Return explicitly after calling them, or combine them with
 `unstable_cancelRender()` from `waku/minimal/server` for a terminating wrapper;
 see [Redirects and Not Found](/guides/redirects-and-not-found).
-The deprecated `unstable_redirect()` and `unstable_notFound()` retain their
-terminating behavior. A no-JavaScript form POST redirect uses HTTP `303`.
+A no-JavaScript form POST redirect uses HTTP `303`.
 
 `useSearchParams()` in Next.js opts a page into client rendering and is usually
 wrapped in `<Suspense>`; Waku's `useRouter()` carries no such requirement, so

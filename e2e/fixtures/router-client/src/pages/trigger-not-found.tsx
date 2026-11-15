@@ -1,7 +1,9 @@
-import { unstable_notFound as notFound } from 'waku/router/server';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
+import { requestNotFound } from 'waku/router/server';
 
 export default function TriggerNotFoundPage() {
-  notFound();
+  requestNotFound();
+  cancelRender();
 }
 
 export const getConfig = () => {

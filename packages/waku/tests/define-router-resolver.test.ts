@@ -11,11 +11,9 @@ import { getRscPath } from '../src/router/define-router-utils/request-store.js';
 import {
   defineRouter,
   getRequest,
-  notFound,
-  redirect,
   requestNotFound,
   requestRedirect,
-  rerenderRoute,
+  requestRefresh,
   setNonce,
 } from '../src/router/define-router.js';
 import {
@@ -137,7 +135,12 @@ describe('defineRouter route resolver', () => {
           ? {
               elements: {
                 root: { render: () => 'root' },
-                route: { render: () => redirect(href) },
+                route: {
+                  render: () => {
+                    requestRedirect(href);
+                    return cancelRender();
+                  },
+                },
               },
             }
           : createRouterDefinition('content'),
@@ -452,8 +455,13 @@ describe('defineRouter route resolver', () => {
   });
   it('records not-found for an unresolved route without a custom 404', async () => {
     const router = defineRouter({
-      resolve: async (path) =>
-        path === '/' ? createRouterDefinition('home') : notFound(),
+      resolve: async (path) => {
+        if (path !== '/') {
+          requestNotFound();
+          cancelRender();
+        }
+        return createRouterDefinition('home');
+      },
     });
     const utils = makeUtils();
     await router.handleRequest(rscInput('/'), utils);
@@ -639,10 +647,13 @@ describe('defineRouter route resolver', () => {
 
   it('uses a custom 404 for a not-found thrown during resolution', async () => {
     const router = defineRouter({
-      resolve: async (path, query) =>
-        path === '/404'
-          ? createRouterDefinition('not found:' + query)
-          : notFound(),
+      resolve: async (path, query) => {
+        if (path !== '/404') {
+          requestNotFound();
+          cancelRender();
+        }
+        return createRouterDefinition('not found:' + query);
+      },
       getHas404: async () => true,
     });
     const utils = makeUtils();
@@ -677,7 +688,12 @@ describe('defineRouter route resolver', () => {
           ? {
               elements: {
                 ...createRouterDefinition('').elements,
-                route: { render: () => redirect('/next?q=one') },
+                route: {
+                  render: () => {
+                    requestRedirect('/next?q=one');
+                    return cancelRender();
+                  },
+                },
               },
             }
           : path === '/next'
@@ -716,7 +732,7 @@ describe('defineRouter route resolver', () => {
         }),
         args: [],
         fn: async () => {
-          rerenderRoute();
+          requestRefresh();
           return 'result';
         },
       },

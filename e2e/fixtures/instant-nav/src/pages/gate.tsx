@@ -1,4 +1,5 @@
-import { unstable_redirect as redirect } from 'waku/router/server';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
+import { requestRedirect } from 'waku/router/server';
 
 let visits = 0;
 
@@ -9,7 +10,8 @@ export default async function Gate() {
   // eslint-disable-next-line react-hooks/globals
   visits += 1;
   if (visits > 1) {
-    redirect('/post/2');
+    requestRedirect('/post/2');
+    cancelRender();
   }
   return <div data-testid="gate">Gate</div>;
 }

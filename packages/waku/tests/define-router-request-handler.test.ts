@@ -1,7 +1,10 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { describe, expect, it, vi } from 'vitest';
 import type { RenderHtml } from '../src/lib/types.js';
-import { unstable_isRenderCancellation as isRenderCancellation } from '../src/minimal/server.js';
+import {
+  unstable_cancelRender as cancelRender,
+  unstable_isRenderCancellation as isRenderCancellation,
+} from '../src/minimal/server.js';
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
 import {
   ACTION_LOCATION_HEADER,
@@ -19,9 +22,6 @@ import {
   requestRedirect,
   requestRefresh,
   unstable_defineRouter,
-  unstable_notFound,
-  unstable_redirect,
-  unstable_rerenderRoute,
   unstable_setNonce,
 } from '../src/router/server.js';
 
@@ -91,10 +91,19 @@ const staticRoute = (name: string) => ({
 describe('request dispatch', () => {
   it.each([
     {
-      record: () => unstable_redirect('/login'),
+      record: () => {
+        requestRedirect('/login');
+        cancelRender();
+      },
       intent: { status: 307, location: '/login' },
     },
-    { record: unstable_notFound, intent: { status: 404 } },
+    {
+      record: () => {
+        requestNotFound();
+        cancelRender();
+      },
+      intent: { status: 404 },
+    },
   ])(
     'retries a cancelled mutable slot and records its $intent on a revisit',
     async ({ record, intent }) => {
@@ -176,7 +185,8 @@ describe('request dispatch', () => {
     const router = unstable_defineRouter({
       resolve: async (pathname) => {
         if (pathname !== '/404') {
-          unstable_notFound();
+          requestNotFound();
+          cancelRender();
         }
         return {
           elements: {
@@ -215,12 +225,18 @@ describe('request dispatch', () => {
             return null;
           }
           if (!fromSource) {
-            unstable_redirect('/login');
+            requestRedirect('/login');
+            cancelRender();
           }
           return {
             elements: {
               root: { render: () => 'root' },
-              route: { render: () => unstable_redirect('/login') },
+              route: {
+                render: () => {
+                  requestRedirect('/login');
+                  return cancelRender();
+                },
+              },
             },
           };
         },
@@ -245,9 +261,30 @@ describe('request dispatch', () => {
   );
 
   it.each([
-    { status: 303, record: () => unstable_redirect('/login'), has404: false },
-    { status: 404, record: unstable_notFound, has404: false },
-    { status: 404, record: unstable_notFound, has404: true },
+    {
+      status: 303,
+      record: () => {
+        requestRedirect('/login');
+        return cancelRender();
+      },
+      has404: false,
+    },
+    {
+      status: 404,
+      record: () => {
+        requestNotFound();
+        return cancelRender();
+      },
+      has404: false,
+    },
+    {
+      status: 404,
+      record: () => {
+        requestNotFound();
+        return cancelRender();
+      },
+      has404: true,
+    },
   ])(
     'does not start a form action after a source requests $status (custom 404: $has404)',
     async ({ status, record, has404 }) => {
@@ -759,7 +796,10 @@ describe('request dispatch', () => {
   it('propagates API cancellation without rendering its recorded intent', async () => {
     const utils = makeUtils();
     const router = unstable_defineRouter({
-      resolve: async () => async () => unstable_redirect('/login'),
+      resolve: async () => async () => {
+        requestRedirect('/login');
+        return cancelRender();
+      },
       getHas404: async () => true,
     });
 
@@ -973,39 +1013,6 @@ describe('request dispatch', () => {
     expect(utils.renderRsc.mock.calls[0]![0][IS_STATIC_ID]).toBe(false);
   });
 
-  it('runs scheduled renders after the server function finishes', async () => {
-    const started = Promise.withResolvers<void>();
-    const release = Promise.withResolvers<void>();
-    let message = 'before';
-    const render = vi.fn(() => message);
-    const router = unstable_defineRouter({
-      resolve: async () => ({
-        elements: {
-          root: { render: () => 'root' },
-          route: { render },
-        },
-      }),
-      getHas404: async () => false,
-    });
-    const utils = makeUtils();
-    const request = router.handleRequest(
-      callInput(async () => {
-        unstable_rerenderRoute('/saved');
-        started.resolve();
-        await release.promise;
-        message = 'after';
-        return 'saved';
-      }),
-      utils,
-    );
-    await started.promise;
-    expect(render).not.toHaveBeenCalled();
-    release.resolve();
-    await request;
-    expect(render).toHaveReturnedWith('after');
-    expect(utils.renderRsc.mock.calls[0]![1]?.value).toBe('saved');
-  });
-
   it('coalesces refresh requests after the server function finishes and preserves its value', async () => {
     const started = Promise.withResolvers<void>();
     const release = Promise.withResolvers<void>();
@@ -1110,108 +1117,56 @@ describe('request dispatch', () => {
     expect(options?.value).toBe('saved');
   });
 
-  it.each([
-    { name: 'requestRefresh', request: requestRefresh },
-    {
-      name: 'unstable_rerenderRoute',
-      request: () => unstable_rerenderRoute('/unused'),
-    },
-  ])(
-    'does not render for $name when the server function fails',
-    async ({ request }) => {
-      const render = vi.fn(() => {
-        throw new Error('render failed');
-      });
-      const router = unstable_defineRouter({
-        resolve: async () => ({
-          elements: {
-            root: { render: () => 'root' },
-            route: { render },
-          },
-        }),
-        getHas404: async () => false,
-      });
-      await expect(
-        router.handleRequest(
-          callInput(async () => {
-            request();
-            await new Promise((resolve) => setTimeout(resolve, 0));
-            throw new Error('function failed');
-          }, '/unused'),
-          makeUtils(),
-        ),
-      ).rejects.toThrow('function failed');
-      expect(render).not.toHaveBeenCalled();
-    },
-  );
-
-  it('renders only the last scheduled target', async () => {
-    const rendered: string[] = [];
+  it('does not render a refresh when the server function fails', async () => {
+    const render = vi.fn(() => {
+      throw new Error('render failed');
+    });
     const router = unstable_defineRouter({
-      resolve: async (path) => ({
+      resolve: async () => ({
         elements: {
-          root: { render: () => path },
-          route: {
-            render: () => {
-              rendered.push(path);
-              return path;
-            },
-          },
+          root: { render: () => 'root' },
+          route: { render },
         },
       }),
       getHas404: async () => false,
     });
-    const utils = makeUtils();
-    await router.handleRequest(
-      callInput(async () => {
-        unstable_rerenderRoute('/first');
-        unstable_rerenderRoute('/second');
-        return 'saved';
-      }),
-      utils,
-    );
-    expect(utils.renderRsc.mock.calls[0]![0]).toMatchObject({
-      [ROUTE_ID]: ['/second', ''],
-      root: '/second',
-      'route:/second': '/second',
-    });
-    expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(
-      'route:/first',
-    );
-    expect(rendered).toEqual(['/second']);
+    await expect(
+      router.handleRequest(
+        callInput(async () => {
+          requestRefresh();
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          throw new Error('function failed');
+        }, '/unused'),
+        makeUtils(),
+      ),
+    ).rejects.toThrow('function failed');
+    expect(render).not.toHaveBeenCalled();
   });
 
-  it.each(['named', 'origin'] as const)(
-    'skips a scheduled %s rerender when the server function records a redirect',
-    async (target) => {
-      const { handleRequest } = createConfiguredRouter({
-        getConfigs: async () => [staticRoute('/cached')],
-      });
-      const utils = makeUtils();
+  it('skips a refresh when the server function later records a redirect', async () => {
+    const { handleRequest } = createConfiguredRouter({
+      getConfigs: async () => [staticRoute('/cached')],
+    });
+    const utils = makeUtils();
 
-      await handleRequest(
-        callInput(async () => {
-          if (target === 'origin') {
-            unstable_rerenderRoute();
-          } else {
-            unstable_rerenderRoute('/cached');
-          }
-          await new Promise((resolve) => setTimeout(resolve, 0));
-          requestRedirect('/login');
-          return 'action-result';
-        }, '/cached'),
-        utils,
-      );
+    await handleRequest(
+      callInput(async () => {
+        requestRefresh();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        requestRedirect('/login');
+        return 'action-result';
+      }, '/cached'),
+      utils,
+    );
 
-      const [elements, options] = utils.renderRsc.mock.calls[0]!;
-      expect(elements[ROUTE_ID]).toBeUndefined();
-      expect(elements).not.toHaveProperty(IS_ORIGIN_ID);
-      await expect(elements[INTENT_ID]).resolves.toBe(
-        JSON.stringify({ status: 307, location: '/login' }),
-      );
-      expect(options?.value).toBe('action-result');
-    },
-  );
+    const [elements, options] = utils.renderRsc.mock.calls[0]!;
+    expect(elements[ROUTE_ID]).toBeUndefined();
+    expect(elements).not.toHaveProperty(IS_ORIGIN_ID);
+    await expect(elements[INTENT_ID]).resolves.toBe(
+      JSON.stringify({ status: 307, location: '/login' }),
+    );
+    expect(options?.value).toBe('action-result');
+  });
 
   it('returns null for an unknown rsc route', async () => {
     const { handleRequest } = createConfiguredRouter({
@@ -1260,24 +1215,6 @@ describe('request dispatch', () => {
     );
   });
 
-  it('merges entries scheduled by a server function rerender', async () => {
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [dynamicRoute('/')],
-    });
-    const utils = makeUtils();
-    await handleRequest(
-      callInput(async () => {
-        unstable_rerenderRoute('/');
-        return 'fn-value';
-      }),
-      utils,
-    );
-    expect(utils.renderRsc).toHaveBeenCalledWith(
-      expect.objectContaining({ [ROUTE_ID]: ['/', ''] }),
-      { value: 'fn-value', etags: {} },
-    );
-  });
-
   it('exposes the call request to a server function', async () => {
     const { handleRequest } = createConfiguredRouter({
       getConfigs: async () => [],
@@ -1290,14 +1227,14 @@ describe('request dispatch', () => {
     expect(seen).toBe(input.req);
   });
 
-  it('rerenders the route a server function was called from when asked with no arguments', async () => {
+  it('rerenders the route a server function was called from on requestRefresh', async () => {
     const { handleRequest } = createConfiguredRouter({
       getConfigs: async () => [dynamicRoute('/dest')],
     });
     const utils = makeUtils();
     await handleRequest(
       callInput(async () => {
-        unstable_rerenderRoute();
+        requestRefresh();
         return 'fn-value';
       }, '/dest?a=1'),
       utils,
@@ -1309,25 +1246,6 @@ describe('request dispatch', () => {
       }),
       { value: 'fn-value', etags: {} },
     );
-  });
-
-  it('renders a named route, not the one a server function was called from', async () => {
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [dynamicRoute('/'), dynamicRoute('/dest')],
-    });
-    const utils = makeUtils();
-    await handleRequest(
-      callInput(async () => {
-        unstable_rerenderRoute('/');
-        return 'fn-value';
-      }, '/dest'),
-      utils,
-    );
-    expect(utils.renderRsc).toHaveBeenCalledWith(
-      expect.objectContaining({ [ROUTE_ID]: ['/', ''] }),
-      { value: 'fn-value', etags: {} },
-    );
-    expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(IS_ORIGIN_ID);
   });
 
   it('renders no slots for an action that does not ask, so an effect calling it cannot loop', async () => {
@@ -1345,17 +1263,14 @@ describe('request dispatch', () => {
     );
   });
 
-  it.each([
-    { name: 'requestRefresh', request: requestRefresh },
-    { name: 'unstable_rerenderRoute', request: unstable_rerenderRoute },
-  ])('rejects $name when the calling route is unknown', async ({ request }) => {
+  it('rejects requestRefresh when the calling route is unknown', async () => {
     const { handleRequest } = createConfiguredRouter({
       getConfigs: async () => [dynamicRoute('/dest')],
     });
     await expect(
       handleRequest(
         callInput(async () => {
-          request();
+          requestRefresh();
         }),
         makeUtils(),
       ),
@@ -1379,93 +1294,29 @@ describe('request dispatch', () => {
     );
   });
 
-  it('types refreshes without a target and keeps legacy rerender overloads', () => {
-    const assertTypes = (next: string | undefined) => {
+  it('types refreshes without a target', () => {
+    const assertTypes = () => {
       requestRefresh();
       // @ts-expect-error refresh requests cannot select a different route
       requestRefresh('/dest');
-      unstable_rerenderRoute();
-      unstable_rerenderRoute('/dest', 'a=1');
-      // @ts-expect-error an undefined path would mean the origin
-      unstable_rerenderRoute(next, 'a=1');
     };
     expect(assertTypes).toBeTypeOf('function');
   });
 
-  it.each([
-    { name: 'requestRefresh', request: requestRefresh },
-    { name: 'unstable_rerenderRoute', request: unstable_rerenderRoute },
-  ])('lets a later named rerender supersede $name', async ({ request }) => {
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [dynamicRoute('/'), dynamicRoute('/dest')],
-    });
-    const utils = makeUtils();
-    await handleRequest(
-      callInput(async () => {
-        request();
-        unstable_rerenderRoute('/dest');
-        return 'fn-value';
-      }, '/'),
-      utils,
-    );
-    const [elements] = utils.renderRsc.mock.calls[0]!;
-    expect(elements[ROUTE_ID]).toEqual(['/dest', '']);
-    expect(elements).not.toHaveProperty(IS_ORIGIN_ID);
-  });
-
-  it.each([
-    { name: 'requestRefresh', request: requestRefresh },
-    { name: 'unstable_rerenderRoute', request: unstable_rerenderRoute },
-  ])('lets $name supersede a named rerender', async ({ request }) => {
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [dynamicRoute('/'), dynamicRoute('/dest')],
-    });
-    const utils = makeUtils();
-    await handleRequest(
-      callInput(async () => {
-        unstable_rerenderRoute('/dest');
-        request();
-        return 'fn-value';
-      }, '/'),
-      utils,
-    );
-    const [elements] = utils.renderRsc.mock.calls[0]!;
-    expect(elements[ROUTE_ID]).toEqual(['/', '']);
-    expect(elements[IS_ORIGIN_ID]).toBe(true);
-  });
-
-  it('rejects a no-argument rerender whose action location is malformed', async () => {
+  it('rejects requestRefresh when the action location is malformed', async () => {
     const { handleRequest } = createConfiguredRouter({
       getConfigs: async () => [dynamicRoute('/dest')],
     });
     await expect(
       handleRequest(
         callInput(async () => {
-          unstable_rerenderRoute();
+          requestRefresh();
         }, '//['),
         makeUtils(),
       ),
     ).rejects.toThrow(
       'The route this server function was called from is unknown',
     );
-  });
-
-  it('does not mark a response after a no-argument rerender that failed', async () => {
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [dynamicRoute('/dest')],
-    });
-    const utils = makeUtils();
-    await handleRequest(
-      callInput(async () => {
-        unstable_rerenderRoute('/dest');
-        expect(() => unstable_rerenderRoute()).toThrow();
-        return 'fn-value';
-      }),
-      utils,
-    );
-    const [elements] = utils.renderRsc.mock.calls[0]!;
-    expect(elements[ROUTE_ID]).toEqual(['/dest', '']);
-    expect(elements).not.toHaveProperty(IS_ORIGIN_ID);
   });
 
   it('maps api params and rewrites the request pathname', async () => {

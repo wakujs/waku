@@ -1,7 +1,9 @@
-import { unstable_redirect as redirect } from 'waku/router/server';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
+import { requestRedirect } from 'waku/router/server';
 
 export default function RedirectPage() {
-  return redirect('/static');
+  requestRedirect('/static');
+  return cancelRender();
 }
 
 export const getConfig = async () => ({ render: 'dynamic' as const });

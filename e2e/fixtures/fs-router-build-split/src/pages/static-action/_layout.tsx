@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { unstable_redirect as redirect } from 'waku/router/server';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
+import { requestRedirect } from 'waku/router/server';
 
 export default function StaticActionLayout({
   children,
@@ -12,7 +13,8 @@ export default function StaticActionLayout({
       <form
         action={async () => {
           'use server';
-          redirect(destination);
+          requestRedirect(destination);
+          cancelRender();
         }}
       >
         <button type="submit">Run static action</button>
