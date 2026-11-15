@@ -139,6 +139,9 @@ async function doPrompts() {
             typeof results.projectName === 'string'
               ? results.projectName.trim()
               : targetDir;
+          if (!targetDir) {
+            throw new Error('Project name must not be empty');
+          }
           if (!canSafelyOverwrite(targetDir)) {
             return p.confirm({
               message: `${results.projectName} is not empty. Remove existing files and continue?`,
