@@ -29,7 +29,6 @@ vi.mock('virtual:vite-rsc-waku/config', async () => {
   const { resolveConfig } = await import('../src/lib/utils-build/config.js');
   return { config: resolveConfig({}), isBuild: false };
 });
-vi.mock('virtual:vite-rsc-waku/not-found', () => ({ default: 'Not Found' }));
 vi.mock('../src/server.js', () => ({
   deserializeRsc: vi.fn().mockResolvedValue(null),
   serializeRsc: vi.fn().mockResolvedValue(new Uint8Array([1])),
@@ -200,6 +199,11 @@ test('leaves a malformed payload URL unhandled', async () => {
   expect(handle).not.toHaveBeenCalled();
   expect(registry.size).toBe(0);
   expect(finishDebugChannel).toHaveBeenCalledOnce();
+});
+
+test('leaves an unhandled / to the adapter', async () => {
+  const { processRequest } = runtime(async () => null);
+  expect(await processRequest(new Request('https://app.example/'))).toBeNull();
 });
 
 test('reports an ordinary handler failure as a generic 500', async () => {

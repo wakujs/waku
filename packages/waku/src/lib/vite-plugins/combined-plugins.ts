@@ -11,7 +11,6 @@ import { extraPlugins } from './extra-plugins.js';
 import { fsRouterTypegenPlugin } from './fs-router-typegen.js';
 import { htmlShellPlugin } from './html-shell.js';
 import { htmlTransformPlugin } from './html-transform.js';
-import { notFoundPlugin } from './not-found.js';
 import { patchReactDomPlugin } from './patch-react-dom.js';
 import { patchRsdwPlugin } from './patch-rsdw.js';
 import { privateDirPlugin } from './private-dir.js';
@@ -57,7 +56,6 @@ export function combinedPlugins(config: Required<Config>): PluginOption {
     appEntriesPlugin(config),
     virtualConfigPlugin(config),
     adapterAliasPlugin(config),
-    notFoundPlugin(),
     patchReactDomPlugin(),
     patchRsdwPlugin(),
     buildMetadataPlugin(config),

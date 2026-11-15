@@ -18,7 +18,7 @@ const DEFAULT_BODY_LIMIT_MAX_SIZE = 100 * 1024 * 1024;
 
 export default createServerEntryAdapter(
   (
-    { processRequest, processBuild, config, isBuild, notFoundHtml },
+    { processRequest, processBuild, config, isBuild },
     options?: {
       streaming?: boolean;
       bodyLimit?: Parameters<typeof bodyLimit>[0] | false;
@@ -32,12 +32,6 @@ export default createServerEntryAdapter(
       middlewareModules = {},
     } = options || {};
     const app = new Hono();
-    app.notFound((c) => {
-      if (notFoundHtml) {
-        return c.html(notFoundHtml, 404);
-      }
-      return c.text('404 Not Found', 404);
-    });
     if (isBuild) {
       app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));
     }
