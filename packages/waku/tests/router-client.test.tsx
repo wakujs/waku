@@ -5479,6 +5479,7 @@ describe('Router integration', () => {
     );
 
     window.history.pushState({}, '', '/ignored');
+    const historyLength = window.history.length;
     window.dispatchEvent(new PopStateEvent('popstate'));
     await flush();
 
@@ -5492,6 +5493,7 @@ describe('Router integration', () => {
     expect(window.location.pathname + window.location.search).toBe(
       '/intercepted?from=interceptor',
     );
+    expect(window.history.length).toBe(historyLength);
 
     view.unmount();
   });
