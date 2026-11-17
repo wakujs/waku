@@ -5489,6 +5489,9 @@ describe('Router integration', () => {
     );
     expect(capture.router?.path).toBe('/intercepted');
     expect(capture.router?.query).toBe('from=interceptor');
+    expect(window.location.pathname + window.location.search).toBe(
+      '/intercepted?from=interceptor',
+    );
 
     view.unmount();
   });
