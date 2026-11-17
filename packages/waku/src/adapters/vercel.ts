@@ -17,7 +17,7 @@ globalThis.__WAKU_HONO_NODE_SERVER_GET_REQUEST_LISTENER__ = getRequestListener;
 
 export default createServerEntryAdapter(
   (
-    { processRequest, processBuild, config, notFoundHtml },
+    { processRequest, processBuild, config },
     options?: {
       static?: boolean;
       assetsDir?: string;
@@ -32,12 +32,6 @@ export default createServerEntryAdapter(
       middlewareModules = {},
     } = options || {};
     const app = new Hono();
-    app.notFound((c) => {
-      if (notFoundHtml) {
-        return c.html(notFoundHtml, 404);
-      }
-      return c.text('404 Not Found', 404);
-    });
     if (bodyLimitOptions !== false) {
       app.use(
         bodyLimit(bodyLimitOptions ?? { maxSize: DEFAULT_BODY_LIMIT_MAX_SIZE }),

@@ -64,7 +64,7 @@ const removeGzipEncoding = (res: Response): Response => {
 
 export default createServerEntryAdapter(
   (
-    { processRequest, processBuild, unstable_setAllEnv, config, notFoundHtml },
+    { processRequest, processBuild, unstable_setAllEnv, config },
     options?: {
       static?: boolean;
       handlers?: Record<string, unknown>;
@@ -82,12 +82,6 @@ export default createServerEntryAdapter(
       internalPathToBuildStaticFiles = '__waku_internal_build_static_files',
     } = options || {};
     const app = new Hono();
-    app.notFound((c) => {
-      if (notFoundHtml) {
-        return c.html(notFoundHtml, 404);
-      }
-      return c.text('404 Not Found', 404);
-    });
     if (bodyLimitOptions !== false) {
       app.use(
         bodyLimit(bodyLimitOptions ?? { maxSize: DEFAULT_BODY_LIMIT_MAX_SIZE }),

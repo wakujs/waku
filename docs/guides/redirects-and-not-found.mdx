@@ -188,7 +188,7 @@ export const getConfig = async () => {
 };
 ```
 
-If a `/404` page exists, Waku uses it for unmatched routes and `requestNotFound()` intents. If it does not exist, Waku falls back to a minimal not-found response.
+If a `/404` page exists, Waku uses it for unmatched routes and `requestNotFound()` intents. Without one, Waku leaves an unmatched route unhandled, so the adapter answers with Hono's default 404, and answers a `requestNotFound()` intent with a minimal not-found page.
 
 A form POST without JavaScript to an unresolved route renders the custom 404 page, when configured, or the default 404 response without executing the submitted action.
 

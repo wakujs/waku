@@ -22,11 +22,6 @@ declare module 'virtual:vite-rsc-waku/html-shell' {
   export default default_;
 }
 
-declare module 'virtual:vite-rsc-waku/not-found' {
-  const default_: string;
-  export default default_;
-}
-
 declare module 'virtual:vite-rsc-waku/html-transform' {
   const default_: (() => TransformStream<Uint8Array, Uint8Array>) | undefined;
   export default default_;
