@@ -344,12 +344,11 @@ The `utils` argument provides these helpers:
 
 `handleRequest` may return any of the following:
 
-| Return value          | Meaning                                                                                                                        |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `ReadableStream`      | Waku wraps it in a response with `Cache-Control: private, no-store`.                                                           |
-| `Response`            | Returned as-is.                                                                                                                |
-| `'fallback'`          | Deprecated. Return `renderHtmlFallback()` instead.                                                                             |
-| `null` or `undefined` | Unhandled. The adapter passes it to the next Hono handler, a 404 by default. Fallback HTML for an unhandled `/` is deprecated. |
+| Return value          | Meaning                                                                      |
+| --------------------- | ---------------------------------------------------------------------------- |
+| `ReadableStream`      | Waku wraps it in a response with `Cache-Control: private, no-store`.         |
+| `Response`            | Returned as-is.                                                              |
+| `null` or `undefined` | Unhandled. The adapter passes it to the next Hono handler, a 404 by default. |
 
 Important details:
 

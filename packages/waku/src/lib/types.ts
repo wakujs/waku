@@ -42,8 +42,7 @@ export type EmitFile = (
 
 /**
  * Dispatches payload, server function, and HTTP requests; return null to leave
- * a request unhandled. Returning `'fallback'`, or leaving `/` unhandled, serves
- * the HTML fallback; both are deprecated, so return `renderHtmlFallback()`.
+ * a request unhandled.
  */
 export type HandleRequest = (
   input: (
@@ -71,7 +70,7 @@ export type HandleRequest = (
     renderHtmlFallback: RenderHtmlFallback;
     loadBuildMetadata: (key: string) => Promise<string | undefined>;
   },
-) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
+) => Promise<ReadableStream | Response | null | undefined>;
 
 /** Emits prerendered payloads, HTML and build metadata through the supplied utilities. */
 export type HandleBuild = (utils: {
@@ -130,11 +129,6 @@ export type CreateServerEntryAdapter = <Options>(
       unstable_setAllEnv: (newEnv: Readonly<Record<string, unknown>>) => void;
       config: Omit<Required<Config>, 'vite'>;
       isBuild: boolean;
-      /**
-       * @deprecated Will be removed in a future release. Leave unhandled
-       * requests to Hono's not-found handler.
-       */
-      notFoundHtml: string;
     },
     options?: Options,
   ) => ServerEntry,

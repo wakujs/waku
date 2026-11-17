@@ -8,7 +8,6 @@ import {
 } from '@vitejs/plugin-rsc/rsc/server';
 import { buildMetadata } from 'virtual:vite-rsc-waku/build-metadata';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
-import notFoundHtml from 'virtual:vite-rsc-waku/not-found';
 import { BUILD_METADATA_FILE, DIST_PUBLIC, DIST_SERVER } from '../constants.js';
 import { setAllEnv } from '../env.js';
 import type {
@@ -108,23 +107,8 @@ const toProcessRequest =
       return new Response(res, {
         headers: { 'cache-control': 'private, no-store' },
       });
-    } else if (res && res !== 'fallback') {
-      return res;
     }
-
-    const url = new URL(req.url);
-    if (res === 'fallback' || (!res && url.pathname === '/')) {
-      if (import.meta.env.DEV) {
-        console.warn(
-          res === 'fallback'
-            ? "[waku] Returning 'fallback' from handleRequest is deprecated. Return renderHtmlFallback() instead."
-            : "[waku] Serving the HTML fallback for an unhandled '/' is deprecated. Return renderHtmlFallback() from handleRequest instead.",
-        );
-      }
-      return renderUtils.renderHtmlFallback();
-    }
-
-    return null;
+    return res ?? null;
   };
 
 const toProcessBuild =
@@ -197,7 +181,6 @@ export const createServerEntryAdapter: CreateServerEntryAdapter =
         unstable_setAllEnv: setAllEnv,
         config,
         isBuild,
-        notFoundHtml,
       },
       options,
     );

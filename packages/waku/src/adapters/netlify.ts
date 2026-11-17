@@ -15,7 +15,7 @@ const DEFAULT_BODY_LIMIT_MAX_SIZE = 100 * 1024 * 1024;
 
 export default createServerEntryAdapter(
   (
-    { processRequest, processBuild, config, notFoundHtml },
+    { processRequest, processBuild, config },
     options?: {
       static?: boolean;
       bodyLimit?: Parameters<typeof bodyLimit>[0] | false;
@@ -29,12 +29,6 @@ export default createServerEntryAdapter(
       middlewareModules = {},
     } = options || {};
     const app = new Hono();
-    app.notFound((c) => {
-      if (notFoundHtml) {
-        return c.html(notFoundHtml, 404);
-      }
-      return c.text('404 Not Found', 404);
-    });
     if (bodyLimitOptions !== false) {
       app.use(
         bodyLimit(bodyLimitOptions ?? { maxSize: DEFAULT_BODY_LIMIT_MAX_SIZE }),
