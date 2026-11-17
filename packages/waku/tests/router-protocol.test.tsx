@@ -27,7 +27,6 @@ import {
 } from '../src/minimal/client.js';
 import { unstable_parseRequest as parseRequest } from '../src/minimal/server.js';
 import {
-  unstable_ROUTE_ID as ROUTE_ID,
   unstable_createServerFunctionRouting as createServerFunctionRouting,
   unstable_decideRouteIntent as decideRouteIntent,
   unstable_encodeRoutePath as encodeRoutePath,
@@ -41,7 +40,7 @@ import {
 import { INTENT_ID } from '../src/router/isomorphic-utils/router-protocol.js';
 import {
   unstable_defineRouter as defineRouter,
-  unstable_rerenderRoute as rerenderRoute,
+  requestRefresh,
 } from '../src/router/server.js';
 
 vi.mock('react-server-dom-webpack/client', () => ({
@@ -324,13 +323,12 @@ test('a custom 404 reports its rendered route and enables following not-found in
   expect(decision.type === 'follow' && decision.url.href).toBe(url.href);
 });
 
-test('origin refreshes are dropped after navigating away, but explicit action destinations still land', async () => {
+test('origin refreshes are dropped after navigating away', async () => {
   let finish!: () => void;
   const gate = new Promise<void>((resolve) => {
     finish = resolve;
   });
   pending.push(finish);
-  let explicit = false;
   const binding = await mount(
     defineRouter({
       resolve: async (path) => route(path),
@@ -340,11 +338,7 @@ test('origin refreshes are dropped after navigating away, but explicit action de
     '',
     async () => {
       await gate;
-      if (explicit) {
-        await rerenderRoute('/first');
-      } else {
-        await rerenderRoute();
-      }
+      requestRefresh();
       return 'returned';
     },
   );
@@ -359,12 +353,4 @@ test('origin refreshes are dropped after navigating away, but explicit action de
   });
   expect(binding.container.textContent).toBe('/second');
   expect(binding.applyRouteResponse).not.toHaveBeenCalled();
-  explicit = true;
-  await act(async () => {
-    expect(await callServerRsc('action#refresh', [])).toBe('returned');
-  });
-  expect(binding.container.textContent).toBe('/first');
-  expect(binding.applyRouteResponse).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({ [ROUTE_ID]: ['/first', ''] }),
-  );
 });

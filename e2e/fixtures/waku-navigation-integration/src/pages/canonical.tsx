@@ -1,9 +1,11 @@
-import { unstable_redirect as redirect } from 'waku/router/server';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
+import { requestRedirect } from 'waku/router/server';
 
 export default function CanonicalPage({ query = '' }: { query?: string }) {
   const v = new URLSearchParams(query).get('v');
   if (v === 'old') {
-    redirect('/canonical?v=new');
+    requestRedirect('/canonical?v=new');
+    cancelRender();
   }
   return <h1 data-testid="canonical">Canonical {v ?? ''}</h1>;
 }

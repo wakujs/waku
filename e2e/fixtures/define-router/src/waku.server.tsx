@@ -13,10 +13,9 @@ import {
   unstable_defineRouter as defineRouter,
   getRequest,
   unstable_parseRouterRequest as parseRouterRequest,
-  unstable_redirect as redirect,
   requestNotFound,
   requestRedirect,
-  unstable_rerenderRoute as rerenderRoute,
+  requestRefresh,
 } from 'waku/router/server';
 import { NavButton } from './components/nav-button.js';
 import { SearchPage } from './components/search-page.js';
@@ -194,7 +193,7 @@ const routerOptions: Parameters<typeof defineRouter>[0] = {
                   <form
                     action={async () => {
                       'use server';
-                      rerenderRoute('/action-static');
+                      requestRefresh();
                       requestRedirect('/foo');
                     }}
                   >
@@ -208,7 +207,8 @@ const routerOptions: Parameters<typeof defineRouter>[0] = {
       };
     }
     if (path === '/typed-redirect') {
-      redirect(fooRoute({ search: { q: 'redirected' } }));
+      requestRedirect(fooRoute({ search: { q: 'redirected' } }));
+      cancelRender();
     }
     if (path === '/absolute-redirect') {
       requestRedirect(new URL('/api/hi', getRequest().url));
@@ -236,7 +236,10 @@ const routerOptions: Parameters<typeof defineRouter>[0] = {
         elements: {
           root,
           route: {
-            render: () => redirect(path === '/moved' ? '/foo' : '/foo#bottom'),
+            render: () => {
+              requestRedirect(path === '/moved' ? '/foo' : '/foo#bottom');
+              return cancelRender();
+            },
           },
         },
       };

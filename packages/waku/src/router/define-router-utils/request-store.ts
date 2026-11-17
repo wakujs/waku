@@ -7,7 +7,6 @@ export type HandlerInterceptor = <T>(next: () => Promise<T>) => Promise<T>;
 export type ServerFunctionContext = {
   origin: readonly [rscPath: string, rscParams: unknown] | undefined;
   refreshRequested: boolean;
-  legacyTarget?: readonly [rscPath: string, rscParams: unknown];
 };
 
 type RouterStore = {

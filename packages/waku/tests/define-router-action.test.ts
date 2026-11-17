@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import { unstable_isRenderCancellation as isRenderCancellation } from '../src/minimal/server.js';
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
 import {
   getRouteIntent,
   runWithRouterStore,
 } from '../src/router/define-router-utils/request-store.js';
-import { redirect, rerenderRoute } from '../src/router/define-router.js';
+import {
+  requestRedirect,
+  requestRefresh,
+} from '../src/router/define-router.js';
 import { createRouteHref } from '../src/router/href-factory.js';
 import {
   INTENT_ID,
@@ -167,63 +169,6 @@ describe('define-router action requests', () => {
     );
   });
 
-  it('allows no-JS form actions to rerender a route', async () => {
-    let message = 'before';
-    const renderPage = vi.fn(() => `page:${message}`);
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [
-        {
-          type: 'route' as const,
-          pathSpec: [],
-          isStatic: false,
-          rootElement: { isStatic: false, renderer: () => 'root' },
-          routeElement: { isStatic: false, renderer: () => 'route' },
-          elements: {
-            'page:/': { isStatic: false, renderer: renderPage },
-          },
-        },
-      ],
-    });
-
-    const renderRsc = vi.fn().mockResolvedValue(makeStream());
-    const renderHtml = vi.fn().mockResolvedValue(new Response('ok'));
-
-    const res = await handleRequest(
-      {
-        type: 'http',
-        tryAction: async () => {
-          message = 'after';
-          rerenderRoute('/');
-          return { action: true as const, formState: 'form-state' };
-        },
-        pathname: '/',
-        req: new Request('http://localhost/', { method: 'POST' }),
-      },
-      {
-        renderRsc,
-        renderHtml,
-        renderHtmlFallback: vi.fn(),
-        loadBuildMetadata: vi.fn(),
-      },
-    );
-
-    expect(res).toBeInstanceOf(Response);
-    expect(renderPage).toHaveBeenCalledTimes(2);
-    expect(renderRsc).toHaveBeenCalledWith(
-      expect.objectContaining({
-        'page:/': 'page:after',
-      }),
-      { etags: {} },
-    );
-    expect(renderHtml).toHaveBeenCalledWith(
-      expect.any(ReadableStream),
-      expect.anything(),
-      expect.objectContaining({
-        formState: 'form-state',
-      }),
-    );
-  });
-
   it('lets a no-JS form action rerender its own route with no arguments', async () => {
     let message = 'before';
     const renderPage = vi.fn(() => `page:${message}`);
@@ -249,7 +194,7 @@ describe('define-router action requests', () => {
         type: 'http',
         tryAction: async () => {
           message = 'after';
-          rerenderRoute();
+          requestRefresh();
           return { action: true as const, formState: 'form-state' };
         },
         pathname: '/form',
@@ -303,7 +248,7 @@ describe('define-router action requests', () => {
         type: 'http',
         tryAction: async () => {
           message = 'after';
-          rerenderRoute('/');
+          requestRefresh();
           return { action: true as const, formState: 'form-state' };
         },
         pathname: '/',
@@ -332,105 +277,6 @@ describe('define-router action requests', () => {
       expect.objectContaining({
         formState: 'form-state',
       }),
-    );
-  });
-
-  it.each([
-    ['/日本', '/%E6%97%A5%E6%9C%AC'],
-    ['/%E6%97%A5%E6%9C%AC', '/%E6%97%A5%E6%9C%AC'],
-    ['/a?b', '/a%3Fb'],
-    ['/a%3Fb', '/a%3Fb'],
-    ['/a#b', '/a%23b'],
-    ['/a%23b', '/a%23b'],
-    ['/a/.', '/a'],
-    ['/a/b/..', '/a'],
-  ])('rerenders pathname %s as %s', async (pathname, routePath) => {
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [
-        {
-          type: 'route' as const,
-          pathSpec: [{ type: 'group' as const, name: 'name' }],
-          isStatic: false,
-          rootElement: { isStatic: false, renderer: () => 'root' },
-          routeElement: { isStatic: false, renderer: () => 'route' },
-          elements: {},
-        },
-      ],
-    });
-
-    const renderRsc = vi.fn().mockResolvedValue(makeStream());
-
-    await handleRequest(
-      {
-        type: 'call',
-        pathname: '/RSC/F/actions/submit.txt',
-        fn: async () => rerenderRoute(pathname),
-        args: [],
-        req: new Request('http://localhost/RSC/F/actions/submit.txt', {
-          method: 'POST',
-        }),
-      },
-      {
-        renderRsc,
-        renderHtml: vi.fn(),
-        renderHtmlFallback: vi.fn(),
-        loadBuildMetadata: vi.fn(),
-      },
-    );
-
-    expect(renderRsc).toHaveBeenCalledWith(
-      expect.objectContaining({
-        [ROUTE_ID]: [routePath, ''],
-        [`route:${routePath}`]: 'route',
-      }),
-      expect.anything(),
-    );
-  });
-
-  it('rejects a relative pathname to rerender', () => {
-    expect(() => rerenderRoute('a')).toThrow('Pathname must start with `/`');
-  });
-
-  it.each([
-    ['q=a b', 'q=a+b'],
-    ['q=日本', 'q=%E6%97%A5%E6%9C%AC'],
-  ])('rerenders query %s as %s', async (query, routeQuery) => {
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [
-        {
-          type: 'route' as const,
-          pathSpec: [{ type: 'literal' as const, name: 'search' }],
-          isStatic: false,
-          rootElement: { isStatic: false, renderer: () => 'root' },
-          routeElement: { isStatic: false, renderer: () => 'route' },
-          elements: {},
-        },
-      ],
-    });
-
-    const renderRsc = vi.fn().mockResolvedValue(makeStream());
-
-    await handleRequest(
-      {
-        type: 'call',
-        pathname: '/RSC/F/actions/submit.txt',
-        fn: async () => rerenderRoute('/search', query),
-        args: [],
-        req: new Request('http://localhost/RSC/F/actions/submit.txt', {
-          method: 'POST',
-        }),
-      },
-      {
-        renderRsc,
-        renderHtml: vi.fn(),
-        renderHtmlFallback: vi.fn(),
-        loadBuildMetadata: vi.fn(),
-      },
-    );
-
-    expect(renderRsc).toHaveBeenCalledWith(
-      expect.objectContaining({ [ROUTE_ID]: ['/search', routeQuery] }),
-      expect.anything(),
     );
   });
 
@@ -475,17 +321,12 @@ describe('define-router action requests', () => {
   });
 });
 
-describe('redirect', () => {
-  const getRedirectInfo = (location: Parameters<typeof redirect>[0]) => {
-    return runWithRouterStore({ req: new Request('http://localhost/') }, () => {
-      try {
-        redirect(location, 303);
-      } catch (error) {
-        expect(isRenderCancellation(error)).toBe(true);
-        return getRouteIntent().value;
-      }
+describe('requestRedirect', () => {
+  const getRedirectInfo = (location: Parameters<typeof requestRedirect>[0]) =>
+    runWithRouterStore({ req: new Request('http://localhost/') }, () => {
+      requestRedirect(location, 303);
+      return getRouteIntent().value;
     });
-  };
 
   it('accepts pathname redirects', () => {
     expect(getRedirectInfo('/login?next=%2Fdashboard')).toEqual({
@@ -536,7 +377,9 @@ describe('redirect', () => {
     'https://[',
   ])('rejects invalid redirect location %s', (location) => {
     runWithRouterStore({ req: new Request('http://localhost/') }, () => {
-      expect(() => redirect(location)).toThrow('Invalid redirect location');
+      expect(() => requestRedirect(location)).toThrow(
+        'Invalid redirect location',
+      );
     });
   });
 

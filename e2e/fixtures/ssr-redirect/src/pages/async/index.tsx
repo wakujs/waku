@@ -1,8 +1,10 @@
-import { unstable_redirect as redirect } from 'waku/router/server';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
+import { requestRedirect } from 'waku/router/server';
 
 export default async function AsyncPage() {
   await new Promise((resolve) => setTimeout(resolve, 100));
-  redirect('/destination');
+  requestRedirect('/destination');
+  cancelRender();
 }
 
 export const getConfig = async () => {

@@ -1,5 +1,5 @@
 {
-  "name": "nav-api-spike",
+  "name": "waku-navigation-integration",
   "version": "0.1.0",
   "type": "module",
   "private": true,
@@ -13,7 +13,8 @@
     "react": "~19.3.1",
     "react-dom": "~19.3.1",
     "react-server-dom-webpack": "~19.3.1",
-    "waku": "latest"
+    "waku": "latest",
+    "waku-navigation": "^0.0.8"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",

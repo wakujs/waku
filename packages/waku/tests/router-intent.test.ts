@@ -16,8 +16,6 @@ import {
   requestNotFound,
   requestRedirect,
   unstable_defineRouter,
-  unstable_notFound,
-  unstable_redirect,
 } from '../src/router/server.js';
 
 vi.mock('../src/server.js', () => ({
@@ -105,16 +103,18 @@ describe('intent metadata', () => {
   });
 
   it('does not probe the resolver for custom 404 availability', async () => {
-    const resolve = vi.fn(async (path: string) =>
-      path === '/404'
-        ? unstable_notFound()
-        : {
-            elements: {
-              root: { render: () => 'root' },
-              route: { render: () => 'page' },
-            },
-          },
-    );
+    const resolve = vi.fn(async (path: string) => {
+      if (path === '/404') {
+        requestNotFound();
+        cancelRender();
+      }
+      return {
+        elements: {
+          root: { render: () => 'root' },
+          route: { render: () => 'page' },
+        },
+      };
+    });
     const router = unstable_defineRouter({ resolve });
     const renderRsc = vi.fn(async (elements) => {
       await expectPending(elements.INTENT);
@@ -143,29 +143,11 @@ describe('intent metadata', () => {
     expect(resolve).toHaveBeenCalledExactlyOnceWith('/page', '');
   });
 
-  it.each([
-    [unstable_notFound, { status: 404 }],
-    [() => unstable_redirect('/next'), { status: 307, location: '/next' }],
-  ])(
-    'deprecated helpers record intent and stop execution with a generic cancellation',
-    async (invoke, expected) => {
-      await withinRequest(async () => {
-        let cancellation: unknown;
-        try {
-          invoke();
-          throw new Error('execution continued');
-        } catch (error) {
-          cancellation = error;
-        }
-        expect(isRenderCancellation(cancellation)).toBe(true);
-        expect(typeof cancellation).toBe('symbol');
-        expect(JSON.parse((await getRouteIntent().promise)!)).toEqual(expected);
-      });
-    },
-  );
-
   it('transports a cancelled resolver redirect as intent without resolving its destination', async () => {
-    const resolve = vi.fn(async () => unstable_redirect('/next?q=one'));
+    const resolve = vi.fn(async () => {
+      requestRedirect('/next?q=one');
+      return cancelRender();
+    });
     const router = unstable_defineRouter({
       resolve,
       getHas404: async () => false,
@@ -211,7 +193,10 @@ describe('intent metadata', () => {
 
   it('keeps a cancelled resolver redirect as an HTTP response without JavaScript', async () => {
     const router = unstable_defineRouter({
-      resolve: async () => unstable_redirect('/next'),
+      resolve: async () => {
+        requestRedirect('/next');
+        return cancelRender();
+      },
       getHas404: async () => false,
     });
     const response = await router.handleRequest(

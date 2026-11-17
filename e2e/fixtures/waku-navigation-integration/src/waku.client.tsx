@@ -1,12 +1,14 @@
 import { StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { unstable_defaultRootOptions as defaultRootOptions } from 'waku/client';
-import { NavRouter, createNavRouterConfig } from './nav-binding.js';
+import { Router } from 'waku-navigation';
+import { ErrorBoundary } from './components/error-boundary.js';
 
-const config = createNavRouterConfig();
 const rootElement = (
   <StrictMode>
-    <NavRouter config={config} />
+    <ErrorBoundary>
+      <Router />
+    </ErrorBoundary>
   </StrictMode>
 );
 

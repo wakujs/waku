@@ -1,9 +1,11 @@
-import { unstable_redirect as redirect } from 'waku/router/server';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
+import { requestRedirect } from 'waku/router/server';
 
 export default function MixBudgetAPage({ query = '' }: { query?: string }) {
   const cycle =
     new URLSearchParams(query).get('mixcycle') === 'same' ? 'same' : 'a';
-  redirect(`/mix-b?mixcycle=${cycle}` as '/');
+  requestRedirect(`/mix-b?mixcycle=${cycle}` as '/');
+  cancelRender();
 }
 
 export const getConfig = () => ({ render: 'dynamic' }) as const;
