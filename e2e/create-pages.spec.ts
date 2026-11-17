@@ -345,6 +345,27 @@ test.describe(`create-pages`, () => {
     await expect(page.locator('body')).not.toContainText('getRerender');
   });
 
+  test('server action rerender keeps a URL set through the History API', async ({
+    page,
+  }) => {
+    const submittedName = `Keep URL ${Date.now()}`;
+    await page.goto(`http://localhost:${port}/rerender-action`);
+    await waitForHydration(page);
+    await page.evaluate(() => {
+      window.history.replaceState(
+        window.history.state,
+        '',
+        '/rerender-action?tab=b',
+      );
+    });
+    await page.getByLabel('Name').fill(submittedName);
+    await page.getByRole('button', { name: 'Submit Rerender' }).click();
+    await expect(page.getByTestId('rerender-action-message')).toHaveText(
+      `Submitted: ${submittedName}`,
+    );
+    await expect(page).toHaveURL(/\/rerender-action\?tab=b$/);
+  });
+
   // wakujs/waku#2288: the rerendered page suspends inside a Suspense boundary
   // that is already showing content, and a row lands while React is yielding
   // on it (the fixture's fetch enhancer arranges that). React 19.2 drops the

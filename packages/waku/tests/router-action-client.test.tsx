@@ -982,7 +982,7 @@ test('an origin rerender is dropped while its action holds a hash navigation pen
   expect(view.errors).not.toHaveBeenCalled();
 });
 
-test('a route response reconciles History API changes while a partial response leaves them alone', async () => {
+test('same-route and partial responses leave History API changes alone', async () => {
   const view = await mount();
   decode.mockReturnValueOnce({
     [getRouteSlotId('/start')]: 'filtered start',
@@ -1010,7 +1010,7 @@ test('a route response reconciles History API changes while a partial response l
     expect(await callServerRsc('action#test', [])).toBe('done');
   });
   expect(view.container.textContent).toBe('refreshed start');
-  expect(window.location.search).toBe('?filter=1');
+  expect(window.location.search).toBe('?filter=1&tab=b');
 
   window.history.replaceState(
     window.history.state,

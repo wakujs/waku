@@ -234,8 +234,9 @@ function's result and let the client decide whether to call `router.replace()`.
 The return value remains available even when Waku discards a stale intent.
 
 Use Router's `push` or `replace` to coordinate query and hash changes with route
-rendering. A full route response can replace URL changes made directly with the
-History API; a partial response leaves them alone.
+rendering. A server function response that keeps the current route leaves URL
+changes made directly with the History API in the address bar, but neither the
+server render nor `useRouter()` includes them.
 
 ## Document Navigation Handoff
 
