@@ -14,12 +14,6 @@ export type PrefetchOptions = {
 export type PrefetchEntry = {
   promise: Promise<Elements>;
   expiresAt: number;
-  /**
-   * @deprecated Will be removed in a future release. A prefetch from a
-   * different build rejects `promise` with an error that
-   * `unstable_isBuildIdMismatch` recognizes.
-   */
-  onInvalidate: (callback: () => void) => () => void;
 };
 
 type PrefetchCache = Map<string, PrefetchEntry>;
@@ -105,10 +99,7 @@ type PrefetchManager = {
   prefetch: (
     rscPath: string,
     query: string,
-    fetchElements: (
-      base: Elements | undefined,
-      invalidate: () => void,
-    ) => Promise<Elements>,
+    fetchElements: (base: Elements | undefined) => Promise<Elements>,
     options: PrefetchOptions | undefined,
   ) => void;
   get: (rscPath: string, query: string) => PrefetchEntry | undefined;
@@ -149,10 +140,7 @@ const startPrefetch = (
   prefetchedElementsCache: PrefetchedElementsCache,
   rscPath: string,
   query: string,
-  fetchElements: (
-    base: Elements | undefined,
-    invalidate: () => void,
-  ) => Promise<Elements>,
+  fetchElements: (base: Elements | undefined) => Promise<Elements>,
   options: PrefetchOptions | undefined,
 ): void => {
   if (options?.mode === 'once' && prefetchedElementsCache.has(rscPath)) {
@@ -166,50 +154,19 @@ const startPrefetch = (
     return;
   }
   const base = prefetchedElementsCache.get(rscPath) ?? undefined;
-  let invalidated = false;
-  // a shared entry can have more than one load adopter
-  const invalidationCallbacks = new Set<() => void>();
-  const onInvalidate = (callback: () => void): (() => void) => {
-    if (invalidated) {
-      callback();
-      return () => {};
-    }
-    invalidationCallbacks.add(callback);
-    return () => {
-      invalidationCallbacks.delete(callback);
-    };
-  };
-  const invalidate = () => {
-    if (invalidated) {
-      return;
-    }
-    invalidated = true;
-    if (prefetchCache.get(key)?.onInvalidate === onInvalidate) {
-      prefetchCache.delete(key);
-    }
-    prefetchedElementsCache.delete(rscPath);
-    const callbacks = [...invalidationCallbacks];
-    invalidationCallbacks.clear();
-    callbacks.forEach((callback) => callback());
-  };
-  const response = fetchElements(base, invalidate);
+  const response = fetchElements(base);
   const promise = base
     ? response.then((elements) => combineElements(base, elements))
     : response;
   const entry: PrefetchEntry = {
     promise,
     expiresAt: now + (options?.ttl ?? PREFETCH_TTL),
-    onInvalidate,
   };
-  if (!invalidated) {
-    setPrefetch(prefetchCache, key, entry);
-    reservePrefetchedElements(prefetchedElementsCache, rscPath);
-  }
+  setPrefetch(prefetchCache, key, entry);
+  reservePrefetchedElements(prefetchedElementsCache, rscPath);
   promise.then(
     (resolved) => {
-      if (!invalidated) {
-        mergePrefetchedElements(prefetchedElementsCache, rscPath, resolved);
-      }
+      mergePrefetchedElements(prefetchedElementsCache, rscPath, resolved);
     },
     () => {
       // TODO a negative ttl, so a route that answers with a document location

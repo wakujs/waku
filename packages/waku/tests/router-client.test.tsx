@@ -190,7 +190,6 @@ type RefetchInner = (
   rscParams?: unknown,
   options?: {
     signal?: AbortSignal;
-    onBuildIdMismatch?: () => void;
     unstable_base?: Record<string, unknown>;
   },
 ) => Promise<Record<string, unknown>>;
@@ -492,7 +491,6 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
     rscParams?: unknown,
     options?: {
       signal?: AbortSignal;
-      onBuildIdMismatch?: () => void;
       unstable_base?: Record<string, unknown>;
     },
   ) => {

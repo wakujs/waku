@@ -4,7 +4,10 @@ import { StrictMode, Suspense, act, useEffect, useLayoutEffect } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { ETAGS_HEADER, ETAGS_ID } from '../src/lib/utils-isomorphic/etags.js';
-import { callServerRsc } from '../src/minimal/client-runtime.js';
+import {
+  callServerRsc,
+  isBuildIdMismatch,
+} from '../src/minimal/client-runtime.js';
 import { adoptElements } from '../src/minimal/client-utils/element-etags.js';
 import { clearInitialRscEntries } from '../src/minimal/client-utils/initial-rsc-store.js';
 import type {
@@ -379,11 +382,8 @@ test('filtering action elements preserves the return value and Minimal build che
   expect(root.container.textContent).toBe('initial');
   vi.stubEnv('WAKU_BUILD_ID', 'current');
   request.mockImplementation(async () => Response.json({ _buildId: 'old' }));
-  const mismatch = vi.fn();
-  expect(
-    await root.fetch('next', undefined, { onBuildIdMismatch: mismatch }),
-  ).toEqual({});
-  expect(mismatch).toHaveBeenCalledOnce();
+  const error = await root.fetch('next').catch((e: unknown) => e);
+  expect(isBuildIdMismatch(error)).toBe(true);
 });
 
 test('action enhancers can return only client-owned symbol keys', async () => {
