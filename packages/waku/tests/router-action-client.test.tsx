@@ -1024,3 +1024,28 @@ test('same-route and partial responses leave History API changes alone', async (
   expect(window.location.search).toBe('?filter=1&tab=c');
   expect(view.errors).not.toHaveBeenCalled();
 });
+
+test('a same-route response leaves a History API change made while it renders', async () => {
+  const view = await mount();
+  const refreshed = deferred('refreshed start');
+  const Refreshed = () => use(refreshed.promise);
+  decode.mockReturnValueOnce({
+    [getRouteSlotId('/start')]: <Refreshed />,
+    [ROUTE_ID]: ['/start', ''],
+    [IS_STATIC_ID]: false,
+    [IS_ORIGIN_ID]: true,
+    _value: 'done',
+  });
+  await act(async () => {
+    expect(await callServerRsc('action#test', [])).toBe('done');
+  });
+  expect(view.container.textContent).toBe('start');
+
+  window.history.replaceState(window.history.state, '', '/start?tab=b');
+  await act(async () => {
+    refreshed.resolve('refreshed start');
+  });
+  expect(view.container.textContent).toBe('refreshed start');
+  expect(window.location.search).toBe('?tab=b');
+  expect(view.errors).not.toHaveBeenCalled();
+});
