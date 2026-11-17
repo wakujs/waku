@@ -1,11 +1,12 @@
 import { readFile } from 'node:fs/promises';
 import { Slice } from 'waku';
 import adapter from 'waku/adapters/default';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
 import type { PathsForPages } from 'waku/router';
 import {
   createPages,
-  unstable_notFound as notFound,
-  unstable_redirect as redirect,
+  requestNotFound,
+  requestRedirect,
 } from 'waku/router/server';
 import { DeeplyNestedLayout } from './components/deeply-nested-layout.js';
 import DynamicLayout from './components/dynamic-layout.js';
@@ -98,13 +99,15 @@ const pages: ReturnType<typeof createPages> = createPages(
     createPage({
       render: 'dynamic',
       path: '/redirect-to-item',
-      component: () =>
-        redirect(
+      component: () => {
+        requestRedirect(
           itemRoute({
             params: { id: '7' },
             search: { q: 'hi', page: 2 },
           }),
-        ),
+        );
+        return cancelRender();
+      },
     }),
 
     createPage({
@@ -578,7 +581,10 @@ const pages: ReturnType<typeof createPages> = createPages(
     createPage({
       render: 'dynamic',
       path: '/no-ssr-not-found',
-      component: () => notFound(),
+      component: () => {
+        requestNotFound();
+        return cancelRender();
+      },
       unstable_noSsr: true,
     }),
 

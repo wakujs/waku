@@ -1,4 +1,5 @@
-import { unstable_redirect as redirect } from 'waku/router/server';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
+import { requestRedirect } from 'waku/router/server';
 
 export default async function ExternalActionPage() {
   return (
@@ -8,7 +9,8 @@ export default async function ExternalActionPage() {
         action={async (formData: FormData) => {
           'use server';
           // a URL, because an allowlisted target is a variable, not a literal
-          redirect(new URL(String(formData.get('to'))));
+          requestRedirect(new URL(String(formData.get('to'))));
+          cancelRender();
         }}
       >
         <input name="to" data-testid="to" defaultValue="" />

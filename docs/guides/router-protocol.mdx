@@ -504,15 +504,12 @@ After a failed navigation, the call's origin follows the retained elements'
 route metadata, which can be ahead of the request's cache baseline after an
 instant paint. The failed destination's URL remains in history.
 
-- `requestRefresh()` and the deprecated `unstable_rerenderRoute()` refresh that
-  origin and mark the response `IS_ORIGIN`.
+- `requestRefresh()` refreshes that origin and marks the response `IS_ORIGIN`.
   If the user has navigated away or any navigation is pending, including a reload
   or hash change on the same route, the client discards its elements but retains
   the server function's return value.
-- The deprecated `unstable_rerenderRoute(destination)` still selects a route to
-  render and is not limited to the origin. Only the last requested target is
-  rendered. An intent-only server function response uses the captured navigation
-  scope described above; it does not override a later navigation.
+- An intent-only server function response uses the captured navigation scope
+  described above; it does not override a later navigation.
 
 Create one controller and a stable enhancer array for each Root before rendering
 React. Install its `enhancer` last in Root's `rscEnhancers`, and call

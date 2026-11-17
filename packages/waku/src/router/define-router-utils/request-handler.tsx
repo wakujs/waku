@@ -184,12 +184,11 @@ export function createRequestHandler({
         } finally {
           setServerFunctionContext(undefined);
         }
-        const target = intent.value
-          ? undefined
-          : context.refreshRequested
+        const target =
+          context.refreshRequested && !intent.value
             ? context.origin
-            : context.legacyTarget;
-        const isOrigin = !!target && context.refreshRequested;
+            : undefined;
+        const isOrigin = !!target;
         const entries = target
           ? await routeEntries.getEntriesForRoute(
               target[0],

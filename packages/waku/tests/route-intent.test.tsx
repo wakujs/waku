@@ -22,6 +22,7 @@ import {
   useFetchRsc_UNSTABLE as useFetchRsc,
   useMergeElements_UNSTABLE as useMergeElements,
 } from '../src/minimal/client.js';
+import { unstable_cancelRender as cancelRender } from '../src/minimal/server.js';
 import { useRouterCache_UNSTABLE as useRouterCache } from '../src/router/client-core.js';
 import { ErrorBoundary, Router, useRouter } from '../src/router/client.js';
 import {
@@ -38,10 +39,8 @@ import type { RouteIntentData } from '../src/router/isomorphic-utils/router-prot
 import {
   requestNotFound,
   requestRedirect,
+  requestRefresh,
   unstable_defineRouter,
-  unstable_notFound,
-  unstable_redirect,
-  unstable_rerenderRoute,
 } from '../src/router/server.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
@@ -262,8 +261,14 @@ test.each(['redirect', 'notFound', 'notFoundWithoutPage'] as const)(
     mocks.queue.push(payload('/one'));
     const view = await mount();
     const router = unstable_defineRouter({
-      resolve: async () =>
-        kind === 'redirect' ? unstable_redirect('/done') : unstable_notFound(),
+      resolve: async () => {
+        if (kind === 'redirect') {
+          requestRedirect('/done');
+        } else {
+          requestNotFound();
+        }
+        return cancelRender();
+      },
       getHas404: async () => kind === 'notFound',
     });
     let elements!: Elements;
@@ -1634,7 +1639,7 @@ test.each([
         type: 'call',
         pathname: '/RSC/F/save',
         fn: async () => {
-          unstable_rerenderRoute();
+          requestRefresh();
           return 'saved';
         },
         args: [],

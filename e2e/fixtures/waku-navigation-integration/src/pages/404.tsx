@@ -1,7 +1,5 @@
-import {
-  unstable_redirect as redirect,
-  unstable_rerenderRoute as rerenderRoute,
-} from 'waku/router/server';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
+import { requestRedirect, requestRefresh } from 'waku/router/server';
 
 let count = 0;
 
@@ -9,13 +7,16 @@ export default function NotFoundPage({ query = '' }: { query?: string }) {
   const params = new URLSearchParams(query);
   const cycle = params.get('mixcycle');
   if (cycle === 'same') {
-    redirect('/mix-b?mixcycle=same' as '/');
+    requestRedirect('/mix-b?mixcycle=same' as '/');
+    cancelRender();
   }
   if (cycle === 'a') {
-    redirect('/mix-b?mixcycle=b' as '/');
+    requestRedirect('/mix-b?mixcycle=b' as '/');
+    cancelRender();
   }
   if (cycle === 'b') {
-    redirect('/mix-b?mixcycle=a' as '/');
+    requestRedirect('/mix-b?mixcycle=a' as '/');
+    cancelRender();
   }
   return (
     <div>
@@ -25,7 +26,7 @@ export default function NotFoundPage({ query = '' }: { query?: string }) {
         action={async () => {
           'use server';
           count += 1;
-          rerenderRoute();
+          requestRefresh();
         }}
       >
         <button type="submit" data-testid="not-found-rerender">

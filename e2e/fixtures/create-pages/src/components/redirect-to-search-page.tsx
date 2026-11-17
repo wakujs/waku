@@ -1,6 +1,8 @@
-import { unstable_redirect as redirect } from 'waku/router/server';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
+import { requestRedirect } from 'waku/router/server';
 import { searchRoute } from '../lib/routes';
 
 export default function RedirectToSearchPage() {
-  return redirect(searchRoute({ search: { q: 'hi', page: 2 } }));
+  requestRedirect(searchRoute({ search: { q: 'hi', page: 2 } }));
+  return cancelRender();
 }

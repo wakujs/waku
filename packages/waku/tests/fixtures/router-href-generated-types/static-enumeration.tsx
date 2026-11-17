@@ -1,6 +1,6 @@
 import { unstable_createRouteHref } from 'waku/router';
 import { Link, useRouter } from 'waku/router/client';
-import { unstable_redirect } from 'waku/router/server';
+import { requestRedirect } from 'waku/router/server';
 import type { RouteHrefForTest } from '../../../src/router/isomorphic-utils/build-route-href.js';
 
 const article = unstable_createRouteHref({ path: '/articles/[slug]' });
@@ -41,5 +41,5 @@ export function StaticEnumerationProbe() {
 }
 
 export function RedirectProbe() {
-  unstable_redirect(article({ params: { slug: 'advanced' } }));
+  requestRedirect(article({ params: { slug: 'advanced' } }));
 }

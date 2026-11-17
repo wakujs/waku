@@ -85,14 +85,9 @@ If the user moves to another page or a navigation is pending when the action ret
 
 Overlapping actions that request refreshes can also have a refresh dropped while another is waiting to commit. Do not rely on every concurrent action's result appearing on screen.
 
-## Deprecated Rerender API
+## Navigate After a Mutation
 
-`unstable_rerenderRoute()` is deprecated and will be removed in a future release.
-Replace it with `requestRefresh()`. The named-route overload,
-`unstable_rerenderRoute(pathname, query)`, is also deprecated. Both forms retain
-their existing behavior until removal.
-
-Use `requestRedirect()` to navigate after a mutation:
+Use `requestRedirect()` to show another page after a mutation:
 
 ```tsx
 requestRedirect('/cart?tab=saved');

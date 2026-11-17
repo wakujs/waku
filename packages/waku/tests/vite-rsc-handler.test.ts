@@ -6,7 +6,6 @@ import { createServerEntryAdapter } from '../src/lib/vite-rsc/handler.js';
 import {
   requestNotFound,
   unstable_defineRouter,
-  unstable_notFound,
 } from '../src/router/server.js';
 
 const mocks = vi.hoisted(() => ({
@@ -88,7 +87,8 @@ test.each(['resolver', 'interceptor'] as const)(
   async (origin) => {
     const resolve = vi.fn(async (pathname: string) => {
       if (pathname === '/404' || origin === 'resolver') {
-        unstable_notFound();
+        requestNotFound();
+        cancelRender();
       }
       return null;
     });
