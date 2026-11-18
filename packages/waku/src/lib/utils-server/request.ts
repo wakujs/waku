@@ -47,8 +47,11 @@ export async function getInput(
       if (typeof serverFunction !== 'function') {
         throw new Response('Not Found', { status: 404 });
       }
-      const body = await readRequestBody(req);
-      const args = await decodeReply(body, { temporaryReferences });
+      const args = await decodeRequestBody(
+        req,
+        decodeReply,
+        temporaryReferences,
+      );
       input = {
         type: 'call',
         fn: (...args) =>
@@ -65,10 +68,11 @@ export async function getInput(
       let rscParams: unknown = url.searchParams;
       if (req.body) {
         validateSameOriginPost(req);
-        const body = await readRequestBody(req);
-        rscParams = await decodeReply(body, {
+        rscParams = await decodeRequestBody(
+          req,
+          decodeReply,
           temporaryReferences,
-        });
+        );
       }
       input = {
         type: 'rsc',
@@ -159,6 +163,23 @@ const validateSameOriginPost = (req: Request) => {
     }
   } else if (req.headers.get('sec-fetch-site') === 'cross-site') {
     throw new Response('Forbidden', { status: 403 });
+  }
+};
+
+const decodeRequestBody = async (
+  req: Request,
+  decodeReply: (
+    body: string | FormData,
+    options?: object,
+  ) => Promise<unknown[]>,
+  temporaryReferences: unknown,
+) => {
+  try {
+    return await decodeReply(await readRequestBody(req), {
+      temporaryReferences,
+    });
+  } catch {
+    throw new Response('Bad Request', { status: 400 });
   }
 };
 
