@@ -43,17 +43,19 @@ export function createRouteResolver(registry: ConfigRegistry) {
     pathname: string,
     query: string,
   ): Promise<RouterDefinition> => {
-    const options: RendererOptions = {
-      routePath: pathname,
-      query: config.isStatic ? undefined : query,
+    const bind = (spec: typeof config.rootElement): ElementSource => {
+      const options: RendererOptions = {
+        routePath: pathname,
+        query: config.isStatic || spec.isStatic ? undefined : query,
+      };
+      return {
+        immutable: spec.isStatic,
+        render: () => spec.renderer(options),
+        ...(spec.getEtagFromOptions && {
+          getEtag: () => spec.getEtagFromOptions!(options),
+        }),
+      };
     };
-    const bind = (spec: typeof config.rootElement): ElementSource => ({
-      immutable: spec.isStatic,
-      render: () => spec.renderer(options),
-      ...(spec.getEtagFromOptions && {
-        getEtag: () => spec.getEtagFromOptions!(options),
-      }),
-    });
     const elements: RouterDefinition['elements'] = {
       root: bind(config.rootElement),
       route: {
