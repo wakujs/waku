@@ -180,6 +180,29 @@ describe('getInput server action request validation', () => {
     }
   });
 
+  it('answers 400 when a form submission cannot be parsed', async () => {
+    const input = await getInput(
+      new Request('https://app.test/page', {
+        method: 'POST',
+        body: 'not multipart',
+        headers: {
+          origin: 'https://app.test',
+          'content-type': 'multipart/form-data; boundary=x',
+        },
+      }),
+      makeConfig(),
+      undefined,
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+    );
+    if (input.type !== 'http' || !input.tryAction) {
+      throw new Error('expected a form action');
+    }
+    expect(await getStatus(input.tryAction())).toBe(400);
+  });
+
   it('answers 404 when the server function id names no function', async () => {
     for (const exported of [undefined, 'text', { call: () => {} }]) {
       const decodeReply = vi.fn().mockResolvedValue([]);

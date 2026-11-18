@@ -166,6 +166,8 @@ const validateSameOriginPost = (req: Request) => {
   }
 };
 
+const createBadRequest = () => new Response('Bad Request', { status: 400 });
+
 const decodeRequestBody = async (
   req: Request,
   decodeReply: (
@@ -174,23 +176,24 @@ const decodeRequestBody = async (
   ) => Promise<unknown[]>,
   temporaryReferences: unknown,
 ) => {
+  const body = await readRequestBody(req);
   try {
-    return await decodeReply(await readRequestBody(req), {
-      temporaryReferences,
-    });
+    return await decodeReply(body, { temporaryReferences });
   } catch {
-    throw new Response('Bad Request', { status: 400 });
+    throw createBadRequest();
   }
 };
 
 const readRequestBody = async (req: Request) => {
   if (!req.body) {
-    throw new Error('missing request body for server function');
+    throw createBadRequest();
   }
   const contentType = req.headers.get('content-type');
-  if (contentType?.startsWith('multipart/form-data')) {
-    return req.formData();
-  } else {
-    return req.text();
+  try {
+    return await (contentType?.startsWith('multipart/form-data')
+      ? req.formData()
+      : req.text());
+  } catch {
+    throw createBadRequest();
   }
 };
