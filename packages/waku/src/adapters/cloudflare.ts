@@ -22,6 +22,9 @@ const DO_NOT_BUNDLE = '';
 
 const PRUNABLE_KEY_PREFIX = '\0__prunable__/';
 
+const BUILD_TOKEN_VAR = 'WAKU_INTERNAL_BUILD_TOKEN';
+const BUILD_TOKEN_HEADER = 'x-waku-internal-build-token';
+
 const createEmptyStream = () =>
   new ReadableStream<Uint8Array>({
     start(controller) {
@@ -32,16 +35,6 @@ const createEmptyStream = () =>
 const isProductionWorker = (req: Request): boolean => {
   // This header seems to only be set for production cloudflare workers
   return !!req.headers.get('cf-visitor');
-};
-
-const isLoopbackRequest = (req: Request): boolean => {
-  const { hostname } = new URL(req.url);
-  return (
-    hostname === 'localhost' ||
-    hostname === '127.0.0.1' ||
-    hostname === '::1' ||
-    hostname === '[::1]'
-  );
 };
 
 const removeGzipEncoding = (res: Response): Response => {
@@ -97,6 +90,7 @@ export default createServerEntryAdapter(
       distDir: config.distDir,
       DIST_PUBLIC,
       serverless: !options?.static,
+      buildTokenVar: BUILD_TOKEN_VAR,
     };
 
     const buildBody = () =>
@@ -125,10 +119,11 @@ export default createServerEntryAdapter(
       if (env) {
         unstable_setAllEnv(env);
       }
+      const buildToken = env?.[BUILD_TOKEN_VAR];
       if (
+        typeof buildToken === 'string' &&
         new URL(req.url).pathname === `/${internalPathToBuildStaticFiles}` &&
-        isLoopbackRequest(req) &&
-        !isProductionWorker(req)
+        req.headers.get(BUILD_TOKEN_HEADER) === buildToken
       ) {
         return new Response(buildBody());
       }
@@ -157,7 +152,7 @@ export default createServerEntryAdapter(
     return {
       ...options?.handlers,
       fetch: fetchFn,
-      build: async (utils) => {
+      build: async (utils, { buildToken }: Partial<BuildOptions> = {}) => {
         const server = await startPreviewServer();
         // Fallback middleware for the case without @cloudflare/vite-plugin
         server.middlewares.use(async (_req, res, next) => {
@@ -172,8 +167,18 @@ export default createServerEntryAdapter(
         });
         const response = await fetch(
           server.baseUrl + internalPathToBuildStaticFiles,
-          { headers: { connection: 'close' } },
+          {
+            headers: {
+              connection: 'close',
+              ...(buildToken && { [BUILD_TOKEN_HEADER]: buildToken }),
+            },
+          },
         );
+        if (!response.ok) {
+          throw new Error(
+            `Static file build request failed with ${response.status}`,
+          );
+        }
         await consumeMultiplexedStream(response.body!, async (key, stream) => {
           if (key.startsWith(PRUNABLE_KEY_PREFIX)) {
             utils.unstable_registerPrunableFile(
