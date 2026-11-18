@@ -1,5 +1,7 @@
+import type { ReactElement, ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
+import { createPages } from '../src/router/create-pages.js';
 import { serializeRsc } from '../src/server.js';
 
 vi.mock('../src/server.js', () => ({
@@ -103,5 +105,43 @@ describe('createPages router integration', () => {
       [{ routePath: '/foo', query: 'x=first' }],
       [{ routePath: '/foo', query: 'x=second' }],
     ]);
+  });
+
+  it('renders a static page under a dynamic root without the request query', async () => {
+    vi.mocked(serializeRsc).mockClear();
+    const Page = () => null;
+    const Root = ({ children }: { children: ReactNode }) => children;
+    const router = createPages(async ({ createPage, createRoot }) => [
+      createRoot({ render: 'dynamic', component: Root }),
+      createPage({ render: 'static', path: '/foo', component: Page }),
+    ]);
+    const utils = {
+      renderRsc: vi.fn(
+        async () =>
+          new ReadableStream({ start: (controller) => controller.close() }),
+      ),
+      renderHtml: vi.fn(),
+      renderHtmlFallback: vi.fn(),
+      loadBuildMetadata: vi.fn(),
+    };
+    for (const query of ['x=first', 'x=second']) {
+      await router.handleRequest(
+        {
+          type: 'rsc',
+          rscPath: 'R/foo',
+          rscParams: new URLSearchParams({ query }),
+          pathname: '/RSC/payload.txt',
+          req: new Request('http://localhost/RSC/payload.txt'),
+        },
+        utils,
+      );
+    }
+    const serializedPages = vi
+      .mocked(serializeRsc)
+      .mock.calls.map(([element]) => element as ReactElement)
+      .filter((element) => element?.type === Page);
+    expect(serializedPages).toHaveLength(1);
+    expect(serializedPages[0]!.props).toMatchObject({ path: '/foo' });
+    expect(serializedPages[0]!.props).not.toHaveProperty('query');
   });
 });
