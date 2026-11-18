@@ -142,6 +142,67 @@ describe('getInput request URLs', () => {
 });
 
 describe('getInput server action request validation', () => {
+  it('answers 400 when a server function body is missing or undecodable', async () => {
+    const origin = { origin: 'https://app.test' };
+    const rejectingDecodeReply = vi.fn().mockRejectedValue(new Error('bad'));
+    const requests: [Request, typeof rejectingDecodeReply][] = [
+      [makeRequest(origin, { body: null }), vi.fn().mockResolvedValue([])],
+      [makeRequest(origin), rejectingDecodeReply],
+      [
+        makeRequest(
+          { ...origin, 'content-type': 'multipart/form-data; boundary=x' },
+          { body: 'not multipart' },
+        ),
+        vi.fn().mockResolvedValue([]),
+      ],
+      [
+        new Request('https://app.test/RSC/R/page.txt', {
+          method: 'POST',
+          body: '[]',
+          headers: origin,
+        }),
+        rejectingDecodeReply,
+      ],
+    ];
+    for (const [req, decodeReply] of requests) {
+      const status = await getStatus(
+        getInput(
+          req,
+          makeConfig(),
+          undefined,
+          decodeReply,
+          vi.fn(),
+          vi.fn(),
+          vi.fn().mockResolvedValue(vi.fn()),
+        ),
+      );
+      expect(status, `${req.url} ${req.headers.get('content-type')}`).toBe(400);
+    }
+  });
+
+  it('answers 400 when a form submission cannot be parsed', async () => {
+    const input = await getInput(
+      new Request('https://app.test/page', {
+        method: 'POST',
+        body: 'not multipart',
+        headers: {
+          origin: 'https://app.test',
+          'content-type': 'multipart/form-data; boundary=x',
+        },
+      }),
+      makeConfig(),
+      undefined,
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+    );
+    if (input.type !== 'http' || !input.tryAction) {
+      throw new Error('expected a form action');
+    }
+    expect(await getStatus(input.tryAction())).toBe(400);
+  });
+
   it('answers 404 when the server function id names no function', async () => {
     for (const exported of [undefined, 'text', { call: () => {} }]) {
       const decodeReply = vi.fn().mockResolvedValue([]);

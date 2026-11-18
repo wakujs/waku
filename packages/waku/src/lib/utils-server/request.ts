@@ -47,8 +47,11 @@ export async function getInput(
       if (typeof serverFunction !== 'function') {
         throw new Response('Not Found', { status: 404 });
       }
-      const body = await readRequestBody(req);
-      const args = await decodeReply(body, { temporaryReferences });
+      const args = await decodeRequestBody(
+        req,
+        decodeReply,
+        temporaryReferences,
+      );
       input = {
         type: 'call',
         fn: (...args) =>
@@ -65,10 +68,11 @@ export async function getInput(
       let rscParams: unknown = url.searchParams;
       if (req.body) {
         validateSameOriginPost(req);
-        const body = await readRequestBody(req);
-        rscParams = await decodeReply(body, {
+        rscParams = await decodeRequestBody(
+          req,
+          decodeReply,
           temporaryReferences,
-        });
+        );
       }
       input = {
         type: 'rsc',
@@ -162,14 +166,34 @@ const validateSameOriginPost = (req: Request) => {
   }
 };
 
+const createBadRequest = () => new Response('Bad Request', { status: 400 });
+
+const decodeRequestBody = async (
+  req: Request,
+  decodeReply: (
+    body: string | FormData,
+    options?: object,
+  ) => Promise<unknown[]>,
+  temporaryReferences: unknown,
+) => {
+  const body = await readRequestBody(req);
+  try {
+    return await decodeReply(body, { temporaryReferences });
+  } catch {
+    throw createBadRequest();
+  }
+};
+
 const readRequestBody = async (req: Request) => {
   if (!req.body) {
-    throw new Error('missing request body for server function');
+    throw createBadRequest();
   }
   const contentType = req.headers.get('content-type');
-  if (contentType?.startsWith('multipart/form-data')) {
-    return req.formData();
-  } else {
-    return req.text();
+  try {
+    return await (contentType?.startsWith('multipart/form-data')
+      ? req.formData()
+      : req.text());
+  } catch {
+    throw createBadRequest();
   }
 };
