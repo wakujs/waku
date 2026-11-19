@@ -34,6 +34,17 @@ test.describe('cloudflare adapter', () => {
     await expect(page.getByTestId('static-env')).toHaveText('GREETING=hello');
   });
 
+  test('does not serve the static build endpoint after the build', async ({
+    request,
+  }) => {
+    const url = `http://localhost:${port}/__waku_internal_build_static_files`;
+    expect((await request.get(url)).status()).toBe(404);
+    const withToken = await request.get(url, {
+      headers: { 'x-waku-internal-build-token': 'undefined' },
+    });
+    expect(withToken.status()).toBe(404);
+  });
+
   test('build does not warn about Node.js imports in the ssr (worker) environment', () => {
     const output =
       (buildResult?.stdout ?? '') + '\n' + (buildResult?.stderr ?? '');

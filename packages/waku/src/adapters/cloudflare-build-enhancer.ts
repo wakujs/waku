@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -6,6 +7,8 @@ export type BuildOptions = {
   distDir: string;
   DIST_PUBLIC: string;
   serverless: boolean;
+  buildTokenVar: string;
+  buildToken?: string;
 };
 
 const DEFAULT_COMPATIBILITY_DATE = '2025-11-17';
@@ -156,12 +159,45 @@ const postBuild = async ({
   }
 };
 
+const withBuildToken = async (
+  { distDir, buildTokenVar }: BuildOptions,
+  run: (buildToken: string) => Promise<void>,
+) => {
+  const buildToken = randomBytes(16).toString('hex');
+  const previewConfigFile = path.join(distDir, 'server', 'wrangler.json');
+  const previewConfig = fs.existsSync(previewConfigFile)
+    ? fs.readFileSync(previewConfigFile, 'utf-8')
+    : undefined;
+  if (previewConfig !== undefined) {
+    const config = JSON.parse(previewConfig);
+    if (config.vars && buildTokenVar in config.vars) {
+      throw new Error(`${buildTokenVar} is reserved for the static build`);
+    }
+    fs.writeFileSync(
+      previewConfigFile,
+      JSON.stringify({
+        ...config,
+        vars: { ...config.vars, [buildTokenVar]: buildToken },
+      }),
+    );
+  }
+  try {
+    await run(buildToken);
+  } finally {
+    if (previewConfig !== undefined) {
+      fs.writeFileSync(previewConfigFile, previewConfig);
+    }
+  }
+};
+
 export default async function buildEnhancer(
   build: (utils: unknown, options: BuildOptions) => Promise<void>,
 ): Promise<typeof build> {
   return async (utils: unknown, options: BuildOptions) => {
     await preBuild(options);
-    await build(utils, options);
+    await withBuildToken(options, (buildToken) =>
+      build(utils, { ...options, buildToken }),
+    );
     await postBuild(options);
   };
 }
