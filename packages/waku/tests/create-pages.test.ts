@@ -919,10 +919,10 @@ describe('createPages pages and layouts', () => {
           { type: 'literal', name: 'post' },
           { type: 'group', name: 'slug' },
         ],
-        [`layout:/${lang}`, 'page:/[lang]/post/[slug]'],
+        [`layout:/[lang=${lang}]`, 'page:/[lang]/post/[slug]'],
       ]),
     );
-    const layout = configs[1].elements['layout:/ja'].renderer({
+    const layout = configs[1].elements['layout:/[lang=ja]'].renderer({
       routePath: '/ja/post/[slug]',
       query: undefined,
     });
@@ -1002,13 +1002,94 @@ describe('createPages pages and layouts', () => {
           { type: 'group', name: 'slug' },
         ],
         [
-          'layout:/en',
-          'layout:/en/docs',
-          'layout:/en/docs/post',
+          'layout:/[lang=en]',
+          'layout:/[lang=en]/[section=docs]',
+          'layout:/[lang=en]/[section=docs]/post',
           'page:/[lang]/[section]/post/[slug]',
         ],
       ],
     ]);
+  });
+
+  it('gives layouts that share a concrete path their own slots', async () => {
+    const TestPage = () => null;
+    const TestLayout = ({ children }: PropsWithChildren) => children;
+    createPages(async ({ createPage, createLayout }) => [
+      createLayout({
+        render: 'static',
+        path: '/[lang]',
+        staticPaths: ['en'],
+        component: TestLayout,
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/[lang]/post/[slug]',
+        component: TestPage,
+      }),
+      createLayout({
+        render: 'static',
+        path: '/en',
+        component: TestLayout,
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/en/help/[slug]',
+        component: TestPage,
+      }),
+    ]);
+
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs()) as any[];
+    expect(configs.map((config) => Object.keys(config.elements))).toEqual([
+      ['layout:/en', 'page:/en/help/[slug]'],
+      ['layout:/[lang=en]', 'page:/[lang]/post/[slug]'],
+    ]);
+  });
+
+  it('passes a static catch-all layout every segment of its values', async () => {
+    const TestPage = () => null;
+    const TestLayout = ({ children }: PropsWithChildren) => children;
+    createPages(async ({ createPage, createLayout }) => [
+      createLayout({
+        render: 'static',
+        path: '/docs/[...parts]',
+        staticPaths: [
+          ['guides', 'install'],
+          ['guides', 'deploy'],
+        ],
+        component: TestLayout,
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/docs/[...parts]/view',
+        component: TestPage,
+      }),
+      createPage({
+        render: 'static',
+        path: '/docs/[...parts]/edit',
+        staticPaths: [['guides', 'install']],
+        component: TestPage,
+      }),
+    ]);
+
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs()) as any[];
+    const layoutIds = configs.map((config) => Object.keys(config.elements)[0]);
+    expect(layoutIds).toEqual([
+      'layout:/docs/[...parts=guides/install]',
+      'layout:/docs/[...parts=guides/install]',
+      'layout:/docs/[...parts=guides/deploy]',
+    ]);
+    for (const config of configs) {
+      const id = Object.keys(config.elements)[0]!;
+      const layout = config.elements[id].renderer({
+        routePath: '/docs',
+        query: undefined,
+      });
+      expect(layout.props.parts).toEqual(
+        id.endsWith('deploy]') ? ['guides', 'deploy'] : ['guides', 'install'],
+      );
+    }
   });
 
   it('leaves params without staticPaths undefined in a static layout', async () => {
@@ -1036,11 +1117,11 @@ describe('createPages pages and layouts', () => {
     const { getConfigs } = injectedFunctions();
     const [config] = Array.from(await getConfigs()) as any[];
     expect(Object.keys(config.elements)).toEqual([
-      'layout:/en',
-      'layout:/en/[section]',
+      'layout:/[lang=en]',
+      'layout:/[lang=en]/[section]',
       'page:/[lang]/[section]/[slug]',
     ]);
-    const layout = config.elements['layout:/en/[section]'].renderer({
+    const layout = config.elements['layout:/[lang=en]/[section]'].renderer({
       routePath: '/en/docs/[slug]',
       query: undefined,
     });
@@ -3529,7 +3610,7 @@ describe('createPages - grouped paths', () => {
       {
         type: 'route',
         elements: {
-          'layout:/(group)/en': {
+          'layout:/(group)/[lang=en]': {
             isStatic: true,
             renderer: expect.any(Function),
           },
@@ -3553,7 +3634,7 @@ describe('createPages - grouped paths', () => {
       {
         type: 'route',
         elements: {
-          'layout:/(group)/fr': {
+          'layout:/(group)/[lang=fr]': {
             isStatic: true,
             renderer: expect.any(Function),
           },
@@ -3643,7 +3724,7 @@ describe('createPages - grouped paths', () => {
         config.pathSpec?.[3]?.name === 'post-1',
     );
     const element = routeConfig.elements[
-      'layout:/(group)/layout-props/en/docs'
+      'layout:/(group)/layout-props/[lang=en]/[section=docs]'
     ].renderer({
       routePath: '/layout-props/en/docs/post-1',
       query: undefined,
