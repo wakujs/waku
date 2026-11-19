@@ -47,8 +47,8 @@ const setRequestHeader = (
 
 const MAX_UNREADY_SESSIONS = 100;
 export const MAX_UNREADY_SESSIONS_FOR_TEST = MAX_UNREADY_SESSIONS;
-const MAX_EARLY_READY_IDS = 1000;
-export const MAX_EARLY_READY_IDS_FOR_TEST = MAX_EARLY_READY_IDS;
+const MAX_REMEMBERED_IDS = 1000;
+export const MAX_REMEMBERED_IDS_FOR_TEST = MAX_REMEMBERED_IDS;
 
 const addWithLimit = (ids: Set<string>, id: string, limit: number) => {
   ids.add(id);
@@ -62,6 +62,7 @@ const addWithLimit = (ids: Set<string>, id: string, limit: number) => {
 
 type Session = {
   ready: boolean;
+  dropped: boolean;
   pendingChunks: Uint8Array[];
   streamClosed: boolean;
   requestDone: boolean;
@@ -76,6 +77,7 @@ export function rscDevtoolsPlugin(): Plugin {
       const sessions = new Map<string, Session>();
       const unreadyIds = new Set<string>();
       const earlyReadyIds = new Set<string>();
+      const droppedIds = new Set<string>();
 
       const dropSession = (debugId: string) => {
         getDebugChannelRegistry().delete(debugId);
@@ -83,24 +85,33 @@ export function rscDevtoolsPlugin(): Plugin {
         unreadyIds.delete(debugId);
       };
 
+      const sendDone = (debugId: string) => {
+        hot.send(DEBUG_DATA_EVENT, {
+          i: debugId,
+          d: true,
+        } satisfies DebugEventPayload);
+      };
+
       const getSession = (debugId: string) => {
         let session = sessions.get(debugId);
         if (!session) {
           session = {
             ready: earlyReadyIds.delete(debugId),
+            dropped: false,
             pendingChunks: [],
             streamClosed: false,
             requestDone: false,
           };
           sessions.set(debugId, session);
+          droppedIds.delete(debugId);
           if (!session.ready) {
-            const droppedId = addWithLimit(
+            const oldestId = addWithLimit(
               unreadyIds,
               debugId,
               MAX_UNREADY_SESSIONS,
             );
-            if (droppedId) {
-              dropSession(droppedId);
+            if (oldestId) {
+              stopSession(oldestId);
             }
           }
         }
@@ -144,10 +155,18 @@ export function rscDevtoolsPlugin(): Plugin {
           return;
         }
         dropSession(debugId);
-        hot.send(DEBUG_DATA_EVENT, {
-          i: debugId,
-          d: true,
-        } satisfies DebugEventPayload);
+        sendDone(debugId);
+      };
+
+      const stopSession = (debugId: string) => {
+        const session = sessions.get(debugId);
+        dropSession(debugId);
+        if (session) {
+          session.dropped = true;
+          session.pendingChunks.length = 0;
+          closeCmdController(session);
+        }
+        addWithLimit(droppedIds, debugId, MAX_REMEMBERED_IDS);
       };
 
       hot.on(DEBUG_CMD_EVENT, (payload) => {
@@ -166,7 +185,11 @@ export function rscDevtoolsPlugin(): Plugin {
           return;
         }
         if (!session) {
-          addWithLimit(earlyReadyIds, payload.i, MAX_EARLY_READY_IDS);
+          if (droppedIds.delete(payload.i)) {
+            sendDone(payload.i);
+          } else {
+            addWithLimit(earlyReadyIds, payload.i, MAX_REMEMBERED_IDS);
+          }
           return;
         }
         session.ready = true;
@@ -193,6 +216,10 @@ export function rscDevtoolsPlugin(): Plugin {
           };
           const readable = new ReadableStream<Uint8Array>({
             start(controller) {
+              if (session.dropped) {
+                controller.close();
+                return;
+              }
               session.cmdController = controller;
             },
             cancel() {
@@ -210,7 +237,7 @@ export function rscDevtoolsPlugin(): Plugin {
           };
           const writable = new WritableStream<Uint8Array>({
             write(chunk) {
-              if (!active) {
+              if (!active || session.dropped) {
                 return;
               }
               if (session.ready) {

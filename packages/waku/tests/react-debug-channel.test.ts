@@ -6,7 +6,7 @@ import {
 } from '../src/lib/utils-isomorphic/react-debug-channel.js';
 import {
   type DebugChannelRegistry,
-  MAX_EARLY_READY_IDS_FOR_TEST,
+  MAX_REMEMBERED_IDS_FOR_TEST,
   MAX_UNREADY_SESSIONS_FOR_TEST,
   rscDevtoolsPlugin,
 } from '../src/lib/vite-plugins/rsc-devtools.js';
@@ -416,7 +416,7 @@ describe('react debug channel', () => {
     expect(registry.has(unreadyIds.at(-1)!)).toBe(true);
   });
 
-  test('plugin forgets a late ready for a dropped session', async () => {
+  test('plugin stops a dropped session whose stream is open', async () => {
     const { hotListeners, sent, middleware } = await setupPlugin();
     const requestHtml = () => {
       const req: Req = {
@@ -426,30 +426,52 @@ describe('react debug channel', () => {
       middleware(req, {}, () => {});
       return req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
     };
-    const [droppedId] = Array.from(
-      { length: MAX_UNREADY_SESSIONS_FOR_TEST + 1 },
-      requestHtml,
-    );
-    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: droppedId! });
-    for (let index = 0; index < MAX_EARLY_READY_IDS_FOR_TEST; index++) {
-      hotListeners.get(DEBUG_CMD_EVENT)?.({ i: `early-${index}` });
-    }
+    const droppedId = requestHtml();
+    const channel = openDebugChannel(droppedId);
+    const writer = channel.writable.getWriter();
+    await writer.write(enc.encode('before'));
+    Array.from({ length: MAX_UNREADY_SESSIONS_FOR_TEST }, requestHtml);
 
-    const req: Req = {
-      headers: { [DEBUG_ID_HEADER.toLowerCase()]: droppedId },
-      rawHeaders: [DEBUG_ID_HEADER, droppedId!],
+    const commands = channel.readable.getReader();
+    expect(
+      await Promise.race([commands.read(), wait().then(() => 'open')]),
+    ).toEqual({ done: true, value: undefined });
+
+    await writer.write(enc.encode('after'));
+    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: droppedId });
+    expect(sent).toEqual([
+      { event: DEBUG_DATA_EVENT, data: { i: droppedId, d: true } },
+    ]);
+  });
+
+  test('plugin ends a late ready for a dropped session whose request finished', async () => {
+    const { hotListeners, sent, middleware } = await setupPlugin();
+    const requestHtml = () => {
+      const req: Req = {
+        headers: { accept: 'text/html' },
+        rawHeaders: ['Accept', 'text/html'],
+      };
+      middleware(req, {}, () => {});
+      return req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
     };
-    middleware(req, {}, () => {});
-    const writer = openDebugChannel(droppedId!).writable.getWriter();
-    await writer.write(enc.encode('late'));
+    const droppedId = requestHtml();
+    const writer = openDebugChannel(droppedId).writable.getWriter();
+    await writer.write(enc.encode('lost'));
+    finishDebugChannel(droppedId);
+    await writer.close();
+    Array.from({ length: MAX_UNREADY_SESSIONS_FOR_TEST }, requestHtml);
 
-    expect(sent).toEqual([]);
+    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: droppedId });
+    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: droppedId });
+    expect(sent).toEqual([
+      { event: DEBUG_DATA_EVENT, data: { i: droppedId, d: true } },
+    ]);
   });
 
   test('plugin remembers a bounded number of ready ids without a request', async () => {
     const { hotListeners, sent, middleware } = await setupPlugin();
     const ids = Array.from(
-      { length: MAX_EARLY_READY_IDS_FOR_TEST + 1 },
+      { length: MAX_REMEMBERED_IDS_FOR_TEST + 1 },
       (_, index) => `early-${index}`,
     );
     for (const id of ids) {
