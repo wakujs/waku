@@ -6,6 +6,7 @@ import {
 } from '../src/lib/utils-isomorphic/react-debug-channel.js';
 import {
   type DebugChannelRegistry,
+  MAX_UNREADY_SESSIONS_FOR_TEST,
   rscDevtoolsPlugin,
 } from '../src/lib/vite-plugins/rsc-devtools.js';
 
@@ -367,5 +368,50 @@ describe('react debug channel', () => {
         data: { i: debugId, d: true },
       },
     ]);
+  });
+
+  test('plugin finishes a ready session whose request never rendered', async () => {
+    const { hotListeners, sent, middleware } = await setupPlugin();
+    const req: Req = {
+      headers: { accept: 'text/html' },
+      rawHeaders: ['Accept', 'text/html'],
+    };
+    middleware(req, {}, () => {});
+    const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
+
+    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: debugId });
+    finishDebugChannel(debugId);
+
+    expect(sent).toEqual([
+      { event: DEBUG_DATA_EVENT, data: { i: debugId, d: true } },
+    ]);
+    expect(debugGlobal.__WAKU_DEBUG_CHANNEL_REGISTRY__?.has(debugId)).toBe(
+      false,
+    );
+  });
+
+  test('plugin keeps a bounded number of sessions that never became ready', async () => {
+    const { hotListeners, middleware } = await setupPlugin();
+    const requestHtml = () => {
+      const req: Req = {
+        headers: { accept: 'text/html' },
+        rawHeaders: ['Accept', 'text/html'],
+      };
+      middleware(req, {}, () => {});
+      return req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
+    };
+
+    const readyId = requestHtml();
+    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: readyId });
+    const unreadyIds = Array.from(
+      { length: MAX_UNREADY_SESSIONS_FOR_TEST + 1 },
+      requestHtml,
+    );
+
+    const registry = debugGlobal.__WAKU_DEBUG_CHANNEL_REGISTRY__!;
+    expect(registry.size).toBe(MAX_UNREADY_SESSIONS_FOR_TEST + 1);
+    expect(registry.has(readyId)).toBe(true);
+    expect(registry.has(unreadyIds[0]!)).toBe(false);
+    expect(registry.has(unreadyIds.at(-1)!)).toBe(true);
   });
 });

@@ -45,6 +45,9 @@ const setRequestHeader = (
   req.rawHeaders.push(name, value);
 };
 
+const MAX_UNREADY_SESSIONS = 100;
+export const MAX_UNREADY_SESSIONS_FOR_TEST = MAX_UNREADY_SESSIONS;
+
 type Session = {
   ready: boolean;
   pendingChunks: Uint8Array[];
@@ -59,6 +62,13 @@ export function rscDevtoolsPlugin(): Plugin {
     configureServer(server) {
       const hot = server.environments.client.hot;
       const sessions = new Map<string, Session>();
+      const unreadyIds = new Set<string>();
+
+      const dropSession = (debugId: string) => {
+        getDebugChannelRegistry().delete(debugId);
+        sessions.delete(debugId);
+        unreadyIds.delete(debugId);
+      };
 
       const getSession = (debugId: string) => {
         let session = sessions.get(debugId);
@@ -70,6 +80,11 @@ export function rscDevtoolsPlugin(): Plugin {
             requestDone: false,
           };
           sessions.set(debugId, session);
+          unreadyIds.add(debugId);
+          if (unreadyIds.size > MAX_UNREADY_SESSIONS) {
+            const [oldestId] = unreadyIds;
+            dropSession(oldestId!);
+          }
         }
         return session;
       };
@@ -110,8 +125,7 @@ export function rscDevtoolsPlugin(): Plugin {
         if (!session.ready || !session.streamClosed || !session.requestDone) {
           return;
         }
-        getDebugChannelRegistry().delete(debugId);
-        sessions.delete(debugId);
+        dropSession(debugId);
         hot.send(DEBUG_DATA_EVENT, {
           i: debugId,
           d: true,
@@ -135,6 +149,7 @@ export function rscDevtoolsPlugin(): Plugin {
         }
         const readySession = session ?? getSession(payload.i);
         readySession.ready = true;
+        unreadyIds.delete(payload.i);
         for (const chunk of readySession.pendingChunks) {
           sendChunk(payload.i, chunk);
         }
@@ -190,6 +205,9 @@ export function rscDevtoolsPlugin(): Plugin {
         };
         const finishDebugChannel = () => {
           session.requestDone = true;
+          if (!deactivatePrevious) {
+            session.streamClosed = true;
+          }
           cleanupIfDone(debugId, session);
         };
         getDebugChannelRegistry().set(debugId, [
