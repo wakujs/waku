@@ -6,6 +6,7 @@ import {
 } from '../src/lib/utils-isomorphic/react-debug-channel.js';
 import {
   type DebugChannelRegistry,
+  MAX_EARLY_READY_IDS_FOR_TEST,
   MAX_UNREADY_SESSIONS_FOR_TEST,
   rscDevtoolsPlugin,
 } from '../src/lib/vite-plugins/rsc-devtools.js';
@@ -413,5 +414,66 @@ describe('react debug channel', () => {
     expect(registry.has(readyId)).toBe(true);
     expect(registry.has(unreadyIds[0]!)).toBe(false);
     expect(registry.has(unreadyIds.at(-1)!)).toBe(true);
+  });
+
+  test('plugin forgets a late ready for a dropped session', async () => {
+    const { hotListeners, sent, middleware } = await setupPlugin();
+    const requestHtml = () => {
+      const req: Req = {
+        headers: { accept: 'text/html' },
+        rawHeaders: ['Accept', 'text/html'],
+      };
+      middleware(req, {}, () => {});
+      return req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
+    };
+    const [droppedId] = Array.from(
+      { length: MAX_UNREADY_SESSIONS_FOR_TEST + 1 },
+      requestHtml,
+    );
+    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: droppedId! });
+    for (let index = 0; index < MAX_EARLY_READY_IDS_FOR_TEST; index++) {
+      hotListeners.get(DEBUG_CMD_EVENT)?.({ i: `early-${index}` });
+    }
+
+    const req: Req = {
+      headers: { [DEBUG_ID_HEADER.toLowerCase()]: droppedId },
+      rawHeaders: [DEBUG_ID_HEADER, droppedId!],
+    };
+    middleware(req, {}, () => {});
+    const writer = openDebugChannel(droppedId!).writable.getWriter();
+    await writer.write(enc.encode('late'));
+
+    expect(sent).toEqual([]);
+  });
+
+  test('plugin remembers a bounded number of ready ids without a request', async () => {
+    const { hotListeners, sent, middleware } = await setupPlugin();
+    const ids = Array.from(
+      { length: MAX_EARLY_READY_IDS_FOR_TEST + 1 },
+      (_, index) => `early-${index}`,
+    );
+    for (const id of ids) {
+      hotListeners.get(DEBUG_CMD_EVENT)?.({ i: id });
+    }
+    const write = async (debugId: string) => {
+      const req: Req = {
+        headers: { [DEBUG_ID_HEADER.toLowerCase()]: debugId },
+        rawHeaders: [DEBUG_ID_HEADER, debugId],
+      };
+      middleware(req, {}, () => {});
+      const writer = openDebugChannel(debugId).writable.getWriter();
+      await writer.write(enc.encode(debugId));
+    };
+
+    await write(ids[0]!);
+    expect(sent).toEqual([]);
+
+    await write(ids.at(-1)!);
+    expect(sent).toEqual([
+      {
+        event: DEBUG_DATA_EVENT,
+        data: { i: ids.at(-1), b: btoa(ids.at(-1)!) },
+      },
+    ]);
   });
 });

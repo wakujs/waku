@@ -47,6 +47,18 @@ const setRequestHeader = (
 
 const MAX_UNREADY_SESSIONS = 100;
 export const MAX_UNREADY_SESSIONS_FOR_TEST = MAX_UNREADY_SESSIONS;
+const MAX_EARLY_READY_IDS = 1000;
+export const MAX_EARLY_READY_IDS_FOR_TEST = MAX_EARLY_READY_IDS;
+
+const addWithLimit = (ids: Set<string>, id: string, limit: number) => {
+  ids.add(id);
+  if (ids.size <= limit) {
+    return undefined;
+  }
+  const [oldestId] = ids;
+  ids.delete(oldestId!);
+  return oldestId;
+};
 
 type Session = {
   ready: boolean;
@@ -63,6 +75,7 @@ export function rscDevtoolsPlugin(): Plugin {
       const hot = server.environments.client.hot;
       const sessions = new Map<string, Session>();
       const unreadyIds = new Set<string>();
+      const earlyReadyIds = new Set<string>();
 
       const dropSession = (debugId: string) => {
         getDebugChannelRegistry().delete(debugId);
@@ -74,16 +87,21 @@ export function rscDevtoolsPlugin(): Plugin {
         let session = sessions.get(debugId);
         if (!session) {
           session = {
-            ready: false,
+            ready: earlyReadyIds.delete(debugId),
             pendingChunks: [],
             streamClosed: false,
             requestDone: false,
           };
           sessions.set(debugId, session);
-          unreadyIds.add(debugId);
-          if (unreadyIds.size > MAX_UNREADY_SESSIONS) {
-            const [oldestId] = unreadyIds;
-            dropSession(oldestId!);
+          if (!session.ready) {
+            const droppedId = addWithLimit(
+              unreadyIds,
+              debugId,
+              MAX_UNREADY_SESSIONS,
+            );
+            if (droppedId) {
+              dropSession(droppedId);
+            }
           }
         }
         return session;
@@ -147,14 +165,17 @@ export function rscDevtoolsPlugin(): Plugin {
           }
           return;
         }
-        const readySession = session ?? getSession(payload.i);
-        readySession.ready = true;
+        if (!session) {
+          addWithLimit(earlyReadyIds, payload.i, MAX_EARLY_READY_IDS);
+          return;
+        }
+        session.ready = true;
         unreadyIds.delete(payload.i);
-        for (const chunk of readySession.pendingChunks) {
+        for (const chunk of session.pendingChunks) {
           sendChunk(payload.i, chunk);
         }
-        readySession.pendingChunks.length = 0;
-        cleanupIfDone(payload.i, readySession);
+        session.pendingChunks.length = 0;
+        cleanupIfDone(payload.i, session);
       });
 
       const registerDebugChannel = (debugId: string) => {
