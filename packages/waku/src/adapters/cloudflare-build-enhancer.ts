@@ -170,6 +170,9 @@ const withBuildToken = async (
     : undefined;
   if (previewConfig !== undefined) {
     const config = JSON.parse(previewConfig);
+    if (config.vars && buildTokenVar in config.vars) {
+      throw new Error(`${buildTokenVar} is reserved for the static build`);
+    }
     fs.writeFileSync(
       previewConfigFile,
       JSON.stringify({

@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, expect, test } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import buildEnhancer from '../src/adapters/cloudflare-build-enhancer.js';
 import type { BuildOptions } from '../src/adapters/cloudflare-build-enhancer.js';
 
@@ -37,6 +37,19 @@ test('gives the preview worker a build token only while the build runs', async (
   expect(seen?.buildToken).toMatch(/^[0-9a-f]{32}$/);
   expect(seen?.vars).toEqual({ GREETING: 'hi', BUILD_TOKEN: seen?.buildToken });
   expect(readPreviewConfig()).toBe(previewConfig);
+});
+
+test('refuses a preview config that already defines the build token', async () => {
+  writeFileSync(
+    previewConfigFile,
+    JSON.stringify({ name: 'app', vars: { BUILD_TOKEN: 'checked-in' } }),
+  );
+  const inner = vi.fn(async () => {});
+  const build = await buildEnhancer(inner);
+  await expect(build(undefined, options)).rejects.toThrow(
+    'BUILD_TOKEN is reserved for the static build',
+  );
+  expect(inner).not.toHaveBeenCalled();
 });
 
 test('removes the build token when the build fails', async () => {
