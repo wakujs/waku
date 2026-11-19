@@ -6,6 +6,8 @@ import {
 } from '../src/lib/utils-isomorphic/react-debug-channel.js';
 import {
   type DebugChannelRegistry,
+  MAX_REMEMBERED_IDS_FOR_TEST,
+  MAX_WAITING_SESSIONS_FOR_TEST,
   rscDevtoolsPlugin,
 } from '../src/lib/vite-plugins/rsc-devtools.js';
 
@@ -365,6 +367,170 @@ describe('react debug channel', () => {
       {
         event: DEBUG_DATA_EVENT,
         data: { i: debugId, d: true },
+      },
+    ]);
+  });
+
+  test('plugin keeps a ready session for the request that follows a redirect', async () => {
+    const { hotListeners, sent, middleware } = await setupPlugin();
+    const request = () => {
+      const req: Req = {
+        headers: { [DEBUG_ID_HEADER.toLowerCase()]: 'redirected' },
+        rawHeaders: [DEBUG_ID_HEADER, 'redirected'],
+      };
+      middleware(req, {}, () => {});
+    };
+    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: 'redirected' });
+
+    request();
+    finishDebugChannel('redirected');
+    expect(sent).toEqual([]);
+
+    request();
+    const writer = openDebugChannel('redirected').writable.getWriter();
+    await writer.write(enc.encode('destination'));
+    finishDebugChannel('redirected');
+    await writer.close();
+    await wait();
+
+    expect(sent).toEqual([
+      {
+        event: DEBUG_DATA_EVENT,
+        data: { i: 'redirected', b: btoa('destination') },
+      },
+      { event: DEBUG_DATA_EVENT, data: { i: 'redirected', d: true } },
+    ]);
+  });
+
+  test('plugin ends the oldest ready session whose request never rendered', async () => {
+    const { hotListeners, sent, middleware } = await setupPlugin();
+    const requestHtml = () => {
+      const req: Req = {
+        headers: { accept: 'text/html' },
+        rawHeaders: ['Accept', 'text/html'],
+      };
+      middleware(req, {}, () => {});
+      return req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
+    };
+    const debugId = requestHtml();
+    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: debugId });
+    finishDebugChannel(debugId);
+    expect(sent).toEqual([]);
+
+    Array.from({ length: MAX_WAITING_SESSIONS_FOR_TEST }, requestHtml);
+
+    expect(sent).toEqual([
+      { event: DEBUG_DATA_EVENT, data: { i: debugId, d: true } },
+    ]);
+    expect(debugGlobal.__WAKU_DEBUG_CHANNEL_REGISTRY__?.has(debugId)).toBe(
+      false,
+    );
+  });
+
+  test('plugin keeps a bounded number of sessions waiting for a browser', async () => {
+    const { hotListeners, middleware } = await setupPlugin();
+    const requestHtml = () => {
+      const req: Req = {
+        headers: { accept: 'text/html' },
+        rawHeaders: ['Accept', 'text/html'],
+      };
+      middleware(req, {}, () => {});
+      return req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
+    };
+
+    const readyId = requestHtml();
+    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: readyId });
+    const unreadyIds = Array.from(
+      { length: MAX_WAITING_SESSIONS_FOR_TEST + 1 },
+      requestHtml,
+    );
+
+    const registry = debugGlobal.__WAKU_DEBUG_CHANNEL_REGISTRY__!;
+    expect(registry.size).toBe(MAX_WAITING_SESSIONS_FOR_TEST + 1);
+    expect(registry.has(readyId)).toBe(true);
+    expect(registry.has(unreadyIds[0]!)).toBe(false);
+    expect(registry.has(unreadyIds.at(-1)!)).toBe(true);
+  });
+
+  test('plugin stops a dropped session whose stream is open', async () => {
+    const { hotListeners, sent, middleware } = await setupPlugin();
+    const requestHtml = () => {
+      const req: Req = {
+        headers: { accept: 'text/html' },
+        rawHeaders: ['Accept', 'text/html'],
+      };
+      middleware(req, {}, () => {});
+      return req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
+    };
+    const droppedId = requestHtml();
+    const channel = openDebugChannel(droppedId);
+    const writer = channel.writable.getWriter();
+    await writer.write(enc.encode('before'));
+    Array.from({ length: MAX_WAITING_SESSIONS_FOR_TEST }, requestHtml);
+
+    const commands = channel.readable.getReader();
+    expect(
+      await Promise.race([commands.read(), wait().then(() => 'open')]),
+    ).toEqual({ done: true, value: undefined });
+
+    await writer.write(enc.encode('after'));
+    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: droppedId });
+    expect(sent).toEqual([
+      { event: DEBUG_DATA_EVENT, data: { i: droppedId, d: true } },
+    ]);
+  });
+
+  test('plugin ends a late ready for a dropped session whose request finished', async () => {
+    const { hotListeners, sent, middleware } = await setupPlugin();
+    const requestHtml = () => {
+      const req: Req = {
+        headers: { accept: 'text/html' },
+        rawHeaders: ['Accept', 'text/html'],
+      };
+      middleware(req, {}, () => {});
+      return req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
+    };
+    const droppedId = requestHtml();
+    const writer = openDebugChannel(droppedId).writable.getWriter();
+    await writer.write(enc.encode('lost'));
+    finishDebugChannel(droppedId);
+    await writer.close();
+    Array.from({ length: MAX_WAITING_SESSIONS_FOR_TEST }, requestHtml);
+
+    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: droppedId });
+    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: droppedId });
+    expect(sent).toEqual([
+      { event: DEBUG_DATA_EVENT, data: { i: droppedId, d: true } },
+    ]);
+  });
+
+  test('plugin remembers a bounded number of ready ids without a request', async () => {
+    const { hotListeners, sent, middleware } = await setupPlugin();
+    const ids = Array.from(
+      { length: MAX_REMEMBERED_IDS_FOR_TEST + 1 },
+      (_, index) => `early-${index}`,
+    );
+    for (const id of ids) {
+      hotListeners.get(DEBUG_CMD_EVENT)?.({ i: id });
+    }
+    const write = async (debugId: string) => {
+      const req: Req = {
+        headers: { [DEBUG_ID_HEADER.toLowerCase()]: debugId },
+        rawHeaders: [DEBUG_ID_HEADER, debugId],
+      };
+      middleware(req, {}, () => {});
+      const writer = openDebugChannel(debugId).writable.getWriter();
+      await writer.write(enc.encode(debugId));
+    };
+
+    await write(ids[0]!);
+    expect(sent).toEqual([]);
+
+    await write(ids.at(-1)!);
+    expect(sent).toEqual([
+      {
+        event: DEBUG_DATA_EVENT,
+        data: { i: ids.at(-1), b: btoa(ids.at(-1)!) },
       },
     ]);
   });

@@ -45,8 +45,25 @@ const setRequestHeader = (
   req.rawHeaders.push(name, value);
 };
 
+const MAX_WAITING_SESSIONS = 100;
+export const MAX_WAITING_SESSIONS_FOR_TEST = MAX_WAITING_SESSIONS;
+const MAX_REMEMBERED_IDS = 1000;
+export const MAX_REMEMBERED_IDS_FOR_TEST = MAX_REMEMBERED_IDS;
+
+const addWithLimit = (ids: Set<string>, id: string, limit: number) => {
+  ids.add(id);
+  if (ids.size <= limit) {
+    return undefined;
+  }
+  const [oldestId] = ids;
+  ids.delete(oldestId!);
+  return oldestId;
+};
+
 type Session = {
   ready: boolean;
+  dropped: boolean;
+  streamOpened: boolean;
   pendingChunks: Uint8Array[];
   streamClosed: boolean;
   requestDone: boolean;
@@ -59,19 +76,60 @@ export function rscDevtoolsPlugin(): Plugin {
     configureServer(server) {
       const hot = server.environments.client.hot;
       const sessions = new Map<string, Session>();
+      const waitingIds = new Set<string>();
+      const earlyReadyIds = new Set<string>();
+      const droppedIds = new Set<string>();
+
+      const dropSession = (debugId: string) => {
+        getDebugChannelRegistry().delete(debugId);
+        sessions.delete(debugId);
+        waitingIds.delete(debugId);
+      };
+
+      const sendDone = (debugId: string) => {
+        hot.send(DEBUG_DATA_EVENT, {
+          i: debugId,
+          d: true,
+        } satisfies DebugEventPayload);
+      };
 
       const getSession = (debugId: string) => {
         let session = sessions.get(debugId);
         if (!session) {
           session = {
-            ready: false,
+            ready: earlyReadyIds.delete(debugId),
+            dropped: false,
+            streamOpened: false,
             pendingChunks: [],
             streamClosed: false,
             requestDone: false,
           };
           sessions.set(debugId, session);
+          droppedIds.delete(debugId);
+          updateWaiting(debugId, session);
         }
         return session;
+      };
+
+      const isWaiting = (session: Session) =>
+        !session.ready || (session.requestDone && !session.streamOpened);
+
+      const updateWaiting = (debugId: string, session: Session) => {
+        if (session.dropped) {
+          return;
+        }
+        if (!isWaiting(session)) {
+          waitingIds.delete(debugId);
+          return;
+        }
+        const oldestId = addWithLimit(
+          waitingIds,
+          debugId,
+          MAX_WAITING_SESSIONS,
+        );
+        if (oldestId) {
+          stopSession(oldestId);
+        }
       };
 
       const sendChunk = (debugId: string, chunk: Uint8Array) => {
@@ -110,12 +168,24 @@ export function rscDevtoolsPlugin(): Plugin {
         if (!session.ready || !session.streamClosed || !session.requestDone) {
           return;
         }
-        getDebugChannelRegistry().delete(debugId);
-        sessions.delete(debugId);
-        hot.send(DEBUG_DATA_EVENT, {
-          i: debugId,
-          d: true,
-        } satisfies DebugEventPayload);
+        dropSession(debugId);
+        sendDone(debugId);
+      };
+
+      const stopSession = (debugId: string) => {
+        const session = sessions.get(debugId);
+        dropSession(debugId);
+        if (!session) {
+          return;
+        }
+        session.dropped = true;
+        session.pendingChunks.length = 0;
+        closeCmdController(session);
+        if (session.ready) {
+          sendDone(debugId);
+        } else {
+          addWithLimit(droppedIds, debugId, MAX_REMEMBERED_IDS);
+        }
       };
 
       hot.on(DEBUG_CMD_EVENT, (payload) => {
@@ -133,21 +203,33 @@ export function rscDevtoolsPlugin(): Plugin {
           }
           return;
         }
-        const readySession = session ?? getSession(payload.i);
-        readySession.ready = true;
-        for (const chunk of readySession.pendingChunks) {
+        if (!session) {
+          if (droppedIds.delete(payload.i)) {
+            sendDone(payload.i);
+          } else {
+            addWithLimit(earlyReadyIds, payload.i, MAX_REMEMBERED_IDS);
+          }
+          return;
+        }
+        session.ready = true;
+        for (const chunk of session.pendingChunks) {
           sendChunk(payload.i, chunk);
         }
-        readySession.pendingChunks.length = 0;
-        cleanupIfDone(payload.i, readySession);
+        session.pendingChunks.length = 0;
+        updateWaiting(payload.i, session);
+        cleanupIfDone(payload.i, session);
       });
 
       const registerDebugChannel = (debugId: string) => {
         const session = getSession(debugId);
+        session.requestDone = false;
+        updateWaiting(debugId, session);
         let deactivatePrevious: (() => void) | undefined;
         const createDebugChannel = () => {
           // The browser only receives the last render in a request.
           deactivatePrevious?.();
+          session.streamOpened = true;
+          updateWaiting(debugId, session);
           let active = true;
           deactivatePrevious = () => {
             active = false;
@@ -157,6 +239,10 @@ export function rscDevtoolsPlugin(): Plugin {
           };
           const readable = new ReadableStream<Uint8Array>({
             start(controller) {
+              if (session.dropped) {
+                controller.close();
+                return;
+              }
               session.cmdController = controller;
             },
             cancel() {
@@ -174,7 +260,7 @@ export function rscDevtoolsPlugin(): Plugin {
           };
           const writable = new WritableStream<Uint8Array>({
             write(chunk) {
-              if (!active) {
+              if (!active || session.dropped) {
                 return;
               }
               if (session.ready) {
@@ -190,6 +276,7 @@ export function rscDevtoolsPlugin(): Plugin {
         };
         const finishDebugChannel = () => {
           session.requestDone = true;
+          updateWaiting(debugId, session);
           cleanupIfDone(debugId, session);
         };
         getDebugChannelRegistry().set(debugId, [
