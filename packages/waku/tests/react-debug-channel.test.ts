@@ -7,7 +7,7 @@ import {
 import {
   type DebugChannelRegistry,
   MAX_REMEMBERED_IDS_FOR_TEST,
-  MAX_UNREADY_SESSIONS_FOR_TEST,
+  MAX_WAITING_SESSIONS_FOR_TEST,
   rscDevtoolsPlugin,
 } from '../src/lib/vite-plugins/rsc-devtools.js';
 
@@ -371,17 +371,53 @@ describe('react debug channel', () => {
     ]);
   });
 
-  test('plugin finishes a ready session whose request never rendered', async () => {
+  test('plugin keeps a ready session for the request that follows a redirect', async () => {
     const { hotListeners, sent, middleware } = await setupPlugin();
-    const req: Req = {
-      headers: { accept: 'text/html' },
-      rawHeaders: ['Accept', 'text/html'],
+    const request = () => {
+      const req: Req = {
+        headers: { [DEBUG_ID_HEADER.toLowerCase()]: 'redirected' },
+        rawHeaders: [DEBUG_ID_HEADER, 'redirected'],
+      };
+      middleware(req, {}, () => {});
     };
-    middleware(req, {}, () => {});
-    const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
+    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: 'redirected' });
 
+    request();
+    finishDebugChannel('redirected');
+    expect(sent).toEqual([]);
+
+    request();
+    const writer = openDebugChannel('redirected').writable.getWriter();
+    await writer.write(enc.encode('destination'));
+    finishDebugChannel('redirected');
+    await writer.close();
+    await wait();
+
+    expect(sent).toEqual([
+      {
+        event: DEBUG_DATA_EVENT,
+        data: { i: 'redirected', b: btoa('destination') },
+      },
+      { event: DEBUG_DATA_EVENT, data: { i: 'redirected', d: true } },
+    ]);
+  });
+
+  test('plugin ends the oldest ready session whose request never rendered', async () => {
+    const { hotListeners, sent, middleware } = await setupPlugin();
+    const requestHtml = () => {
+      const req: Req = {
+        headers: { accept: 'text/html' },
+        rawHeaders: ['Accept', 'text/html'],
+      };
+      middleware(req, {}, () => {});
+      return req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
+    };
+    const debugId = requestHtml();
     hotListeners.get(DEBUG_CMD_EVENT)?.({ i: debugId });
     finishDebugChannel(debugId);
+    expect(sent).toEqual([]);
+
+    Array.from({ length: MAX_WAITING_SESSIONS_FOR_TEST }, requestHtml);
 
     expect(sent).toEqual([
       { event: DEBUG_DATA_EVENT, data: { i: debugId, d: true } },
@@ -391,7 +427,7 @@ describe('react debug channel', () => {
     );
   });
 
-  test('plugin keeps a bounded number of sessions that never became ready', async () => {
+  test('plugin keeps a bounded number of sessions waiting for a browser', async () => {
     const { hotListeners, middleware } = await setupPlugin();
     const requestHtml = () => {
       const req: Req = {
@@ -405,12 +441,12 @@ describe('react debug channel', () => {
     const readyId = requestHtml();
     hotListeners.get(DEBUG_CMD_EVENT)?.({ i: readyId });
     const unreadyIds = Array.from(
-      { length: MAX_UNREADY_SESSIONS_FOR_TEST + 1 },
+      { length: MAX_WAITING_SESSIONS_FOR_TEST + 1 },
       requestHtml,
     );
 
     const registry = debugGlobal.__WAKU_DEBUG_CHANNEL_REGISTRY__!;
-    expect(registry.size).toBe(MAX_UNREADY_SESSIONS_FOR_TEST + 1);
+    expect(registry.size).toBe(MAX_WAITING_SESSIONS_FOR_TEST + 1);
     expect(registry.has(readyId)).toBe(true);
     expect(registry.has(unreadyIds[0]!)).toBe(false);
     expect(registry.has(unreadyIds.at(-1)!)).toBe(true);
@@ -430,7 +466,7 @@ describe('react debug channel', () => {
     const channel = openDebugChannel(droppedId);
     const writer = channel.writable.getWriter();
     await writer.write(enc.encode('before'));
-    Array.from({ length: MAX_UNREADY_SESSIONS_FOR_TEST }, requestHtml);
+    Array.from({ length: MAX_WAITING_SESSIONS_FOR_TEST }, requestHtml);
 
     const commands = channel.readable.getReader();
     expect(
@@ -459,7 +495,7 @@ describe('react debug channel', () => {
     await writer.write(enc.encode('lost'));
     finishDebugChannel(droppedId);
     await writer.close();
-    Array.from({ length: MAX_UNREADY_SESSIONS_FOR_TEST }, requestHtml);
+    Array.from({ length: MAX_WAITING_SESSIONS_FOR_TEST }, requestHtml);
 
     hotListeners.get(DEBUG_CMD_EVENT)?.({ i: droppedId });
     hotListeners.get(DEBUG_CMD_EVENT)?.({ i: droppedId });
