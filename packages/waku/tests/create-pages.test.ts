@@ -1046,6 +1046,30 @@ describe('createPages pages and layouts', () => {
     ]);
   });
 
+  it('encodes param names in layout slot IDs', async () => {
+    const TestPage = () => null;
+    const TestLayout = ({ children }: PropsWithChildren) => children;
+    createPages(async ({ createPage, createLayout }) => [
+      createLayout({
+        render: 'static',
+        path: '/[lang=en]',
+        component: TestLayout,
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/[lang=en]/[slug]',
+        component: TestPage,
+      }),
+    ]);
+
+    const { getConfigs } = injectedFunctions();
+    const [config] = Array.from(await getConfigs()) as any[];
+    expect(Object.keys(config.elements)).toEqual([
+      'layout:/[lang%3Den]',
+      'page:/[lang=en]/[slug]',
+    ]);
+  });
+
   it('passes a static catch-all layout every segment of its values', async () => {
     const TestPage = () => null;
     const TestLayout = ({ children }: PropsWithChildren) => children;

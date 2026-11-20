@@ -91,6 +91,7 @@ const getLayoutSlotId = (layoutPath: string, params: RouteParamValues) =>
       if (item.type === 'literal') {
         return item.name;
       }
+      const name = encodeURIComponent(item.name!);
       const value = Object.hasOwn(params, item.name!)
         ? params[item.name!]
         : undefined;
@@ -99,8 +100,8 @@ const getLayoutSlotId = (layoutPath: string, params: RouteParamValues) =>
           ? ''
           : '=' + [value].flat().map(encodeURIComponent).join('/');
       return item.type === 'wildcard'
-        ? `[...${item.name}${known}]`
-        : `${item.prefix ?? ''}[${item.name}${known}]${item.suffix ?? ''}`;
+        ? `[...${name}${known}]`
+        : `${item.prefix ?? ''}[${name}${known}]${item.suffix ?? ''}`;
     })
     .join('/');
 
