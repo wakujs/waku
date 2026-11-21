@@ -82,7 +82,28 @@ const assertStaticPathArity = (
 };
 
 const getPageSlotId = (pathKey: string) => `page:${pathKey}`;
-const getLayoutSlotId = (layoutIdPath: string) => `layout:${layoutIdPath}`;
+type RouteParamValues = Record<string, string | string[]>;
+
+const getLayoutSlotId = (layoutPath: string, params: RouteParamValues) =>
+  'layout:/' +
+  parsePathWithSlug(layoutPath)
+    .map((item) => {
+      if (item.type === 'literal') {
+        return item.name.replace(/[%[\]]/g, (char) => encodeURIComponent(char));
+      }
+      const name = encodeURIComponent(item.name!);
+      const value = Object.hasOwn(params, item.name!)
+        ? params[item.name!]
+        : undefined;
+      const known =
+        value === undefined
+          ? ''
+          : '=' + [value].flat().map(encodeURIComponent).join('/');
+      return item.type === 'wildcard'
+        ? `[...${name}${known}]`
+        : `${item.prefix ?? ''}[${name}${known}]${item.suffix ?? ''}`;
+    })
+    .join('/');
 
 const parseSearchOrThrow = (
   codec: SearchCodec<any>,
@@ -523,6 +544,7 @@ export function createPages<
     {
       concretePathSpec: PathSpec;
       pathPatternSpec?: PathSpec;
+      params?: RouteParamValues;
       noSsr: boolean;
       sourceFile?: string | undefined;
     }
@@ -603,21 +625,13 @@ export function createPages<
     };
   };
 
-  const getLayoutIdPath = (layoutPath: string, groupedPath: string): string => {
-    const numSegments = parsePathWithSlug(layoutPath).length;
-    return (
-      '/' +
-      groupedPath.split('/').filter(Boolean).slice(0, numSegments).join('/')
-    );
-  };
-
   const buildRouteElement = (
-    layouts: { layoutPath: string; layoutIdPath: string }[],
+    layouts: { slotId: string }[],
     pathKey: string,
   ) => {
-    const layoutElements = layouts.map(({ layoutIdPath }) => ({
+    const layoutElements = layouts.map(({ slotId }) => ({
       component: Slot,
-      props: { id: getLayoutSlotId(layoutIdPath) },
+      props: { id: slotId },
     }));
     return () =>
       createNestedElements(
@@ -736,6 +750,7 @@ export function createPages<
           staticPageEntryByRoutePath.set(routePath, {
             concretePathSpec,
             pathPatternSpec: pathSpec,
+            params: mapping,
             noSsr,
             sourceFile,
           });
@@ -1015,17 +1030,35 @@ export function createPages<
           options: RendererOptions,
         ) => Promise<string | undefined>;
       };
-      type LayoutMatch = { layoutPath: string; layoutIdPath: string };
+      type LayoutMatch = {
+        layoutPath: string;
+        params: RouteParamValues;
+        slotId: string;
+      };
       const collectLayoutMatches = (
         spec: PathSpec,
-        groupedPath: string,
+        routeParams: RouteParamValues,
       ): LayoutMatch[] =>
-        getLayouts(spec).map((layoutPath) => ({
-          layoutPath,
-          layoutIdPath: getLayoutIdPath(layoutPath, groupedPath),
-        }));
-      const expandByLayoutStaticPaths = (pathSpec: PathSpec): PathSpec[] => {
-        let prefixes: string[][] = [[]];
+        getLayouts(spec).map((layoutPath) => {
+          const params = Object.fromEntries(
+            parsePathWithSlug(layoutPath).flatMap((item) =>
+              item.type !== 'literal' && Object.hasOwn(routeParams, item.name!)
+                ? [[item.name!, routeParams[item.name!]!]]
+                : [],
+            ),
+          );
+          return {
+            layoutPath,
+            params,
+            slotId: getLayoutSlotId(layoutPath, params),
+          };
+        });
+      const expandByLayoutStaticPaths = (
+        pathSpec: PathSpec,
+      ): { pathSpec: PathSpec; params: RouteParamValues }[] => {
+        let prefixes: { pathItems: string[]; params: RouteParamValues }[] = [
+          { pathItems: [], params: {} },
+        ];
         let prefixLength = 0;
         for (const layoutPath of getLayouts(pathSpec)) {
           const staticPaths = staticPathsByLayoutPath.get(layoutPath);
@@ -1038,27 +1071,32 @@ export function createPages<
           ) {
             continue;
           }
-          const nextPrefixes: string[][] = [];
+          const nextPrefixes: typeof prefixes = [];
           forEachConcreteStaticPath(
             layoutSpec,
             staticPaths,
-            ({ pathItems }) => {
+            ({ pathItems, mapping }) => {
               if (
                 prefixes.some((prefix) =>
-                  prefix.every((item, index) => item === pathItems[index]),
+                  prefix.pathItems.every(
+                    (item, index) => item === pathItems[index],
+                  ),
                 )
               ) {
-                nextPrefixes.push(pathItems);
+                nextPrefixes.push({ pathItems, params: mapping });
               }
             },
           );
           prefixes = nextPrefixes;
           prefixLength = layoutSpec.length;
         }
-        return prefixes.map((prefix) => [
-          ...prefix.map((name) => ({ type: 'literal' as const, name })),
-          ...pathSpec.slice(prefixLength),
-        ]);
+        return prefixes.map(({ pathItems, params }) => ({
+          pathSpec: [
+            ...pathItems.map((name) => ({ type: 'literal' as const, name })),
+            ...pathSpec.slice(prefixLength),
+          ],
+          params,
+        }));
       };
       // Memoize so component and getEtag get the same props reference.
       const buildElementSpec = <Props,>(
@@ -1091,7 +1129,7 @@ export function createPages<
       };
       const buildLayoutElement = (
         layoutPath: string,
-        layoutIdPath: string,
+        params: RouteParamValues,
       ): ElementSpec => {
         const getLayoutPropsMapping = createLayoutPropsMapper(layoutPath);
         const dynamicEntry = dynamicLayoutEntryByPathPattern.get(layoutPath);
@@ -1110,19 +1148,9 @@ export function createPages<
         if (!staticEntry) {
           throw new Error('Invalid layout ' + layoutPath);
         }
-        const unknownParamNames = new Set(
-          parsePathWithSlug(layoutIdPath).flatMap((item) =>
-            item.type === 'literal' ? [] : [item.name],
-          ),
-        );
-        const props = Object.fromEntries(
-          Object.entries(
-            getLayoutPropsMapping(getGrouplessPath(layoutIdPath)),
-          ).filter(([name]) => !unknownParamNames.has(name)),
-        );
         return buildElementSpec(
           staticEntry.component,
-          () => props,
+          () => params,
           true,
           staticEntry.sourceFile,
           undefined,
@@ -1132,9 +1160,9 @@ export function createPages<
         matches: LayoutMatch[],
       ): Record<string, ElementSpec> =>
         Object.fromEntries(
-          matches.map(({ layoutPath, layoutIdPath }) => [
-            getLayoutSlotId(layoutIdPath),
-            buildLayoutElement(layoutPath, layoutIdPath),
+          matches.map(({ layoutPath, params, slotId }) => [
+            slotId,
+            buildLayoutElement(layoutPath, params),
           ]),
         );
       const buildPageElement = <Props,>(
@@ -1201,12 +1229,13 @@ export function createPages<
       const buildStaticRouteConfigs = () =>
         Array.from(
           staticPageEntryByRoutePath,
-          ([routePath, { concretePathSpec, pathPatternSpec, noSsr }]) => {
-            const groupedPath =
-              groupedPathByPathKey.get(routePath) ?? routePath;
+          ([
+            routePath,
+            { concretePathSpec, pathPatternSpec, params, noSsr },
+          ]) => {
             const layouts = collectLayoutMatches(
               pathPatternSpec ?? concretePathSpec,
-              groupedPath,
+              params ?? {},
             );
             const pageEntry = staticComponentById.get(
               getStaticComponentId(routePath, 'page'),
@@ -1244,11 +1273,8 @@ export function createPages<
         }: DynamicPageEntry,
       ) => {
         const configs = expandByLayoutStaticPaths(pathSpec).map(
-          (expandedPathSpec) => {
-            const layouts = collectLayoutMatches(
-              pathSpec,
-              pathSpecAsString(expandedPathSpec),
-            );
+          ({ pathSpec: expandedPathSpec, params }) => {
+            const layouts = collectLayoutMatches(pathSpec, params);
             const getPropsMapping = createPathPropsMapper(pathPattern);
             const elements: Record<string, ElementSpec> =
               buildLayoutElements(layouts);
