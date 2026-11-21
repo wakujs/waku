@@ -2346,6 +2346,78 @@ describe('createPages pages and layouts', () => {
     await expect(getConfigs()).resolves.toHaveLength(1);
   });
 
+  it.each([
+    {
+      name: 'dynamic pages in two groups',
+      register: ({ createPage }: CreatePagesFns) => [
+        createPage({
+          render: 'dynamic',
+          path: '/(a)/test',
+          component: () => null,
+        }),
+        createPage({
+          render: 'dynamic',
+          path: '/(b)/test',
+          component: () => null,
+        }),
+      ],
+      message: 'Duplicated path: /(b)/test',
+    },
+    {
+      name: 'a static and a dynamic page in two groups',
+      register: ({ createPage }: CreatePagesFns) => [
+        createPage({
+          render: 'static',
+          path: '/(a)/test',
+          component: () => null,
+        }),
+        createPage({
+          render: 'dynamic',
+          path: '/(b)/test',
+          component: () => null,
+        }),
+      ],
+      message: 'Duplicated path: /(b)/test',
+    },
+    {
+      name: 'a static page and a staticPaths value',
+      register: ({ createPage }: CreatePagesFns) => [
+        createPage({
+          render: 'static',
+          path: '/foo',
+          component: () => null,
+        }),
+        createPage({
+          render: 'static',
+          path: '/[id]',
+          staticPaths: ['foo'],
+          component: () => null,
+        }),
+      ],
+      message: 'Duplicated path: /foo',
+    },
+    {
+      name: 'a static and a dynamic layout',
+      register: ({ createLayout }: CreatePagesFns) => [
+        createLayout({
+          render: 'static',
+          path: '/',
+          component: ({ children }) => children,
+        }),
+        createLayout({
+          render: 'dynamic',
+          path: '/',
+          component: ({ children }) => children,
+        }),
+      ],
+      message: 'Duplicated layout path: /',
+    },
+  ])('fails for $name at one path', async ({ register, message }) => {
+    createPages(async (fns) => register(fns) as never);
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs).rejects.toThrowError(message);
+  });
+
   it('fails if duplicated dynamic paths are registered', async () => {
     createPages(async ({ createPage }) => [
       createPage({
