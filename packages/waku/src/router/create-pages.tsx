@@ -81,6 +81,16 @@ const assertStaticPathArity = (
   }
 };
 
+const assertUniqueParamNames = (pathSpec: PathSpec, path: string) => {
+  const names = pathSpec.flatMap((item) =>
+    item.type === 'literal' ? [] : [item.name],
+  );
+  const repeated = names.find((name, index) => names.indexOf(name) !== index);
+  if (repeated !== undefined) {
+    throw new Error(`Duplicated param name "${repeated}" in path: ${path}`);
+  }
+};
+
 const getPageSlotId = (pathKey: string) => `page:${pathKey}`;
 type RouteParamValues = Record<string, string | string[]>;
 
@@ -684,6 +694,9 @@ export function createPages<
     }
 
     const pathSpec = parsePathWithSlug(pagePathPattern);
+    if (!page.exactPath) {
+      assertUniqueParamNames(pathSpec, page.path);
+    }
     const { numSlugs, numWildcards } = countSlugsAndWildcards(pathSpec);
     const noSsr = page.unstable_noSsr ?? false;
     const slices = page.slices || [];
@@ -827,6 +840,8 @@ export function createPages<
       return;
     }
     const pathPattern = pathnameToRoutePath(layout.path);
+    const pathSpec = parsePathWithSlug(pathPattern);
+    assertUniqueParamNames(pathSpec, layout.path);
     const sourceFile = layout.unstable_sourceFile;
     const getEtag = layout.unstable_getEtag;
     if (layout.render === 'static') {
@@ -840,7 +855,6 @@ export function createPages<
       if (dynamicLayoutEntryByPathPattern.has(pathPattern)) {
         throw new Error(`Duplicated dynamic path: ${layout.path}`);
       }
-      const pathSpec = parsePathWithSlug(pathPattern);
       dynamicLayoutEntryByPathPattern.set(pathPattern, {
         pathSpec,
         component: layout.component,
@@ -871,6 +885,7 @@ export function createPages<
       throw new Error(`Duplicated api path: ${options.path}`);
     }
     const pathSpec = parsePathWithSlug(apiPathPattern);
+    assertUniqueParamNames(pathSpec, options.path);
     if (options.render === 'static') {
       const { numSlugs } = countSlugsAndWildcards(pathSpec);
       if (numSlugs > 0 && options.staticPaths) {
@@ -937,6 +952,7 @@ export function createPages<
       return;
     }
     const slicePathSpec = parsePathWithSlug(slice.id);
+    assertUniqueParamNames(slicePathSpec, slice.id);
     const { numSlugs } = countSlugsAndWildcards(slicePathSpec);
     const sourceFile = slice.unstable_sourceFile;
     const getEtag = slice.unstable_getEtag;

@@ -26,6 +26,8 @@ import type {
 } from '../src/router/create-pages.js';
 import { parsePathWithSlug } from '../src/router/isomorphic-utils/path-spec.js';
 
+type CreatePagesFns = Parameters<Parameters<typeof createPages>[0]>[0];
+
 function Fake() {
   return null;
 }
@@ -2284,6 +2286,64 @@ describe('createPages pages and layouts', () => {
     const configs = (await getConfigs()) as { type: string; noSsr?: boolean }[];
     const route = configs.find((c) => c.type === 'route');
     expect(route?.noSsr).toBe(true);
+  });
+
+  it.each([
+    {
+      kind: 'a page path',
+      register: ({ createPage }: CreatePagesFns) =>
+        createPage({
+          render: 'dynamic',
+          path: '/[id]/[id]',
+          component: () => null,
+        }),
+    },
+    {
+      kind: 'a layout path',
+      register: ({ createLayout }: CreatePagesFns) =>
+        createLayout({
+          render: 'static',
+          path: '/[id]/[...id]',
+          component: () => null,
+        }),
+    },
+    {
+      kind: 'an API path',
+      register: ({ createApi }: CreatePagesFns) =>
+        createApi({
+          render: 'dynamic',
+          path: '/[id]/[id]',
+          handlers: { GET: async () => new Response() },
+        }),
+    },
+    {
+      kind: 'a slice ID',
+      register: ({ createSlice }: CreatePagesFns) =>
+        createSlice({
+          render: 'dynamic',
+          id: 'items/[id]/[id]',
+          component: () => null,
+        }),
+    },
+  ])('rejects a repeated param name in $kind', async ({ register }) => {
+    createPages(async (fns) => [register(fns)]);
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs).rejects.toThrowError(
+      'Duplicated param name "id" in path:',
+    );
+  });
+
+  it('keeps repeated brackets in an exact path', async () => {
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'static',
+        path: '/[id]/[id]',
+        exactPath: true,
+        component: () => null,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs()).resolves.toHaveLength(1);
   });
 
   it('fails if duplicated dynamic paths are registered', async () => {
