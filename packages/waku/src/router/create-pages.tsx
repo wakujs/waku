@@ -570,6 +570,7 @@ export function createPages<
   };
   // A path key is a declared pattern or a concrete path from staticPaths.
   const routeByPathKey = new Map<string, PageEntry | ApiEntry>();
+  const kindByDeclaredPath = new Map<string, 'page' | 'api'>();
   const addRoute = (
     pathKey: string,
     entry: PageEntry | ApiEntry,
@@ -666,6 +667,10 @@ export function createPages<
     }
     const pagePathPattern = pathnameToRoutePath(page.path);
     const pathKey = pathnameToRoutePath(getGrouplessPath(page.path));
+    if (kindByDeclaredPath.get(pathKey) === 'api') {
+      throw new Error(`Duplicated path: ${page.path}`);
+    }
+    kindByDeclaredPath.set(pathKey, 'page');
     const pathSpec = parsePathWithSlug(pagePathPattern);
     if (!page.exactPath) {
       assertUniqueParamNames(pathSpec, page.path);
@@ -779,6 +784,10 @@ export function createPages<
       }
     }
     const apiPathPattern = pathnameToRoutePath(options.path);
+    if (kindByDeclaredPath.has(apiPathPattern)) {
+      throw new Error(`Duplicated api path: ${options.path}`);
+    }
+    kindByDeclaredPath.set(apiPathPattern, 'api');
     const sourceFile = options.unstable_sourceFile;
     const pathSpec = parsePathWithSlug(apiPathPattern);
     assertUniqueParamNames(pathSpec, options.path);

@@ -2418,6 +2418,105 @@ describe('createPages pages and layouts', () => {
     await expect(getConfigs).rejects.toThrowError(message);
   });
 
+  it.each([
+    {
+      name: 'a dynamic API and then a static API with staticPaths',
+      register: ({ createApi }: CreatePagesFns) => [
+        createApi({
+          render: 'dynamic',
+          path: '/api/[id]',
+          handlers: { POST: async () => new Response('posted') },
+        }),
+        createApi({
+          render: 'static',
+          path: '/api/[id]',
+          staticPaths: ['foo'],
+          method: 'GET',
+          handler: async () => new Response('static'),
+        }),
+      ],
+      message: 'Duplicated api path: /api/[id]',
+    },
+    {
+      name: 'a static API with staticPaths and then a dynamic API',
+      register: ({ createApi }: CreatePagesFns) => [
+        createApi({
+          render: 'static',
+          path: '/api/[id]',
+          staticPaths: ['foo'],
+          method: 'GET',
+          handler: async () => new Response('static'),
+        }),
+        createApi({
+          render: 'dynamic',
+          path: '/api/[id]',
+          handlers: { POST: async () => new Response('posted') },
+        }),
+      ],
+      message: 'Duplicated api path: /api/[id]',
+    },
+    {
+      name: 'a static page with staticPaths and then a dynamic API',
+      register: ({ createPage, createApi }: CreatePagesFns) => [
+        createPage({
+          render: 'static',
+          path: '/api/[id]',
+          staticPaths: ['foo'],
+          component: () => null,
+        }),
+        createApi({
+          render: 'dynamic',
+          path: '/api/[id]',
+          handlers: { POST: async () => new Response('posted') },
+        }),
+      ],
+      message: 'Duplicated api path: /api/[id]',
+    },
+    {
+      name: 'a dynamic API and then a static page with staticPaths',
+      register: ({ createPage, createApi }: CreatePagesFns) => [
+        createApi({
+          render: 'dynamic',
+          path: '/api/[id]',
+          handlers: { POST: async () => new Response('posted') },
+        }),
+        createPage({
+          render: 'static',
+          path: '/api/[id]',
+          staticPaths: ['foo'],
+          component: () => null,
+        }),
+      ],
+      message: 'Duplicated path: /api/[id]',
+    },
+  ])('fails for $name at one declared path', async ({ register, message }) => {
+    createPages(async (fns) => register(fns) as never);
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs).rejects.toThrowError(message);
+  });
+
+  it('registers a static page with staticPaths and a dynamic page at one pattern', async () => {
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'static',
+        path: '/[id]',
+        staticPaths: ['foo'],
+        component: () => null,
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/[id]',
+        component: () => null,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs()) as any[];
+    expect(configs.map((config) => Object.keys(config.elements))).toEqual([
+      ['page:/foo'],
+      ['page:/[id]'],
+    ]);
+  });
+
   it('fails if duplicated dynamic paths are registered', async () => {
     createPages(async ({ createPage }) => [
       createPage({
