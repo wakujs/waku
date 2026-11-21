@@ -85,9 +85,8 @@ const assertUniqueParamNames = (pathSpec: PathSpec, path: string) => {
   const names = pathSpec.flatMap((item) =>
     item.type === 'literal' ? [] : [item.name],
   );
-  const repeated = names.find((name, index) => names.indexOf(name) !== index);
-  if (repeated !== undefined) {
-    throw new Error(`Duplicated param name "${repeated}" in path: ${path}`);
+  if (new Set(names).size !== names.length) {
+    throw new Error(`Duplicated param name in path: ${path}`);
   }
 };
 

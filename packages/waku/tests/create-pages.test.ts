@@ -2329,7 +2329,7 @@ describe('createPages pages and layouts', () => {
     createPages(async (fns) => [register(fns)]);
     const { getConfigs } = injectedFunctions();
     await expect(getConfigs).rejects.toThrowError(
-      'Duplicated param name "id" in path:',
+      'Duplicated param name in path:',
     );
   });
 
