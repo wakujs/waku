@@ -89,7 +89,7 @@ const getLayoutSlotId = (layoutPath: string, params: RouteParamValues) =>
   parsePathWithSlug(layoutPath)
     .map((item) => {
       if (item.type === 'literal') {
-        return item.name;
+        return item.name.replace(/[%[\]]/g, (char) => encodeURIComponent(char));
       }
       const name = encodeURIComponent(item.name!);
       const value = Object.hasOwn(params, item.name!)

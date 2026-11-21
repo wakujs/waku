@@ -1070,6 +1070,44 @@ describe('createPages pages and layouts', () => {
     ]);
   });
 
+  it('escapes brackets in plain segments of layout slot IDs', async () => {
+    const TestPage = () => null;
+    const TestLayout = ({ children }: PropsWithChildren) => children;
+    createPages(async ({ createPage, createLayout }) => [
+      createLayout({
+        render: 'static',
+        path: '/docs/[...parts]',
+        staticPaths: [['guides', 'install']],
+        component: TestLayout,
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/docs/[...parts]/view',
+        component: TestPage,
+      }),
+      createLayout({
+        render: 'static',
+        path: '/docs/[...parts=guides/install]',
+        component: TestLayout,
+      } as never),
+      createPage({
+        render: 'static',
+        path: '/docs/[...parts=guides/install]/edit',
+        component: TestPage,
+      } as never),
+    ]);
+
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs()) as any[];
+    const layoutIds = configs.flatMap((config) =>
+      Object.keys(config.elements).filter((id) => id.startsWith('layout:')),
+    );
+    expect(layoutIds.sort()).toEqual([
+      'layout:/docs/%5B...parts=guides/install%5D',
+      'layout:/docs/[...parts=guides/install]',
+    ]);
+  });
+
   it('passes a static catch-all layout every segment of its values', async () => {
     const TestPage = () => null;
     const TestLayout = ({ children }: PropsWithChildren) => children;
