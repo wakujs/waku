@@ -90,9 +90,9 @@ const assertUniqueParamNames = (pathSpec: PathSpec, path: string) => {
   }
 };
 
-const eraseParamNames = (path: string) =>
-  pathSpecAsString(
-    parsePathWithSlug(path).map((item) =>
+const eraseParamNames = (pathSpec: PathSpec) =>
+  JSON.stringify(
+    pathSpec.map((item) =>
       item.type === 'literal' ? item : { ...item, name: '' },
     ),
   );
@@ -674,7 +674,9 @@ export function createPages<
     }
     const pagePathPattern = pathnameToRoutePath(page.path);
     const pathKey = pathnameToRoutePath(getGrouplessPath(page.path));
-    const unnamedPattern = page.exactPath ? pathKey : eraseParamNames(pathKey);
+    const unnamedPattern = eraseParamNames(
+      page.exactPath ? parseExactPath(pathKey) : parsePathWithSlug(pathKey),
+    );
     const kind = kindByUnnamedPattern.get(unnamedPattern);
     if (kind === 'api' || (kind === 'dynamic' && page.render === 'dynamic')) {
       throw new Error(`Duplicated path: ${page.path}`);
@@ -795,13 +797,13 @@ export function createPages<
       }
     }
     const apiPathPattern = pathnameToRoutePath(options.path);
-    const unnamedPattern = eraseParamNames(apiPathPattern);
+    const pathSpec = parsePathWithSlug(apiPathPattern);
+    const unnamedPattern = eraseParamNames(pathSpec);
     if (kindByUnnamedPattern.has(unnamedPattern)) {
       throw new Error(`Duplicated api path: ${options.path}`);
     }
     kindByUnnamedPattern.set(unnamedPattern, 'api');
     const sourceFile = options.unstable_sourceFile;
-    const pathSpec = parsePathWithSlug(apiPathPattern);
     assertUniqueParamNames(pathSpec, options.path);
     if (options.render === 'static') {
       const { numSlugs } = countSlugsAndWildcards(pathSpec);

@@ -2544,6 +2544,28 @@ describe('createPages pages and layouts', () => {
       ],
       message: 'Duplicated api path: /users/[name]',
     },
+    {
+      name: 'two dynamic pages with a static page between them',
+      register: ({ createPage }: CreatePagesFns) => [
+        createPage({
+          render: 'dynamic',
+          path: '/[id]',
+          component: () => null,
+        }),
+        createPage({
+          render: 'static',
+          path: '/[id]',
+          staticPaths: ['foo'],
+          component: () => null,
+        }),
+        createPage({
+          render: 'dynamic',
+          path: '/[name]',
+          component: () => null,
+        }),
+      ],
+      message: 'Duplicated path: /[name]',
+    },
   ])(
     'fails for $name that differ only in param names',
     async ({ register, message }) => {
@@ -2572,6 +2594,28 @@ describe('createPages pages and layouts', () => {
     expect(configs.map((config) => Object.keys(config.elements))).toEqual([
       ['page:/foo'],
       ['page:/[id]'],
+    ]);
+  });
+
+  it('registers an exact path with a literal [] and a dynamic page', async () => {
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/users/[]',
+        exactPath: true,
+        component: () => null,
+      } as never),
+      createPage({
+        render: 'dynamic',
+        path: '/users/[id]',
+        component: () => null,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs()) as any[];
+    expect(configs.map((config) => Object.keys(config.elements))).toEqual([
+      ['page:/users/[]'],
+      ['page:/users/[id]'],
     ]);
   });
 
