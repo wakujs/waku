@@ -2517,6 +2517,37 @@ describe('createPages pages and layouts', () => {
     ]);
   });
 
+  it('registers layouts at one path in two groups', async () => {
+    createPages(async ({ createPage, createLayout }) => [
+      createLayout({
+        render: 'static',
+        path: '/(a)',
+        component: ({ children }) => children,
+      }),
+      createLayout({
+        render: 'static',
+        path: '/(b)',
+        component: ({ children }) => children,
+      }),
+      createPage({
+        render: 'static',
+        path: '/(a)/x',
+        component: () => null,
+      }),
+      createPage({
+        render: 'static',
+        path: '/(b)/y',
+        component: () => null,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs()) as any[];
+    expect(configs.map((config) => Object.keys(config.elements))).toEqual([
+      ['layout:/(a)', 'page:/x'],
+      ['layout:/(b)', 'page:/y'],
+    ]);
+  });
+
   it('fails if duplicated dynamic paths are registered', async () => {
     createPages(async ({ createPage }) => [
       createPage({
