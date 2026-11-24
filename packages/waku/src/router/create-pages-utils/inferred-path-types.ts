@@ -196,11 +196,18 @@ export type PagePath<Config> = Config extends {
   ? Path
   : never;
 
-/** Whether the page at a path sets exactPath */
-export type IsExactPagePath<Config, Path extends string> = Config extends {
+type ExactPathMode<Page> =
+  true extends ExactPathValue<Page>
+    ? IsExactPathPage<Page> extends true
+      ? true
+      : boolean
+    : false;
+
+/** Whether the page at a path is exact: true, false or boolean */
+export type PageExactPath<Config, Path extends string> = Config extends {
   pages: infer Page;
 }
-  ? IsExactPathPage<Extract<Page, { path: Path }>>
+  ? ExactPathMode<Extract<Page, { path: Path }>>
   : false;
 
 /** Layout paths with slugs as string literals */
