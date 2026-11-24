@@ -277,6 +277,39 @@ describe('type tests', () => {
         component: () => 'Hello',
       });
     });
+    it('exact path props', () => {
+      const createPage: CreatePage = vi.fn();
+      createPage({
+        render: 'dynamic',
+        path: '/blog/[slug]',
+        component: (props) => {
+          expectType<TypeEqual<typeof props.slug, string>>(true);
+          return props.slug;
+        },
+      });
+      createPage({
+        render: 'static',
+        path: '/exact/[slug]',
+        exactPath: true,
+        // @ts-expect-error: an exact path has no params
+        component: ({ slug }) => slug,
+      });
+      createPage({
+        render: 'dynamic',
+        path: '/exact/[...rest]',
+        exactPath: true,
+        component: () => null,
+        // @ts-expect-error: an exact path has no params
+        unstable_getEtag: async ({ rest }) => rest.join(),
+      });
+      createPage({
+        render: 'dynamic',
+        path: '/blog/[slug]',
+        exactPath: Math.random() < 0.5,
+        // @ts-expect-error: the path may be exact
+        component: ({ slug }) => slug,
+      });
+    });
   });
   describe('createLayout', () => {
     it('static', () => {
@@ -2684,6 +2717,29 @@ describe('createPages pages and layouts', () => {
     });
     expect(page.props).toEqual({
       path: '/exact/[slug]/v[...rest]',
+      children: expect.anything(),
+    });
+  });
+
+  it('passes a static path value that looks like a param as is', async () => {
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'static',
+        path: '/[id]',
+        staticPaths: ['v[...rest]'],
+        component: () => null,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const [config] = Array.from(await getConfigs()) as any[];
+    const element = config.elements['page:/v[...rest]'].renderer({
+      routePath: '/v[...rest]',
+      query: undefined,
+    });
+    const page = element.type(element.props);
+    expect(page.props).toEqual({
+      id: 'v[...rest]',
+      path: '/v[...rest]',
       children: expect.anything(),
     });
   });

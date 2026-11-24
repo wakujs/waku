@@ -293,9 +293,12 @@ type SearchProps<Path extends string> = [RouteSearch<Path>] extends [never]
   ? {}
   : { search: RouteSearch<Path> };
 
-export type PropsForPages<Path extends string> = Prettify<
+export type PropsForPages<
+  Path extends string,
+  ExactPath extends boolean | undefined = undefined,
+> = Prettify<
   Omit<RouteProps<ReplaceAll<Path, `[${string}]`, string>>, 'hash'> &
-    SlugTypes<Path> &
+    (ExactPath extends true ? {} : SlugTypes<Path>) &
     SearchProps<Path>
 >;
 

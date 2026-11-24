@@ -258,22 +258,22 @@ export type CreatePage = <
     | {
         render: Extract<Render, 'static'>;
         path: PathWithoutSlug<Path>;
-        component: FunctionComponent<PropsForPages<Path>>;
+        component: FunctionComponent<PropsForPages<Path, ExactPath>>;
       }
     | ({
         render: Extract<Render, 'static'>;
         path: PathWithStaticSlugs<Path>;
-        component: FunctionComponent<PropsForPages<Path>>;
+        component: FunctionComponent<PropsForPages<Path, ExactPath>>;
       } & (ExactPath extends true ? {} : { staticPaths: StaticPaths }))
     | {
         render: Extract<Render, 'dynamic'>;
         path: PathWithoutSlug<Path>;
-        component: FunctionComponent<PropsForPages<Path>>;
+        component: FunctionComponent<PropsForPages<Path, ExactPath>>;
       }
     | {
         render: Extract<Render, 'dynamic'>;
         path: PathWithWildcard<Path, SlugKey, WildSlugKey>;
-        component: FunctionComponent<PropsForPages<Path>>;
+        component: FunctionComponent<PropsForPages<Path, ExactPath>>;
       }
     | {
         component: null; // For build-time pruning
@@ -300,7 +300,7 @@ export type CreatePage = <
      * Per-render element tag (etag) for a `dynamic` page. Ignored for `static`
      * pages.
      */
-    unstable_getEtag?: GetEtag<PropsForPages<Path>>;
+    unstable_getEtag?: GetEtag<PropsForPages<Path, ExactPath>>;
     /**
      * Bring-your-own search-params codec for this route. The server parses the
      * `query` with it (rejecting a malformed query as 400 and injecting a typed
