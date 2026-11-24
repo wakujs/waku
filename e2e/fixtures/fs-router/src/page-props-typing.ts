@@ -10,7 +10,10 @@ export function assertPagePropsTyping(
   dynamicProps: PageProps<'/nested/[name]'>,
   nestedSegmentProps: PageProps<'/page-with-segment/article/[slug]'>,
   catchAllProps: PageProps<'/subroute/[...catchAll]'>,
+  exactProps: PageProps<'/exact/[slug]'>,
 ) {
+  // @ts-expect-error an exact path has no params
+  void exactProps.slug;
   void staticProps.path;
   void dynamicProps.name;
   void nestedSegmentProps.slug;
