@@ -566,7 +566,6 @@ export function createPages<
   type PageEntry = {
     type: 'page';
     render: 'static' | 'dynamic';
-    groupedPath: string;
     pathSpec: PathSpec;
     pathPatternSpec?: PathSpec;
     params?: RouteParamValues;
@@ -623,11 +622,8 @@ export function createPages<
   const sliceEntryById = new Map<string, SliceEntry>();
   let rootItem: RootItem | undefined = undefined;
 
-  const createPathPropsMapper = (groupedPath: string) => {
-    const pathSpec = parsePathWithSlug(groupedPath);
-    return (pathname: string) =>
-      getPathMappingWithoutGroups(pathSpec, pathname);
-  };
+  const createPathPropsMapper = (pathSpec: PathSpec) => (pathname: string) =>
+    getPathMappingWithoutGroups(pathSpec, pathname);
 
   const createLayoutPropsMapper = (layoutPath: string) => {
     const pathSpec = parsePathWithSlug(layoutPath);
@@ -694,7 +690,9 @@ export function createPages<
     if (kind !== 'dynamic') {
       kindByUnnamedPattern.set(unnamedPattern, page.render);
     }
-    const pathSpec = parsePathWithSlug(pagePathPattern);
+    const pathSpec = page.exactPath
+      ? parseExactPath(pagePathPattern)
+      : parsePathWithSlug(pagePathPattern);
     if (!page.exactPath) {
       assertUniqueParamNames(pathSpec, page.path);
     }
@@ -708,7 +706,6 @@ export function createPages<
     const pageEntry = {
       type: 'page' as const,
       render: page.render,
-      groupedPath: pagePathPattern,
       pathSpec,
       component: page.component,
       noSsr: page.unstable_noSsr ?? false,
@@ -719,11 +716,7 @@ export function createPages<
     };
 
     if (page.exactPath) {
-      addRoute(
-        pathKey,
-        { ...pageEntry, pathSpec: parseExactPath(pagePathPattern) },
-        page.path,
-      );
+      addRoute(pathKey, pageEntry, page.path);
     } else if (page.render === 'static' && numSlugs === 0) {
       addRoute(pathKey, pageEntry, page.path);
     } else if (
@@ -739,7 +732,6 @@ export function createPages<
             pathnameToRoutePath(getGrouplessPath(concretePath)),
             {
               ...pageEntry,
-              groupedPath: pathnameToRoutePath(concretePath),
               pathSpec: pathItems.map((name) => ({ type: 'literal', name })),
               pathPatternSpec: pathSpec,
               params: mapping,
@@ -1190,7 +1182,7 @@ export function createPages<
               buildLayoutElements(layouts);
             elements[getPageSlotId(pathKey)] = buildPageElement(
               entry.component,
-              createPathPropsMapper(entry.groupedPath),
+              createPathPropsMapper(entry.pathSpec),
               true,
               entry.sourceFile,
             );
@@ -1218,7 +1210,7 @@ export function createPages<
               buildLayoutElements(layouts);
             elements[getPageSlotId(pathKey)] = buildPageElement(
               entry.component,
-              createPathPropsMapper(entry.groupedPath),
+              createPathPropsMapper(entry.pathSpec),
               false,
               entry.sourceFile,
               entry.getEtag,

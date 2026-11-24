@@ -17,6 +17,11 @@ export function parsePathWithSlug(path: string): PathSpec {
       }
       const [, prefix, inner, suffix] = match;
       if (inner!.startsWith('...')) {
+        if (prefix || suffix) {
+          throw new Error(
+            `A catch-all param cannot have a prefix or suffix: ${path}`,
+          );
+        }
         return {
           type: 'wildcard' as const,
           name: inner!.slice(3),

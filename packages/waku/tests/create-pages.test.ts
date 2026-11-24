@@ -2667,6 +2667,27 @@ describe('createPages pages and layouts', () => {
     ]);
   });
 
+  it('passes no params to an exact path that looks like params', async () => {
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'static',
+        path: '/exact/[slug]/v[...rest]',
+        exactPath: true,
+        component: () => null,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const [config] = Array.from(await getConfigs()) as any[];
+    const page = config.elements['page:/exact/[slug]/v[...rest]'].renderer({
+      routePath: '/exact/[slug]/v[...rest]',
+      query: undefined,
+    });
+    expect(page.props).toEqual({
+      path: '/exact/[slug]/v[...rest]',
+      children: expect.anything(),
+    });
+  });
+
   it('registers layouts at one path in two groups', async () => {
     createPages(async ({ createPage, createLayout }) => [
       createLayout({
