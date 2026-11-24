@@ -485,6 +485,16 @@ const createNestedElements = (
     children,
   );
 
+const getSegmentSpecificity = (item: PathSpec[number]) => {
+  if (item.type === 'literal') {
+    return Infinity;
+  }
+  if (item.type === 'group') {
+    return (item.prefix?.length ?? 0) + (item.suffix?.length ?? 0);
+  }
+  return 0;
+};
+
 const compareRoutePriority = (
   a: {
     pathSpec: PathSpec;
@@ -516,13 +526,13 @@ const compareRoutePriority = (
     return aPathLength > bPathLength ? -1 : 1;
   }
 
-  // If path lengths are equal, literal segments take priority over dynamic segments
+  // If path lengths are equal, literals and then params with more fixed text take priority
   const minLength = Math.min(aPathLength, bPathLength);
   for (let i = 0; i < minLength; i++) {
-    const aIsLiteral = aPathSpec[i]?.type === 'literal';
-    const bIsLiteral = bPathSpec[i]?.type === 'literal';
-    if (aIsLiteral !== bIsLiteral) {
-      return aIsLiteral ? -1 : 1;
+    const aSpecificity = getSegmentSpecificity(aPathSpec[i]!);
+    const bSpecificity = getSegmentSpecificity(bPathSpec[i]!);
+    if (aSpecificity !== bSpecificity) {
+      return aSpecificity > bSpecificity ? -1 : 1;
     }
   }
 
