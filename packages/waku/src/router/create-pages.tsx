@@ -90,6 +90,13 @@ const assertUniqueParamNames = (pathSpec: PathSpec, path: string) => {
   }
 };
 
+const eraseParamNames = (pathSpec: PathSpec) =>
+  JSON.stringify(
+    pathSpec.map((item) =>
+      item.type === 'literal' ? item : { ...item, name: '' },
+    ),
+  );
+
 const getPageSlotId = (pathKey: string) => `page:${pathKey}`;
 type RouteParamValues = Record<string, string | string[]>;
 
@@ -570,7 +577,7 @@ export function createPages<
   };
   // A path key is a declared pattern or a concrete path from staticPaths.
   const routeByPathKey = new Map<string, PageEntry | ApiEntry>();
-  const kindByDeclaredPath = new Map<string, 'page' | 'api'>();
+  const kindByUnnamedPattern = new Map<string, 'static' | 'dynamic' | 'api'>();
   const addRoute = (
     pathKey: string,
     entry: PageEntry | ApiEntry,
@@ -667,10 +674,16 @@ export function createPages<
     }
     const pagePathPattern = pathnameToRoutePath(page.path);
     const pathKey = pathnameToRoutePath(getGrouplessPath(page.path));
-    if (kindByDeclaredPath.get(pathKey) === 'api') {
+    const unnamedPattern = eraseParamNames(
+      page.exactPath ? parseExactPath(pathKey) : parsePathWithSlug(pathKey),
+    );
+    const kind = kindByUnnamedPattern.get(unnamedPattern);
+    if (kind === 'api' || (kind === 'dynamic' && page.render === 'dynamic')) {
       throw new Error(`Duplicated path: ${page.path}`);
     }
-    kindByDeclaredPath.set(pathKey, 'page');
+    if (kind !== 'dynamic') {
+      kindByUnnamedPattern.set(unnamedPattern, page.render);
+    }
     const pathSpec = parsePathWithSlug(pagePathPattern);
     if (!page.exactPath) {
       assertUniqueParamNames(pathSpec, page.path);
@@ -784,12 +797,13 @@ export function createPages<
       }
     }
     const apiPathPattern = pathnameToRoutePath(options.path);
-    if (kindByDeclaredPath.has(apiPathPattern)) {
+    const pathSpec = parsePathWithSlug(apiPathPattern);
+    const unnamedPattern = eraseParamNames(pathSpec);
+    if (kindByUnnamedPattern.has(unnamedPattern)) {
       throw new Error(`Duplicated api path: ${options.path}`);
     }
-    kindByDeclaredPath.set(apiPathPattern, 'api');
+    kindByUnnamedPattern.set(unnamedPattern, 'api');
     const sourceFile = options.unstable_sourceFile;
-    const pathSpec = parsePathWithSlug(apiPathPattern);
     assertUniqueParamNames(pathSpec, options.path);
     if (options.render === 'static') {
       const { numSlugs } = countSlugsAndWildcards(pathSpec);
