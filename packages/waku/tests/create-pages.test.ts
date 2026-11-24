@@ -2027,6 +2027,27 @@ describe('createPages pages and layouts', () => {
     ]);
   });
 
+  it('slug with fixed text takes priority before a later wildcard', async () => {
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/[slug]/[name]',
+        component: () => null,
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/post-[id]/[...rest]',
+        component: () => null,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs()) as any[];
+    expect(configs.map((config) => Object.keys(config.elements))).toEqual([
+      ['page:/post-[id]/[...rest]'],
+      ['page:/[slug]/[name]'],
+    ]);
+  });
+
   it('fails if static paths do not match the slug pattern', async () => {
     createPages(async ({ createPage }) => [
       createPage({
