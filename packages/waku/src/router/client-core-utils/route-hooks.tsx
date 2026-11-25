@@ -1,6 +1,9 @@
 import { useMemo } from 'react';
 import type { RouteParams } from '../create-pages-utils/inferred-path-types.js';
-import type { PathPattern } from '../isomorphic-utils/build-route-href.js';
+import type {
+  MaybeExactPath,
+  PathPattern,
+} from '../isomorphic-utils/build-route-href.js';
 import { matchRouteParams } from '../isomorphic-utils/match-route-params.js';
 import { useRouterHost } from './host.js';
 
@@ -11,16 +14,24 @@ import { useRouterHost } from './host.js';
  * different path; read its fields rather than using the object itself as an
  * effect dependency.
  */
+export function useParams<Path extends PathPattern>(options: {
+  from: Path;
+  exactPath: true;
+}): RouteParams<Path, true> | null;
 export function useParams<
   Path extends PathPattern,
   ExactPath extends boolean | undefined = undefined,
->({
+>(options: {
+  from: Path;
+  exactPath?: ExactPath;
+}): RouteParams<Path, MaybeExactPath<ExactPath>> | null;
+export function useParams({
   from,
   exactPath,
 }: {
-  from: Path;
-  exactPath?: ExactPath;
-}): RouteParams<Path, ExactPath> | null {
+  from: PathPattern;
+  exactPath?: boolean | undefined;
+}) {
   const { route } = useRouterHost();
   return useMemo(
     () => matchRouteParams(from, route.path, { exactPath }),

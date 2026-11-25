@@ -122,6 +122,12 @@ describe('route href factory types', () => {
       // @ts-expect-error a path that may not be exact needs its params
       maybeExact(false)();
       maybeExact(false)({ params: { slug: 'a' } });
+      const fromOptions = (options: {
+        path: '/posts/[slug]';
+        exactPath?: true;
+      }) => unstable_createRouteHref(options);
+      // @ts-expect-error an optional exactPath may be absent
+      fromOptions({ path: '/posts/[slug]' })();
     };
     expect(typeof assertTypes).toBe('function');
   });

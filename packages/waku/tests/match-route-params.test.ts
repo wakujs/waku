@@ -1,3 +1,5 @@
+import { expectType } from 'ts-expect';
+import type { TypeEqual } from 'ts-expect';
 import { describe, expect, test } from 'vitest';
 import { unstable_createRouteHref } from '../src/router/base-types.js';
 import { matchRouteParams } from '../src/router/isomorphic-utils/match-route-params.js';
@@ -108,6 +110,15 @@ describe('matchRouteParams types', () => {
         // @ts-expect-error an exact path has no params
         void exactParams.slug;
       }
+      const options: { exactPath?: true } = {};
+      const _maybeParams = matchRouteParams(
+        '/posts/[slug]',
+        '/posts/x',
+        options,
+      );
+      expectType<TypeEqual<typeof _maybeParams, {} | { slug: string } | null>>(
+        true,
+      );
     };
     expect(typeof assertTypes).toBe('function');
   });

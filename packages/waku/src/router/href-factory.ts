@@ -1,6 +1,7 @@
 import type { RouteParams } from './create-pages-utils/inferred-path-types.js';
 import {
   type ConstructedHref,
+  type MaybeExactPath,
   buildRouteHref,
 } from './isomorphic-utils/build-route-href.js';
 import type { SearchCodec } from './isomorphic-utils/search-codec.js';
@@ -42,6 +43,14 @@ type RouteHrefFactory<
   ? { readonly searchCodec?: never }
   : { readonly searchCodec: SearchCodec<Search> });
 
+type RouteHrefOptions<
+  Path extends string,
+  Search extends Record<string, unknown>,
+> = {
+  path: Path;
+  search?: SearchCodec<Search>;
+} & ([Search] extends [never] ? unknown : { search: SearchCodec<Search> });
+
 /**
  * Bind a route pattern and optional search codec. Calling the factory encodes
  * and checks params and serializes supplied search. Omitted search produces no
@@ -68,24 +77,31 @@ type RouteHrefFactory<
 export function createRouteHref<
   const Path extends string,
   Search extends Record<string, unknown> = never,
+>(
+  options: RouteHrefOptions<Path, Search> & { exactPath: true },
+): RouteHrefFactory<Path, Search, true>;
+export function createRouteHref<
+  const Path extends string,
+  Search extends Record<string, unknown> = never,
   ExactPath extends boolean | undefined = undefined,
->({
+>(
+  options: RouteHrefOptions<Path, Search> & { exactPath?: ExactPath },
+): RouteHrefFactory<Path, Search, MaybeExactPath<ExactPath>>;
+export function createRouteHref({
   path,
   search,
   exactPath,
 }: {
-  path: Path;
-  search?: SearchCodec<Search>;
-  exactPath?: ExactPath;
-} & ([Search] extends [never]
-  ? unknown
-  : { search: SearchCodec<Search> })): RouteHrefFactory<
-  Path,
-  Search,
-  ExactPath
-> {
-  const factory = Object.assign(
-    (target?: HrefTarget<Path, Search, ExactPath>) => {
+  path: string;
+  search?: SearchCodec<any>;
+  exactPath?: boolean | undefined;
+}): unknown {
+  return Object.assign(
+    (target?: {
+      params?: Record<string, unknown>;
+      search?: Record<string, unknown>;
+      hash?: string;
+    }) => {
       const pathname = buildRouteHref(path, target?.params, { exactPath });
       let query = '';
       if (target?.search !== undefined) {
@@ -101,5 +117,4 @@ export function createRouteHref<
     },
     { path, searchCodec: search, exactPath },
   );
-  return factory as unknown as RouteHrefFactory<Path, Search, ExactPath>;
 }

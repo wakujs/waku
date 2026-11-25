@@ -1,5 +1,5 @@
 import type { RouteParams } from '../create-pages-utils/inferred-path-types.js';
-import type { PathPattern } from './build-route-href.js';
+import type { MaybeExactPath, PathPattern } from './build-route-href.js';
 import {
   getPathMapping,
   parseExactPath,
@@ -27,14 +27,24 @@ const safeDecodeURIComponent = (value: string): string | null => {
  * base (/docs), while a root catch-all (/[...path]) matches / as { path: [] }.
  * With `exactPath`, the path is matched literally and has no params.
  */
+export function matchRouteParams<Path extends PathPattern>(
+  path: Path,
+  pathname: string,
+  options: { exactPath: true },
+): RouteParams<Path, true> | null;
 export function matchRouteParams<
   Path extends PathPattern,
   ExactPath extends boolean | undefined = undefined,
 >(
   path: Path,
   pathname: string,
-  options?: { exactPath?: ExactPath | undefined },
-): RouteParams<Path, ExactPath> | null {
+  options?: { exactPath?: ExactPath },
+): RouteParams<Path, MaybeExactPath<ExactPath>> | null;
+export function matchRouteParams(
+  path: string,
+  pathname: string,
+  options?: { exactPath?: boolean | undefined },
+): Record<string, string | string[]> | null {
   const parse = options?.exactPath ? parseExactPath : parsePathWithSlug;
   const pathSpec = parse(getGrouplessPath(path));
   const mapping = getPathMapping(pathSpec, pathname);
@@ -61,5 +71,5 @@ export function matchRouteParams<
       params[key] = decodedValue;
     }
   }
-  return params as RouteParams<Path, ExactPath>;
+  return params;
 }

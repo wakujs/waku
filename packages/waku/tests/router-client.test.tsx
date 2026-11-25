@@ -1232,6 +1232,11 @@ describe('useRouter + Link with context', () => {
         const path: string[] = catchAllParams.path;
         void path;
       }
+      const options: { exactPath?: true } = {};
+      const _maybeParams = useParams({ from: '/posts/[slug]', ...options });
+      expectType<TypeEqual<typeof _maybeParams, {} | { slug: string } | null>>(
+        true,
+      );
       return null;
     };
     expect(typeof TypeProbe).toBe('function');
