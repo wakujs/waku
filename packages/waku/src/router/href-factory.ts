@@ -5,7 +5,7 @@ import {
 } from './isomorphic-utils/build-route-href.js';
 import type { SearchCodec } from './isomorphic-utils/search-codec.js';
 
-type HrefParams<Path extends string, ExactPath> = ExactPath extends true
+type HrefParams<Path extends string, ExactPath> = [ExactPath] extends [true]
   ? { params?: never }
   : keyof RouteParams<Path> extends never
     ? { params?: never }
@@ -30,9 +30,11 @@ type RouteHrefFactory<
   ExactPath extends boolean | undefined = undefined,
 > = {
   (
-    ...args: keyof RouteParams<Path, ExactPath> extends never
+    ...args: [ExactPath] extends [true]
       ? [target?: HrefTarget<Path, Search, ExactPath>]
-      : [target: HrefTarget<Path, Search, ExactPath>]
+      : keyof RouteParams<Path> extends never
+        ? [target?: HrefTarget<Path, Search, ExactPath>]
+        : [target: HrefTarget<Path, Search, ExactPath>]
   ): ConstructedHref<Path>;
   readonly path: Path;
   readonly exactPath: ExactPath;
