@@ -320,7 +320,12 @@ export type PropsForPages<
 >;
 
 type GetResponseType<Response extends { render: string }> =
-  string extends Response['render'] ? { render: 'dynamic' } : Response;
+  string extends Response['render']
+    ? { render: 'dynamic' } & Pick<
+        Response,
+        Extract<keyof Response, 'exactPath'>
+      >
+    : Response;
 
 /**
  * Helper used for generation of types with fs-router for

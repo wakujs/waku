@@ -3,6 +3,7 @@ import type { TypeEqual } from 'ts-expect';
 import { describe, expect, it } from 'vitest';
 import type { PageProps } from '../src/router/base-types.js';
 import type {
+  GetConfigResponse,
   PageExactPath,
   PropsForPages,
 } from '../src/router/create-pages-utils/inferred-path-types.js';
@@ -43,6 +44,15 @@ describe('PageExactPath', () => {
       true,
     );
     expectType<TypeEqual<Props<'/blog/[slug]'>['slug'], string>>(true);
+  });
+  it('keeps exactPath from a getConfig without as const', () => {
+    type GetConfig = () => { render: string; exactPath: boolean };
+    type WidenedConfig = {
+      pages: { path: '/exact/[slug]' } & GetConfigResponse<GetConfig>;
+    };
+    expectType<
+      TypeEqual<PageExactPath<WidenedConfig, '/exact/[slug]'>, boolean>
+    >(true);
   });
   it('treats a path with no page as not exact', () => {
     expectType<TypeEqual<PageExactPath<{ pages: never }, '/a'>, false>>(true);
