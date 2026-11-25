@@ -1174,6 +1174,49 @@ describe('useRouter + Link with context', () => {
     view.unmount();
   });
 
+  test('route hooks match an exact path literally', async () => {
+    const exactRoute = unstable_createRouteHref({
+      path: '/exact/[slug]',
+      search: postsSearchCodec,
+      exactPath: true,
+    });
+    const capture = {
+      params: undefined as unknown,
+      search: undefined as unknown,
+      setSearch: undefined as
+        ReturnType<typeof useSetSearch<string, { tab: string }>> | undefined,
+    };
+    const Probe = () => {
+      capture.params = useParams({ from: exactRoute.path, exactPath: true });
+      capture.search = useSearch(exactRoute);
+      capture.setSearch = useSetSearch(exactRoute);
+      return null;
+    };
+    const navigate = vi.fn(async () => {});
+    const renderAt = (path: string) =>
+      renderApp(
+        <RouterHostContext
+          value={{ route: { path, query: 'tab=a', hash: '' }, navigate }}
+        >
+          <Probe />
+        </RouterHostContext>,
+      );
+
+    const exactView = await renderAt('/exact/[slug]');
+    expect(capture.params).toEqual({});
+    expect(capture.search).toEqual({ tab: 'a' });
+    await capture.setSearch!({ tab: 'b' });
+    expect(navigate).toHaveBeenCalledTimes(1);
+    exactView.unmount();
+
+    const otherView = await renderAt('/exact/x');
+    expect(capture.params).toBeNull();
+    expect(capture.search).toBeNull();
+    await capture.setSearch!({ tab: 'b' });
+    expect(navigate).toHaveBeenCalledTimes(1);
+    otherView.unmount();
+  });
+
   test('useParams params are typed from the pattern', () => {
     // Type-level assertions; the component is never rendered.
     const TypeProbe = () => {

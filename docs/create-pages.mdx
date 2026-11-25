@@ -298,6 +298,8 @@ export const getConfig = async () => {
 };
 ```
 
+Client route helpers read a path as a pattern, so pass `exactPath: true` to `unstable_createRouteHref`, `unstable_matchRouteParams`, `useParams_UNSTABLE`, `useSearch_UNSTABLE`, and `useSetSearch_UNSTABLE` for an exact path.
+
 ### Router paths type safety
 
 Waku provides inference for the router paths when created pages are returned from the callback passed into `createPages`. The following example shows how to setup router paths type safety.

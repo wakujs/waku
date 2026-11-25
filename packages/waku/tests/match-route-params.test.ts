@@ -48,6 +48,17 @@ describe('matchRouteParams', () => {
     expect(matchRouteParams('/docs/[...path]', '/docs')).toBeNull();
   });
 
+  test('matches an exact path literally', () => {
+    const exact = { exactPath: true } as const;
+    expect(matchRouteParams('/exact/[slug]', '/exact/[slug]', exact)).toEqual(
+      {},
+    );
+    expect(matchRouteParams('/exact/[slug]', '/exact/x', exact)).toBeNull();
+    expect(
+      matchRouteParams('/(g)/exact/v[...rest]', '/exact/v[...rest]', exact),
+    ).toEqual({});
+  });
+
   test('strips route groups', () => {
     expect(matchRouteParams('/(marketing)/about', '/about')).toEqual({});
     expect(
@@ -89,6 +100,13 @@ describe('matchRouteParams types', () => {
       if (catchAllParams) {
         const path: string[] = catchAllParams.path;
         void path;
+      }
+      const exactParams = matchRouteParams('/exact/[slug]', '/exact/[slug]', {
+        exactPath: true,
+      });
+      if (exactParams) {
+        // @ts-expect-error an exact path has no params
+        void exactParams.slug;
       }
     };
     expect(typeof assertTypes).toBe('function');

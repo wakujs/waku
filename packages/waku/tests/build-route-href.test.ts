@@ -18,6 +18,10 @@ const codec = {
 const post = unstable_createRouteHref({ path: '/posts/[slug]' });
 const docs = unstable_createRouteHref({ path: '/docs/[...path]' });
 const about = unstable_createRouteHref({ path: '/about' });
+const exact = unstable_createRouteHref({
+  path: '/(g)/exact/[slug]',
+  exactPath: true,
+});
 const searchPage = unstable_createRouteHref({
   path: '/href-search',
   search: codec,
@@ -55,6 +59,14 @@ describe('route href construction', () => {
   test('removes route groups', () => {
     const marketing = unstable_createRouteHref({ path: '/(marketing)/about' });
     expect(marketing()).toBe('/about');
+  });
+
+  test('uses an exact path literally', () => {
+    expect(exact()).toBe('/exact/[slug]');
+    expect(exact({ hash: 'top' })).toBe('/exact/[slug]#top');
+    expect(
+      unstable_createRouteHref({ path: '/v[...rest]', exactPath: true })(),
+    ).toBe('/v[...rest]');
   });
 
   test('serializes search via the supplied codec', () => {
@@ -102,6 +114,9 @@ describe('route href factory types', () => {
       about({ params: { slug: 'a' } });
       // @ts-expect-error unknown param name
       post({ params: { id: 'a' } });
+      exact();
+      // @ts-expect-error an exact path takes no params
+      exact({ params: { slug: 'a' } });
     };
     expect(typeof assertTypes).toBe('function');
   });

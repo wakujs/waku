@@ -11,11 +11,19 @@ import { useRouterHost } from './host.js';
  * different path; read its fields rather than using the object itself as an
  * effect dependency.
  */
-export function useParams<Path extends PathPattern>({
+export function useParams<
+  Path extends PathPattern,
+  ExactPath extends boolean | undefined = undefined,
+>({
   from,
+  exactPath,
 }: {
   from: Path;
-}): RouteParams<Path> | null {
+  exactPath?: ExactPath;
+}): RouteParams<Path, ExactPath> | null {
   const { route } = useRouterHost();
-  return useMemo(() => matchRouteParams(from, route.path), [from, route.path]);
+  return useMemo(
+    () => matchRouteParams(from, route.path, { exactPath }),
+    [from, exactPath, route.path],
+  );
 }
