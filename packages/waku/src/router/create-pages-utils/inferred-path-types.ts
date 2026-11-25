@@ -196,6 +196,23 @@ export type PagePath<Config> = Config extends {
   ? Path
   : never;
 
+type ExactPathMode<Page> = [Page] extends [never]
+  ? false
+  : Page extends unknown
+    ? true extends ExactPathValue<Page>
+      ? IsExactPathPage<Page> extends true
+        ? true
+        : boolean
+      : false
+    : never;
+
+/** Whether the page at a path is exact: true, false or boolean */
+export type PageExactPath<Config, Path extends string> = Config extends {
+  pages: infer Page;
+}
+  ? ExactPathMode<Extract<Page, { path: Path }>>
+  : false;
+
 /** Layout paths with slugs as string literals */
 export type LayoutPath<Config> = Config extends {
   layouts: { path: infer Path };
@@ -293,14 +310,24 @@ type SearchProps<Path extends string> = [RouteSearch<Path>] extends [never]
   ? {}
   : { search: RouteSearch<Path> };
 
-export type PropsForPages<Path extends string> = Prettify<
+export type PropsForPages<
+  Path extends string,
+  ExactPath extends boolean | undefined = undefined,
+> = Prettify<
   Omit<RouteProps<ReplaceAll<Path, `[${string}]`, string>>, 'hash'> &
-    SlugTypes<Path> &
+    (ExactPath extends true ? {} : SlugTypes<Path>) &
     SearchProps<Path>
 >;
 
 type GetResponseType<Response extends { render: string }> =
-  string extends Response['render'] ? { render: 'dynamic' } : Response;
+  Response extends unknown
+    ? string extends Response['render']
+      ? { render: 'dynamic' } & Pick<
+          Response,
+          Extract<keyof Response, 'exactPath'>
+        >
+      : Response
+    : never;
 
 /**
  * Helper used for generation of types with fs-router for

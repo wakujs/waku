@@ -106,6 +106,15 @@ describe('parsePathWithSlug', () => {
       { type: 'wildcard', name: 'path' },
     ]);
   });
+
+  test.each(['/files/v[...rest]', '/files/[...rest].json'])(
+    'rejects a catch-all with a prefix or suffix in %s',
+    (path) => {
+      expect(() => parsePathWithSlug(path)).toThrowError(
+        `A catch-all param cannot have a prefix or suffix: ${path}`,
+      );
+    },
+  );
 });
 
 describe('getPathMapping', () => {

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type {
   LayoutParams,
   LayoutPath,
+  PageExactPath,
   PagePath,
   PropsForPages,
 } from './create-pages-utils/inferred-path-types.js';
@@ -40,7 +41,7 @@ export type PageProps<
   Path extends ([PagePath<CreatePagesConfig>] extends [never]
     ? string
     : PagePath<CreatePagesConfig>),
-> = PropsForPages<Path>;
+> = PropsForPages<Path, PageExactPath<CreatePagesConfig, Path>>;
 
 /**
  * Props for layouts when using `createPages`. Adds the required `children` to
