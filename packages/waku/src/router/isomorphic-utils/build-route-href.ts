@@ -13,7 +13,7 @@ export type PathPattern = [PagePath<CreatePagesConfig>] extends [never]
 
 /** An `exactPath` that is not given as `true` may be absent at runtime. */
 export type MaybeExactPath<ExactPath> = [ExactPath] extends [false | undefined]
-  ? undefined
+  ? ExactPath | undefined
   : boolean | undefined;
 
 type AllowTrailingSlash<Path extends string> = Path extends '/'

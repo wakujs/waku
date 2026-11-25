@@ -128,6 +128,16 @@ describe('route href factory types', () => {
       }) => unstable_createRouteHref(options);
       // @ts-expect-error an optional exactPath may be absent
       fromOptions({ path: '/posts/[slug]' })();
+      const notExact = unstable_createRouteHref({
+        path: '/posts/[slug]',
+        exactPath: false,
+      });
+      const reused = unstable_createRouteHref({
+        path: notExact.path,
+        exactPath: notExact.exactPath ?? true,
+      });
+      // @ts-expect-error a reused exactPath may be false
+      reused();
     };
     expect(typeof assertTypes).toBe('function');
   });
