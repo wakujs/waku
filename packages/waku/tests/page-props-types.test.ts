@@ -54,6 +54,17 @@ describe('PageExactPath', () => {
       TypeEqual<PageExactPath<WidenedConfig, '/exact/[slug]'>, boolean>
     >(true);
   });
+  it('keeps exactPath from a getConfig that returns either config', () => {
+    type GetConfig = () =>
+      | { readonly render: 'dynamic'; readonly exactPath: true }
+      | { render: string };
+    type MixedConfig = {
+      pages: { path: '/blog/[slug]' } & GetConfigResponse<GetConfig>;
+    };
+    expectType<TypeEqual<PageExactPath<MixedConfig, '/blog/[slug]'>, boolean>>(
+      true,
+    );
+  });
   it('treats a path with no page as not exact', () => {
     expectType<TypeEqual<PageExactPath<{ pages: never }, '/a'>, false>>(true);
   });
