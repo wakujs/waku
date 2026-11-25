@@ -196,12 +196,15 @@ export type PagePath<Config> = Config extends {
   ? Path
   : never;
 
-type ExactPathMode<Page> =
-  true extends ExactPathValue<Page>
-    ? IsExactPathPage<Page> extends true
-      ? true
-      : boolean
-    : false;
+type ExactPathMode<Page> = [Page] extends [never]
+  ? false
+  : Page extends unknown
+    ? true extends ExactPathValue<Page>
+      ? IsExactPathPage<Page> extends true
+        ? true
+        : boolean
+      : false
+    : never;
 
 /** Whether the page at a path is exact: true, false or boolean */
 export type PageExactPath<Config, Path extends string> = Config extends {

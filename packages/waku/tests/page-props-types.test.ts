@@ -39,6 +39,12 @@ describe('PageExactPath', () => {
       : false;
     expectType<TypeEqual<HasSlug<'/exact/[slug]'>, false>>(true);
     expectType<TypeEqual<HasSlug<'/maybe/[slug]'>, false>>(true);
+    expectType<TypeEqual<HasSlug<'/exact/[slug]' | '/blog/[slug]'>, false>>(
+      true,
+    );
     expectType<TypeEqual<Props<'/blog/[slug]'>['slug'], string>>(true);
+  });
+  it('treats a path with no page as not exact', () => {
+    expectType<TypeEqual<PageExactPath<{ pages: never }, '/a'>, false>>(true);
   });
 });
