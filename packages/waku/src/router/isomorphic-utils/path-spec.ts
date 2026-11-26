@@ -36,6 +36,13 @@ export function parsePathWithSlug(path: string): PathSpec {
     });
 }
 
+export function parseExactPath(path: string): PathSpec {
+  return path
+    .split('/')
+    .filter(Boolean)
+    .map((name) => ({ type: 'literal', name }));
+}
+
 export function pathSpecAsString(pathSpec: PathSpec) {
   return (
     '/' +

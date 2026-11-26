@@ -19,6 +19,7 @@ type SearchRoute<
 > = {
   path: NormalizePath<Path> extends NormalizePath<PathPattern> ? Path : never;
   searchCodec: SearchCodec<Search>;
+  exactPath?: boolean | undefined;
 };
 
 /**
@@ -30,14 +31,14 @@ type SearchRoute<
 export function useSearch<
   const Path extends string,
   Search extends Record<string, unknown>,
->({ path, searchCodec }: SearchRoute<Path, Search>): Search | null {
+>({ path, searchCodec, exactPath }: SearchRoute<Path, Search>): Search | null {
   const { route } = useRouterHost();
   return useMemo(
     () =>
-      matchRouteParams(path as PathPattern, route.path) === null
+      matchRouteParams(path as PathPattern, route.path, { exactPath }) === null
         ? null
         : searchCodec.parse(route.query),
-    [path, searchCodec, route.path, route.query],
+    [path, searchCodec, exactPath, route.path, route.query],
   );
 }
 
@@ -51,11 +52,18 @@ export function useSearch<
 export function useSetSearch<
   const Path extends string,
   Search extends Record<string, unknown>,
->({ path, searchCodec }: SearchRoute<Path, Search>): SetSearch<Search> {
+>({
+  path,
+  searchCodec,
+  exactPath,
+}: SearchRoute<Path, Search>): SetSearch<Search> {
   const { route, navigate } = useRouterHost();
   return useCallback<SetSearch<Search>>(
     async (update, options) => {
-      if (matchRouteParams(path as PathPattern, route.path) === null) {
+      if (
+        matchRouteParams(path as PathPattern, route.path, { exactPath }) ===
+        null
+      ) {
         return;
       }
       const prev = searchCodec.parse(route.query);
@@ -70,6 +78,14 @@ export function useSetSearch<
         scroll: options?.scroll ?? false,
       });
     },
-    [path, searchCodec, route.path, route.query, route.hash, navigate],
+    [
+      path,
+      searchCodec,
+      exactPath,
+      route.path,
+      route.query,
+      route.hash,
+      navigate,
+    ],
   );
 }

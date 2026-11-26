@@ -1,6 +1,10 @@
 import type { RouteParams } from '../create-pages-utils/inferred-path-types.js';
-import type { PathPattern } from './build-route-href.js';
-import { getPathMapping, parsePathWithSlug } from './path-spec.js';
+import type { MaybeExactPath, PathPattern } from './build-route-href.js';
+import {
+  getPathMapping,
+  parseExactPath,
+  parsePathWithSlug,
+} from './path-spec.js';
 import { getGrouplessPath } from './route-path.js';
 
 const safeDecodeURIComponent = (value: string): string | null => {
@@ -21,12 +25,28 @@ const safeDecodeURIComponent = (value: string): string | null => {
  * throwing, since this runs during render. Catch-all matching follows the
  * router: a prefixed terminal catch-all (/docs/[...path]) does not match its
  * base (/docs), while a root catch-all (/[...path]) matches / as { path: [] }.
+ * With `exactPath`, the path is matched literally and has no params.
  */
 export function matchRouteParams<Path extends PathPattern>(
   path: Path,
   pathname: string,
-): RouteParams<Path> | null {
-  const pathSpec = parsePathWithSlug(getGrouplessPath(path));
+  options: { exactPath: true },
+): RouteParams<Path, true> | null;
+export function matchRouteParams<
+  Path extends PathPattern,
+  ExactPath extends boolean | undefined = undefined,
+>(
+  path: Path,
+  pathname: string,
+  options?: { exactPath?: ExactPath },
+): RouteParams<Path, MaybeExactPath<ExactPath>> | null;
+export function matchRouteParams(
+  path: string,
+  pathname: string,
+  options?: { exactPath?: boolean | undefined },
+): Record<string, string | string[]> | null {
+  const parse = options?.exactPath ? parseExactPath : parsePathWithSlug;
+  const pathSpec = parse(getGrouplessPath(path));
   const mapping = getPathMapping(pathSpec, pathname);
   if (mapping === null) {
     return null;
@@ -51,5 +71,5 @@ export function matchRouteParams<Path extends PathPattern>(
       params[key] = decodedValue;
     }
   }
-  return params as RouteParams<Path>;
+  return params;
 }

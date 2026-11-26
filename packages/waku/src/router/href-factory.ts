@@ -1,14 +1,14 @@
 import type { RouteParams } from './create-pages-utils/inferred-path-types.js';
 import {
   type ConstructedHref,
+  type MaybeExactPath,
   buildRouteHref,
 } from './isomorphic-utils/build-route-href.js';
 import type { SearchCodec } from './isomorphic-utils/search-codec.js';
 
-type HrefTarget<Path extends string, Search> = {
-  hash?: string;
-} & ([Search] extends [never] ? { search?: never } : { search?: Search }) &
-  (keyof RouteParams<Path> extends never
+type HrefParams<Path extends string, ExactPath> = [ExactPath] extends [true]
+  ? { params?: never }
+  : keyof RouteParams<Path> extends never
     ? { params?: never }
     : {
         params: {
@@ -18,21 +18,38 @@ type HrefTarget<Path extends string, Search> = {
             ? readonly string[]
             : RouteParams<Path>[Key];
         };
-      });
+      };
+
+type HrefTarget<Path extends string, Search, ExactPath> = {
+  hash?: string;
+} & ([Search] extends [never] ? { search?: never } : { search?: Search }) &
+  HrefParams<Path, ExactPath>;
 
 type RouteHrefFactory<
   Path extends string,
   Search extends Record<string, unknown> = never,
+  ExactPath extends boolean | undefined = undefined,
 > = {
   (
-    ...args: keyof RouteParams<Path> extends never
-      ? [target?: HrefTarget<Path, Search>]
-      : [target: HrefTarget<Path, Search>]
+    ...args: [ExactPath] extends [true]
+      ? [target?: HrefTarget<Path, Search, ExactPath>]
+      : keyof RouteParams<Path> extends never
+        ? [target?: HrefTarget<Path, Search, ExactPath>]
+        : [target: HrefTarget<Path, Search, ExactPath>]
   ): ConstructedHref<Path>;
   readonly path: Path;
+  readonly exactPath: ExactPath;
 } & ([Search] extends [never]
   ? { readonly searchCodec?: never }
   : { readonly searchCodec: SearchCodec<Search> });
+
+type RouteHrefOptions<
+  Path extends string,
+  Search extends Record<string, unknown>,
+> = {
+  path: Path;
+  search?: SearchCodec<Search>;
+} & ([Search] extends [never] ? unknown : { search: SearchCodec<Search> });
 
 /**
  * Bind a route pattern and optional search codec. Calling the factory encodes
@@ -40,6 +57,8 @@ type RouteHrefFactory<
  * query and does not call the codec. Param and serializer errors throw before
  * navigation. Returned hrefs are primitive strings and can cross Server/Client
  * Component boundaries; they exclude the application's base.
+ *
+ * With `exactPath`, the path is used literally and takes no params.
  *
  * Outbound search validation belongs in `serialize`; the factory does not call
  * `parse`. The destination validates the incoming query and may reject it,
@@ -58,18 +77,32 @@ type RouteHrefFactory<
 export function createRouteHref<
   const Path extends string,
   Search extends Record<string, unknown> = never,
->({
+>(
+  options: RouteHrefOptions<Path, Search> & { exactPath: true },
+): RouteHrefFactory<Path, Search, true>;
+export function createRouteHref<
+  const Path extends string,
+  Search extends Record<string, unknown> = never,
+  ExactPath extends boolean | undefined = undefined,
+>(
+  options: RouteHrefOptions<Path, Search> & { exactPath?: ExactPath },
+): RouteHrefFactory<Path, Search, MaybeExactPath<ExactPath>>;
+export function createRouteHref({
   path,
   search,
+  exactPath,
 }: {
-  path: Path;
-  search?: SearchCodec<Search>;
-} & ([Search] extends [never]
-  ? unknown
-  : { search: SearchCodec<Search> })): RouteHrefFactory<Path, Search> {
-  const factory = Object.assign(
-    (target?: HrefTarget<Path, Search>) => {
-      const pathname = buildRouteHref(path, target?.params);
+  path: string;
+  search?: SearchCodec<any>;
+  exactPath?: boolean | undefined;
+}): unknown {
+  return Object.assign(
+    (target?: {
+      params?: Record<string, unknown>;
+      search?: Record<string, unknown>;
+      hash?: string;
+    }) => {
+      const pathname = buildRouteHref(path, target?.params, { exactPath });
       let query = '';
       if (target?.search !== undefined) {
         if (!search) {
@@ -82,7 +115,6 @@ export function createRouteHref<
       const hash = target?.hash?.replace(/^#/, '');
       return pathname + (query ? '?' + query : '') + (hash ? '#' + hash : '');
     },
-    { path, searchCodec: search },
+    { path, searchCodec: search, exactPath },
   );
-  return factory as unknown as RouteHrefFactory<Path, Search>;
 }

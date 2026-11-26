@@ -1,11 +1,20 @@
 import type { CreatePagesConfig, RouteConfig } from '../base-types.js';
 import type { PagePath } from '../create-pages-utils/inferred-path-types.js';
-import { getPathMapping, parsePathWithSlug } from './path-spec.js';
+import {
+  getPathMapping,
+  parseExactPath,
+  parsePathWithSlug,
+} from './path-spec.js';
 import { getGrouplessPath } from './route-path.js';
 
 export type PathPattern = [PagePath<CreatePagesConfig>] extends [never]
   ? string
   : PagePath<CreatePagesConfig>;
+
+/** An `exactPath` that is not given as `true` may be absent at runtime. */
+export type MaybeExactPath<ExactPath> = [ExactPath] extends [false | undefined]
+  ? ExactPath | undefined
+  : boolean | undefined;
 
 type AllowTrailingSlash<Path extends string> = Path extends '/'
   ? Path
@@ -53,8 +62,10 @@ export type NavigationHref = RouteHref | ConstructedHref<PathPattern>;
 export function buildRouteHref(
   path: string,
   params?: Record<string, unknown>,
+  options?: { exactPath?: boolean | undefined },
 ): string {
-  const pathSpec = parsePathWithSlug(getGrouplessPath(path));
+  const parse = options?.exactPath ? parseExactPath : parsePathWithSlug;
+  const pathSpec = parse(getGrouplessPath(path));
   const segments: string[] = [];
   for (const item of pathSpec) {
     if (item.type === 'literal') {

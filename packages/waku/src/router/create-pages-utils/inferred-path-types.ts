@@ -237,8 +237,11 @@ type SlugTypes<Path extends string> =
       }
     : never;
 
-/** Extracts route parameters from a route path. */
-export type RouteParams<Path extends string> = Prettify<SlugTypes<Path>>;
+/** Extracts route parameters from a route path. An exact path has none. */
+export type RouteParams<
+  Path extends string,
+  ExactPath extends boolean | undefined = undefined,
+> = ExactPath extends true ? {} : Prettify<SlugTypes<Path>>;
 
 /** Route params of a static layout that dynamic pages may share. */
 export type SharedLayoutParams<Path extends string> = {

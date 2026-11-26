@@ -17,13 +17,11 @@ import type {
   RouteParams,
   SharedLayoutParams,
 } from './create-pages-utils/inferred-path-types.js';
-import {
-  countSlugsAndWildcards,
-  parseExactPath,
-} from './create-pages-utils/path-spec.js';
+import { countSlugsAndWildcards } from './create-pages-utils/path-spec.js';
 import { createConfiguredRouter } from './create-pages-utils/router.js';
 import {
   getPathMapping,
+  parseExactPath,
   parsePathWithSlug,
   pathSpecAsString,
 } from './isomorphic-utils/path-spec.js';

@@ -18,6 +18,10 @@ const codec = {
 const post = unstable_createRouteHref({ path: '/posts/[slug]' });
 const docs = unstable_createRouteHref({ path: '/docs/[...path]' });
 const about = unstable_createRouteHref({ path: '/about' });
+const exact = unstable_createRouteHref({
+  path: '/(g)/exact/[slug]',
+  exactPath: true,
+});
 const searchPage = unstable_createRouteHref({
   path: '/href-search',
   search: codec,
@@ -55,6 +59,14 @@ describe('route href construction', () => {
   test('removes route groups', () => {
     const marketing = unstable_createRouteHref({ path: '/(marketing)/about' });
     expect(marketing()).toBe('/about');
+  });
+
+  test('uses an exact path literally', () => {
+    expect(exact()).toBe('/exact/[slug]');
+    expect(exact({ hash: 'top' })).toBe('/exact/[slug]#top');
+    expect(
+      unstable_createRouteHref({ path: '/v[...rest]', exactPath: true })(),
+    ).toBe('/v[...rest]');
   });
 
   test('serializes search via the supplied codec', () => {
@@ -102,6 +114,30 @@ describe('route href factory types', () => {
       about({ params: { slug: 'a' } });
       // @ts-expect-error unknown param name
       post({ params: { id: 'a' } });
+      exact();
+      // @ts-expect-error an exact path takes no params
+      exact({ params: { slug: 'a' } });
+      const maybeExact = (flag: boolean) =>
+        unstable_createRouteHref({ path: '/posts/[slug]', exactPath: flag });
+      // @ts-expect-error a path that may not be exact needs its params
+      maybeExact(false)();
+      maybeExact(false)({ params: { slug: 'a' } });
+      const fromOptions = (options: {
+        path: '/posts/[slug]';
+        exactPath?: true;
+      }) => unstable_createRouteHref(options);
+      // @ts-expect-error an optional exactPath may be absent
+      fromOptions({ path: '/posts/[slug]' })();
+      const notExact = unstable_createRouteHref({
+        path: '/posts/[slug]',
+        exactPath: false,
+      });
+      const reused = unstable_createRouteHref({
+        path: notExact.path,
+        exactPath: notExact.exactPath ?? true,
+      });
+      // @ts-expect-error a reused exactPath may be false
+      reused();
     };
     expect(typeof assertTypes).toBe('function');
   });
