@@ -1,10 +1,7 @@
 import type { MiddlewareHandler } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { Hono } from 'hono/tiny';
-import {
-  unstable_createServerEntryAdapter as createServerEntryAdapter,
-  unstable_startPreviewServer as startPreviewServer,
-} from 'waku/adapter-builders';
+import { unstable_createServerEntryAdapter as createServerEntryAdapter } from 'waku/adapter-builders';
 import {
   unstable_constants as constants,
   unstable_consumeMultiplexedStream as consumeMultiplexedStream,
@@ -154,7 +151,7 @@ export default createServerEntryAdapter(
       ...options?.handlers,
       fetch: fetchFn,
       build: async (utils, { buildToken }: Partial<BuildOptions> = {}) => {
-        const server = await startPreviewServer();
+        const server = await utils.unstable_startPreviewServer();
         // Fallback middleware for the case without @cloudflare/vite-plugin
         server.middlewares.use(async (_req, res, next) => {
           try {

@@ -255,11 +255,16 @@ Keep build enhancers focused on deployment output. Route rendering and static ge
 
 ## Preview Server
 
-Some platform build tools need to execute Waku through a local runtime during `waku build`. Use `unstable_startPreviewServer` for that pattern:
+Some platform build tools need to execute Waku through a local runtime during `waku build`. Call `unstable_startPreviewServer` from the utils passed to your server entry's `build` hook for that pattern:
 
 ```ts
-import { unstable_startPreviewServer as startPreviewServer } from 'waku/adapter-builders';
+build: async (utils) => {
+  const server = await utils.unstable_startPreviewServer();
+  // ...
+},
 ```
+
+The `unstable_startPreviewServer` export from `waku/adapter-builders` is deprecated and will be removed.
 
 It returns:
 

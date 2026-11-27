@@ -24,9 +24,9 @@ const postBuild = async ({
 }: BuildOptions) => {
   const SERVE_JS = 'serve-vercel.js';
   const serveCode = `
-import { INTERNAL_runFetch } from './server/index.js';
+import { INTERNAL_runFetch, unstable_serverEntry } from './server/index.js';
 
-const getRequestListener = globalThis.__WAKU_HONO_NODE_SERVER_GET_REQUEST_LISTENER__;
+const getRequestListener = unstable_serverEntry.INTERNAL_getRequestListener;
 
 export default getRequestListener(
   (req, ...args) => INTERNAL_runFetch(process.env, req, ...args)

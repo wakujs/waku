@@ -48,14 +48,14 @@ export default createServerEntryAdapter(
     const buildOptions: BuildOptions = {
       distDir: config.distDir,
     };
-    globalThis.__WAKU_AWS_LAMBDA_HANDLE__ = options?.streaming
-      ? honoAwsLambda.streamHandle
-      : honoAwsLambda.handle;
     return {
       fetch: app.fetch,
       build: processBuild,
       buildOptions,
       buildEnhancers: ['waku/adapters/aws-lambda-build-enhancer'],
+      INTERNAL_handle: options?.streaming
+        ? honoAwsLambda.streamHandle
+        : honoAwsLambda.handle,
     };
   },
 );

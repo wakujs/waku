@@ -1,4 +1,4 @@
-import { exec } from 'node:child_process';
+import { exec, execFileSync } from 'node:child_process';
 import {
   cpSync,
   existsSync,
@@ -11,7 +11,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { expect } from '@playwright/test';
 import { getManagedServerEntry } from '../packages/waku/dist/lib/utils-build/managed.js';
@@ -82,10 +82,25 @@ const assertCloudflareBuildOutput = (dir: string) => {
   ).toBe(false);
 };
 
+const assertServeExport = (file: string, name: string) => (dir: string) => {
+  const url = pathToFileURL(join(dir, 'dist', file)).href;
+  const type = execFileSync(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      `const m = await import(${JSON.stringify(url)}); console.log(typeof m.${name});`,
+    ],
+    { cwd: dir, encoding: 'utf-8' },
+  );
+  expect(type.trim()).toBe('function');
+};
+
 const buildPlatformTarget: BuildPlatformTarget[] = [
   {
     adapter: 'vercel',
     clearDirOrFile: ['dist', '.vercel'],
+    assertBuildOutput: assertServeExport('serve-vercel.js', 'default'),
   },
   {
     adapter: 'netlify',
@@ -103,6 +118,7 @@ const buildPlatformTarget: BuildPlatformTarget[] = [
   {
     adapter: 'aws-lambda',
     clearDirOrFile: ['dist'],
+    assertBuildOutput: assertServeExport('serve-aws-lambda.js', 'handler'),
   },
 ];
 

@@ -10,15 +10,9 @@ declare global {
     import('./vite-plugins/rsc-devtools.js').DebugChannelRegistry | undefined;
   var __WAKU_ROUTER_PREFETCH__:
     ((path: string, callback: (id: string) => void) => void) | undefined;
-  var __WAKU_HONO_NODE_SERVER_GET_REQUEST_LISTENER__:
-    (typeof import('@hono/node-server'))['getRequestListener'] | undefined;
   var __WAKU_DENO_ADAPTER_HONO__:
     (typeof import('hono/tiny'))['Hono'] | undefined;
   var __WAKU_DENO_ADAPTER_SERVE_STATIC__:
     | ((options: { root: string }) => import('hono').MiddlewareHandler)
-    | undefined;
-  var __WAKU_AWS_LAMBDA_HANDLE__:
-    | (typeof import('hono/aws-lambda'))['handle']
-    | (typeof import('hono/aws-lambda'))['streamHandle']
     | undefined;
 }
