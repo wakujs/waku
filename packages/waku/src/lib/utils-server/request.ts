@@ -20,6 +20,10 @@ const invokeServerFunction = async (
   }
 };
 
+// @vitejs/plugin-rsc looks both parts up on plain objects, where an inherited name resolves too
+const usesInheritedName = (serverFunctionId: string) =>
+  serverFunctionId.split('#').some((part) => part in Object.prototype);
+
 export async function getInput(
   req: Request,
   config: Omit<Required<Config>, 'vite'>,
@@ -43,7 +47,9 @@ export async function getInput(
   if (parsed.type !== 'http') {
     if (parsed.type === 'call') {
       validateSameOriginPost(req);
-      const serverFunction = await loadServerAction(parsed.serverFunctionId);
+      const serverFunction = usesInheritedName(parsed.serverFunctionId)
+        ? undefined
+        : await loadServerAction(parsed.serverFunctionId);
       if (typeof serverFunction !== 'function') {
         throw new Response('Not Found', { status: 404 });
       }

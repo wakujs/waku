@@ -222,6 +222,48 @@ describe('getInput server action request validation', () => {
     }
   });
 
+  it('answers 404 without loading when the server function id uses an inherited name', async () => {
+    const references: Record<string, () => Record<string, unknown>> = {
+      foo: () => ({ bar: () => {} }),
+    };
+    const loadServerAction = vi.fn(async (id: string) => {
+      const [file, name] = id.split('#') as [string, string];
+      return references[file]!()[name];
+    });
+    const getCallStatus = (id: string) =>
+      getStatus(
+        getInput(
+          new Request(
+            formatRscUrl(encodeServerFunctionId(id), 'https://app.test/'),
+            {
+              method: 'POST',
+              body: '[]',
+              headers: { origin: 'https://app.test' },
+            },
+          ),
+          makeConfig(),
+          undefined,
+          vi.fn().mockResolvedValue([]),
+          vi.fn(),
+          vi.fn(),
+          loadServerAction,
+        ),
+      );
+    for (const id of [
+      'constructor#constructor',
+      'toString#constructor',
+      '__proto__#bar',
+      'foo#constructor',
+      'foo#toString',
+      'foo#__proto__',
+    ]) {
+      expect(await getCallStatus(id), id).toBe(404);
+    }
+    expect(loadServerAction).not.toHaveBeenCalled();
+    expect(await getCallStatus('foo#bar')).toBeUndefined();
+    expect(loadServerAction).toHaveBeenCalledExactlyOnceWith('foo#bar');
+  });
+
   it('completes hydrated and form actions after cancellation without continuing their bodies', async () => {
     const continued = vi.fn();
     const action = vi.fn(async () => {
