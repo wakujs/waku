@@ -15,11 +15,11 @@ import {
   IS_ORIGIN_ID,
   IS_STATIC_ID,
   ROUTE_ID,
-  decodeRoutePath,
   decodeSliceId,
   encodeRoutePath,
   getRouteSlotId,
   getSliceSlotId,
+  parseRoutePath,
 } from '../isomorphic-utils/router-protocol.js';
 import { ROUTER_METADATA } from './build-metadata.js';
 import { getRouterPrefetchCode } from './client-code.js';
@@ -106,23 +106,24 @@ export function createRequestHandler({
   ) => {
     const renderIntentRsc = async (): ReturnType<HandleRequest> => {
       const intent = getRouteIntent();
-      if (input.type === 'rsc' && decodeSliceId(input.rscPath) === null) {
-        const pathname = decodeRoutePath(input.rscPath);
-        const slotId = getRouteSlotId(pathname);
-        return renderRsc(
-          {
-            ...(await routeEntries.getRouteMetadata(
-              pathname,
-              getQuery(input.rscParams),
-            )),
-            [IS_STATIC_ID]: false,
-            [slotId]: null,
-            [INTENT_ID]: intent.promise,
-          },
-          { etags: { [slotId]: '' } },
-        );
+      const pathname =
+        input.type === 'rsc' ? parseRoutePath(input.rscPath) : null;
+      if (input.type !== 'rsc' || pathname === null) {
+        return renderRsc({ [INTENT_ID]: intent.promise });
       }
-      return renderRsc({ [INTENT_ID]: intent.promise });
+      const slotId = getRouteSlotId(pathname);
+      return renderRsc(
+        {
+          ...(await routeEntries.getRouteMetadata(
+            pathname,
+            getQuery(input.rscParams),
+          )),
+          [IS_STATIC_ID]: false,
+          [slotId]: null,
+          [INTENT_ID]: intent.promise,
+        },
+        { etags: { [slotId]: '' } },
+      );
     };
     const handleRequest = async (): ReturnType<HandleRequest> => {
       const intent = getRouteIntent();

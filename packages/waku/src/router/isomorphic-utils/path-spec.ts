@@ -99,6 +99,9 @@ export function getPathMapping(
   pathSpec: PathSpec,
   pathname: string,
 ): Record<string, string | string[]> | null {
+  if (!pathname.startsWith('/')) {
+    return null;
+  }
   const actual = pathname === '/' ? [] : pathname.slice(1).split('/');
   if (actual.includes('')) {
     return null;

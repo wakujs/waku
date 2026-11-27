@@ -135,6 +135,21 @@ describe('parseRouterRequest', () => {
     ).toBeNull();
   });
 
+  it('returns null for an rsc url whose route path is not in encoded form', () => {
+    for (const pathname of [
+      '/RSC/R/dashboard/.txt',
+      '/RSC/R/dashboard//.txt',
+      '/RSC/R/dashboard/index.html.txt',
+      '/RSC/Rdashboard.txt',
+      '/RSC/R.txt',
+    ]) {
+      expect(
+        parseRouterRequest(req('http://localhost' + pathname)),
+        pathname,
+      ).toBeNull();
+    }
+  });
+
   it('reads a path with no route as a route: existence is the caller’s job', () => {
     expect(parseRouterRequest(req('http://localhost/favicon.ico'))).toEqual({
       type: 'route',

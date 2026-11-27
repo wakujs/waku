@@ -7,9 +7,9 @@ import {
   pathnameToRoutePath,
 } from '../isomorphic-utils/route-path.js';
 import {
-  decodeRoutePath,
   decodeSliceId,
   encodeRoutePath,
+  parseRoutePath,
 } from '../isomorphic-utils/router-protocol.js';
 
 const getBasePath = () => import.meta.env?.WAKU_CONFIG_BASE_PATH ?? '/';
@@ -54,11 +54,8 @@ export function parseRouterRequest(req: Request): RouterRequest | null {
   if (sliceId !== null) {
     return { type: 'slice', id: sliceId };
   }
-  try {
-    return { type: 'route', path: decodeRoutePath(rscPath), query };
-  } catch {
-    return null;
-  }
+  const path = parseRoutePath(rscPath);
+  return path === null ? null : { type: 'route', path, query };
 }
 
 /**

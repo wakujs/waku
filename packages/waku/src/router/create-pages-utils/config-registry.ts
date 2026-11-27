@@ -1,6 +1,5 @@
 import { getPathMapping } from '../isomorphic-utils/path-spec.js';
 import type { PathSpec } from '../isomorphic-utils/path-spec.js';
-import { pathnameToRoutePath } from '../isomorphic-utils/route-path.js';
 import type { RuntimeConfig, SliceConfig } from './config.js';
 import { assertNonReservedSlotId } from './element-ids.js';
 
@@ -50,14 +49,12 @@ export function createConfigRegistry(
     return cachedHas404;
   };
 
-  const findPathConfig = (pathname: string) => {
-    const routePath = pathnameToRoutePath(pathname);
-    return getAll().find(
+  const findPathConfig = (routePath: string) =>
+    getAll().find(
       (item): item is typeof item & { type: 'route' | 'api' } =>
         (item.type === 'route' || item.type === 'api') &&
         !!getPathMapping(item.pathSpec, routePath),
     );
-  };
 
   const findSliceConfig = (
     sliceId: string,
