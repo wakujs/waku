@@ -269,12 +269,19 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
       "export const getConfig = async () => ({ render: 'static' }) as const;\nexport default () => null;\n",
     );
     write("it's/_layout.tsx", 'export default () => null;\n');
+    write(
+      "o'brien/_layout.tsx",
+      "export const getConfig = async () => ({ render: 'static' }) as const;\nexport default () => null;\n",
+    );
     write("o'brien.tsx", 'export default () => null;\n');
     try {
       const generated = await generateFsRouterTypes(srcDir);
       expect(generated).toContain("from './pages/it\\'s/index';");
       expect(generated).toContain("{ path: '/it\\'s' } & GetConfigResponse");
       expect(generated).toContain("| { path: '/it\\'s' }");
+      expect(generated).toContain(
+        "{ path: '/o\\'brien' } & Awaited<ReturnType<",
+      );
       expect(generated).toContain("| { path: '/o\\'brien'; render: 'static' }");
       const { errors } = await parse('pages.gen.ts', generated!, {
         lang: 'ts',
