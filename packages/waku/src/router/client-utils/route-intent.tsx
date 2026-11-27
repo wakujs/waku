@@ -57,10 +57,7 @@ export function RouteIntent({
       const state = getRouterState(source);
       try {
         const sourceRoute = getRouteFromElements(source);
-        const requestedUrl = new URL(
-          state?.url ?? window.location.href,
-          window.location.href,
-        );
+        const requestedUrl = new URL(state?.href ?? window.location.href);
         const requested = state?.requested;
         const attempt = {
           route: requested

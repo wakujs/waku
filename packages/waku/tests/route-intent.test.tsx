@@ -949,6 +949,58 @@ test('an absolute intent leaves once without fetching its destination', async ()
   expect(vi.mocked(fetch).mock.calls).toHaveLength(requests);
 });
 
+test('an app-relative redirect stays on this origin after a navigation to a pathname starting with //', async () => {
+  const leave = vi
+    .spyOn(window.location, 'replace')
+    .mockImplementation(() => {});
+  mocks.queue.push(payload('/one'));
+  const view = await mount();
+  const intent = deferIntent();
+  mocks.queue.push({ ...payload('/404', intent.promise), [HAS404_ID]: true });
+  await act(async () => {
+    await controls.router.push('/.//other.example//other.example/x');
+    await flush();
+  });
+  expect(window.location.href).toBe(
+    window.location.origin + '//other.example//other.example/x',
+  );
+  mocks.queue.push(payload('/login'));
+  await act(async () => {
+    intent.resolve({ status: 307, location: '/login' });
+    await flush();
+  });
+  expect(leave).not.toHaveBeenCalled();
+  expect(view.textContent).toContain('Page /login');
+  expect(window.location.href).toBe(window.location.origin + '/login');
+});
+
+test('an app-relative redirect stays on this origin after an action refreshes a document whose pathname starts with //', async () => {
+  const leave = vi
+    .spyOn(window.location, 'replace')
+    .mockImplementation(() => {});
+  window.history.replaceState({}, '', '/.//other.example//other.example/x');
+  mocks.queue.push({ ...payload('/404'), [HAS404_ID]: true });
+  const view = await mount('/404');
+  const intent = deferIntent();
+  mocks.queue.push({
+    ...payload('/404', intent.promise),
+    [HAS404_ID]: true,
+    [IS_ORIGIN_ID]: true,
+  });
+  await act(async () => {
+    await callServerRsc('actions#refresh', []);
+    await flush();
+  });
+  mocks.queue.push(payload('/login'));
+  await act(async () => {
+    intent.resolve({ status: 307, location: '/login' });
+    await flush();
+  });
+  expect(leave).not.toHaveBeenCalled();
+  expect(view.textContent).toContain('Page /login');
+  expect(window.location.href).toBe(window.location.origin + '/login');
+});
+
 test.each(['push', 'replace'] as const)(
   'a ready absolute redirect preserves the %s history intent',
   async (mode) => {

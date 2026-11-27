@@ -37,7 +37,7 @@ describe('createRouterState', () => {
         follows: 2,
       },
     );
-    expect(routerState.url).toBe('/a?x=1#top');
+    expect(routerState.href).toBe(urlOf('/a?x=1#top').href);
     expect(routerState.requested).toEqual(['/a', 'x=1']);
     expect(routerState.history).toBe('push');
     expect(routerState.scroll).toEqual({ pathChanged: true });
@@ -91,6 +91,27 @@ describe('resolveServerRedirect', () => {
 
     expect(resolvedRoute).toEqual(route('/next', 'b=2', '#bottom'));
     expect(url.href).toBe(urlOf('/next?b=2#bottom').href);
+  });
+
+  test('a pathname starting with // resolves to this origin', () => {
+    const attemptedUrl = urlOf('/.//other.example/x?a=1#top');
+    expect(attemptedUrl.pathname).toBe('//other.example/x');
+    const { url } = resolveServerRedirect(
+      { [ROUTE_ID]: ['//other.example/x', 'a=1'] },
+      createRouterState(
+        route('//other.example/x', 'a=1', '#top'),
+        attemptedUrl,
+        {
+          history: 'push',
+          scroll: false,
+          pathChanged: true,
+          follows: 0,
+        },
+      ),
+      '/f',
+    );
+
+    expect(url.href).toBe(attemptedUrl.href);
   });
 
   test('path from the elements, query and hash from the routerState url', () => {
