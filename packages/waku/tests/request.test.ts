@@ -233,7 +233,7 @@ describe('getInput server action request validation', () => {
     };
     const loadServerAction = vi.fn(async (id: string) => {
       const [file, name] = id.split('#') as [string, string];
-      return references[file]!()[name];
+      return references[file.split('$$cache=')[0]!]!()[name];
     });
     const call = (id: string) =>
       getInput(
@@ -256,6 +256,8 @@ describe('getInput server action request validation', () => {
       'constructor#constructor',
       'toString#constructor',
       '__proto__#bar',
+      'valueOf$$cache=x#bar',
+      'toString$$cache=x#repeat',
     ]) {
       expect(await getStatus(call(id)), id).toBe(404);
     }
@@ -264,7 +266,7 @@ describe('getInput server action request validation', () => {
       expect(await getStatus(call(id)), id).toBe(404);
     }
     for (const [id, exported] of [
-      ['foo#bar', bar],
+      ['foo$$cache=x#bar', bar],
       ['baz#toString', ownToString],
     ] as const) {
       const input = await call(id);

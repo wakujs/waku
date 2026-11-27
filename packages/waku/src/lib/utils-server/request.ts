@@ -22,6 +22,8 @@ const invokeServerFunction = async (
 
 const SERVER_REFERENCE_TAG = Symbol.for('react.server.reference');
 
+const REFERENCE_CACHE_TAG = '$$cache=';
+
 const isObjectPrototypeKey = (key: string) => key in Object.prototype;
 
 const isServerReference = (value: object) =>
@@ -32,7 +34,8 @@ const loadServerFunction = async (
   loadServerAction: (id: string) => Promise<unknown>,
 ) => {
   const [file = '', name = ''] = serverFunctionId.split('#');
-  if (isObjectPrototypeKey(file)) {
+  const [moduleId = ''] = file.split(REFERENCE_CACHE_TAG);
+  if (isObjectPrototypeKey(moduleId)) {
     return undefined;
   }
   const loaded = await loadServerAction(serverFunctionId);

@@ -490,6 +490,11 @@ test.describe(`rsc-basic`, () => {
         await post(`http://localhost:${port}/RSC/F/constructor/constructor.txt`)
       ).status(),
     ).toBe(404);
+    expect(
+      (
+        await post(`http://localhost:${port}/RSC/F/valueOf$$cache=x/foo.txt`)
+      ).status(),
+    ).toBe(404);
   });
 
   test('refetch', async ({ page }) => {
