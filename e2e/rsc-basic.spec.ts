@@ -466,6 +466,32 @@ test.describe(`rsc-basic`, () => {
     ).toBe(false);
   });
 
+  test('a server function id with an inherited name is not found', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/`);
+    const [call] = await Promise.all([
+      page.waitForRequest((request) => request.url().includes('/RSC/F/')),
+      page.getByTestId('server-ping').getByTestId('ping').click(),
+    ]);
+    const moduleUrl = call.url().slice(0, call.url().lastIndexOf('/'));
+    const post = (url: string) =>
+      page.request.post(url, {
+        data: '[]',
+        headers: { 'content-type': 'text/plain' },
+      });
+
+    const ownExport = await post(`${moduleUrl}/toString.txt`);
+    expect(ownExport.status()).toBe(200);
+    expect(await ownExport.text()).toContain('own toString');
+    expect((await post(`${moduleUrl}/valueOf.txt`)).status()).toBe(404);
+    expect(
+      (
+        await post(`http://localhost:${port}/RSC/F/constructor/constructor.txt`)
+      ).status(),
+    ).toBe(404);
+  });
+
   test('refetch', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
     await page.getByTestId('refetch1').click();
