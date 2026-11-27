@@ -63,6 +63,10 @@ const toIdentifier = (input: string): string => {
 };
 export const toIdentifierForTest = toIdentifier;
 
+const toStringLiteral = (value: string) =>
+  `'${value.replace(/[\\']/g, '\\$&')}'`;
+export const toStringLiteralForTest = toStringLiteral;
+
 const getImportModuleNames = (
   filePaths: string[],
 ): {
@@ -329,7 +333,7 @@ export async function generateFsRouterTypes(
         const moduleName = moduleNames[file.src];
         lines.push(
           `// prettier-ignore`,
-          `import type { getConfig as ${moduleName}_getConfig } from './${pagesDir}/${file.src.replace('.tsx', '')}';`,
+          `import type { getConfig as ${moduleName}_getConfig } from ${toStringLiteral(`./${pagesDir}/${file.src.replace('.tsx', '')}`)};`,
         );
       }
     }
@@ -343,10 +347,12 @@ export async function generateFsRouterTypes(
       const moduleName = moduleNames[file.src];
       if (file.hasGetConfig) {
         lines.push(
-          `| ({ path: '${file.path}' } & GetConfigResponse<typeof ${moduleName}_getConfig>)`,
+          `| ({ path: ${toStringLiteral(file.path)} } & GetConfigResponse<typeof ${moduleName}_getConfig>)`,
         );
       } else {
-        lines.push(`| { path: '${file.path}'; render: 'static' }`);
+        lines.push(
+          `| { path: ${toStringLiteral(file.path)}; render: 'static' }`,
+        );
       }
     }
     lines[lines.length - 1] += ';';
@@ -357,8 +363,8 @@ export async function generateFsRouterTypes(
         const moduleName = moduleNames[file.src];
         lines.push(
           file.hasGetConfig
-            ? `| ({ path: '${file.path}' } & Awaited<ReturnType<typeof ${moduleName}_getConfig>>)`
-            : `| { path: '${file.path}' }`,
+            ? `| ({ path: ${toStringLiteral(file.path)} } & Awaited<ReturnType<typeof ${moduleName}_getConfig>>)`
+            : `| { path: ${toStringLiteral(file.path)} }`,
         );
       }
       lines[lines.length - 1] += ';';
