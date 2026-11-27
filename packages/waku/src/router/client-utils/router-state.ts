@@ -51,7 +51,7 @@ export const serverRedirectEnhancer: Unstable_RscEnhancer =
   };
 
 export type RouterState = {
-  readonly url: string; // pathname + search + hash, with the base path
+  readonly href: string;
   readonly requested: readonly [path: string, query: string];
   readonly history: 'push' | 'replace' | null;
   readonly scroll: { readonly pathChanged: boolean } | null;
@@ -99,7 +99,7 @@ export function createRouterState(
   },
 ): RouterState {
   return {
-    url: url.pathname + url.search + url.hash,
+    href: url.href,
     requested: [route.path, route.query],
     history: options.history,
     scroll: options.scroll ? { pathChanged: options.pathChanged } : null,
@@ -112,7 +112,7 @@ export function resolveServerRedirect(
   routerState: RouterState,
   fallbackPath: string,
 ): { route: RouteProps; url: URL } {
-  const stateUrl = new URL(routerState.url, window.location.href);
+  const stateUrl = new URL(routerState.href);
   if (routerState.failedFrom) {
     return {
       route: {

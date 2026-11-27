@@ -23,6 +23,7 @@ import {
   isSameRscRoute,
   otherOriginError,
   parseRoute,
+  withDocumentAuthority,
 } from '../client-core-utils/route-url.js';
 import type { ServerFunctionRouting } from '../client-core-utils/server-function-routing.js';
 import { useServerFunctionRouting } from '../client-core-utils/server-function-routing.js';
@@ -301,7 +302,9 @@ export function useNavigation(
       if (import.meta.hot) {
         registerRscReloadListener(() => {}, { replace: true });
       }
-      const routeUrl = options.url ?? getRouteUrl(nextRoute);
+      const routeUrl = options.url
+        ? withDocumentAuthority(options.url)
+        : getRouteUrl(nextRoute);
       const initialAttempt: NavigationAttempt = {
         route: nextRoute,
         url: routeUrl,
