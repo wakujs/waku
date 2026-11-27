@@ -33,6 +33,14 @@ export function getRouteUrl(route: RouteProps): URL {
   return nextUrl;
 }
 
+export function withDocumentAuthority(url: URL): URL {
+  const nextUrl = new URL(window.location.href);
+  nextUrl.pathname = url.pathname;
+  nextUrl.search = url.search;
+  nextUrl.hash = url.hash;
+  return nextUrl;
+}
+
 export function isSameRoute(next: RouteProps, prev: RouteProps) {
   return (
     next.path === prev.path &&

@@ -949,6 +949,21 @@ test('an absolute intent leaves once without fetching its destination', async ()
   expect(vi.mocked(fetch).mock.calls).toHaveLength(requests);
 });
 
+test('a navigation to a same-origin URL with credentials leaves them out of the document URL', async () => {
+  mocks.queue.push(payload('/one'));
+  const view = await mount();
+  const destination = new URL('/two', window.location.href);
+  destination.username = 'user';
+  destination.password = 'pass';
+  mocks.queue.push(payload('/two'));
+  await act(async () => {
+    await controls.router.push(destination.href);
+    await flush();
+  });
+  expect(view.textContent).toContain('Page /two');
+  expect(window.location.href).toBe(window.location.origin + '/two');
+});
+
 test('an app-relative redirect stays on this origin after a navigation to a pathname starting with //', async () => {
   const leave = vi
     .spyOn(window.location, 'replace')
