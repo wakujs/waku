@@ -222,6 +222,64 @@ describe('getInput server action request validation', () => {
     }
   });
 
+  it('answers 404 for an inherited name and calls an own export of that name', async () => {
+    const bar = vi.fn();
+    const ownToString = Object.assign(vi.fn(), {
+      $$typeof: Symbol.for('react.server.reference'),
+    });
+    const references: Record<string, () => Record<string, unknown>> = {
+      foo: () => ({ bar }),
+      baz: () => ({ toString: ownToString }),
+    };
+    const loadServerAction = vi.fn(async (id: string) => {
+      const [file, name] = id.split('#') as [string, string];
+      return references[file.split('$$cache=')[0]!]!()[name];
+    });
+    const decodeReply = vi.fn().mockResolvedValue([]);
+    const call = (id: string) =>
+      getInput(
+        new Request(
+          formatRscUrl(encodeServerFunctionId(id), 'https://app.test/'),
+          {
+            method: 'POST',
+            body: '[]',
+            headers: { origin: 'https://app.test' },
+          },
+        ),
+        makeConfig(),
+        undefined,
+        decodeReply,
+        vi.fn(),
+        vi.fn(),
+        loadServerAction,
+      );
+    for (const id of [
+      'constructor#constructor',
+      'toString#constructor',
+      '__proto__#bar',
+      'valueOf$$cache=x#bar',
+      'toString$$cache=x#repeat',
+    ]) {
+      expect(await getStatus(call(id)), id).toBe(404);
+    }
+    expect(loadServerAction).not.toHaveBeenCalled();
+    for (const id of ['foo#constructor', 'foo#toString', 'foo#__proto__']) {
+      expect(await getStatus(call(id)), id).toBe(404);
+    }
+    expect(decodeReply).not.toHaveBeenCalled();
+    for (const [id, exported] of [
+      ['foo$$cache=x#bar', bar],
+      ['baz#toString', ownToString],
+    ] as const) {
+      const input = await call(id);
+      if (input.type !== 'call') {
+        throw new Error('expected a call');
+      }
+      await input.fn(...input.args);
+      expect(exported, id).toHaveBeenCalledOnce();
+    }
+  });
+
   it('completes hydrated and form actions after cancellation without continuing their bodies', async () => {
     const continued = vi.fn();
     const action = vi.fn(async () => {

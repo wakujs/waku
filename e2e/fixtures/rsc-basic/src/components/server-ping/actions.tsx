@@ -19,3 +19,5 @@ export const getData = async () => {
 };
 
 export const updateContent = async () => 'update-content';
+
+export const toString = async () => 'own toString';

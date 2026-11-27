@@ -20,6 +20,34 @@ const invokeServerFunction = async (
   }
 };
 
+const SERVER_REFERENCE_TAG = Symbol.for('react.server.reference');
+
+const REFERENCE_CACHE_TAG = '$$cache=';
+
+const isObjectPrototypeKey = (key: string) => key in Object.prototype;
+
+const isServerReference = (value: object) =>
+  (value as { $$typeof?: unknown }).$$typeof === SERVER_REFERENCE_TAG;
+
+const loadServerFunction = async (
+  serverFunctionId: string,
+  loadServerAction: (id: string) => Promise<unknown>,
+) => {
+  const [file = '', name = ''] = serverFunctionId.split('#');
+  const [moduleId = ''] = file.split(REFERENCE_CACHE_TAG);
+  if (isObjectPrototypeKey(moduleId)) {
+    return undefined;
+  }
+  const loaded = await loadServerAction(serverFunctionId);
+  if (
+    typeof loaded !== 'function' ||
+    (isObjectPrototypeKey(name) && !isServerReference(loaded))
+  ) {
+    return undefined;
+  }
+  return loaded as (...args: unknown[]) => unknown;
+};
+
 export async function getInput(
   req: Request,
   config: Omit<Required<Config>, 'vite'>,
@@ -43,8 +71,11 @@ export async function getInput(
   if (parsed.type !== 'http') {
     if (parsed.type === 'call') {
       validateSameOriginPost(req);
-      const serverFunction = await loadServerAction(parsed.serverFunctionId);
-      if (typeof serverFunction !== 'function') {
+      const serverFunction = await loadServerFunction(
+        parsed.serverFunctionId,
+        loadServerAction,
+      );
+      if (!serverFunction) {
         throw new Response('Not Found', { status: 404 });
       }
       const args = await decodeRequestBody(
@@ -54,11 +85,7 @@ export async function getInput(
       );
       input = {
         type: 'call',
-        fn: (...args) =>
-          invokeServerFunction(
-            serverFunction as (...args: unknown[]) => unknown,
-            args,
-          ),
+        fn: (...args) => invokeServerFunction(serverFunction, args),
         args,
         pathname,
         req,
