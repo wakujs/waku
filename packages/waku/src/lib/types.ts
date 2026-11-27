@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Config } from '../config.js';
 import type { Etags } from './utils-isomorphic/etags.js';
+import type { PreviewServer } from './vite-rsc/preview.js';
 
 type Elements = Record<string, unknown>;
 
@@ -103,6 +104,7 @@ export type ServerEntry = {
     utils: {
       emitFile: EmitFile;
       unstable_registerPrunableFile: (srcPath: string) => void;
+      unstable_startPreviewServer: () => Promise<PreviewServer>;
     },
     ...args: any[]
   ) => Promise<void>;
@@ -117,7 +119,7 @@ export type ProcessRequest = (
 ) => Promise<Response | null>;
 
 export type ProcessBuild = (
-  arg: Parameters<ServerEntry['build']>[0],
+  arg: Omit<Parameters<ServerEntry['build']>[0], 'unstable_startPreviewServer'>,
 ) => Promise<void>;
 
 export type CreateServerEntryAdapter = <Options>(

@@ -1,8 +1,7 @@
 import * as vite from 'vite';
-import type { Config } from '../../config.js';
 import { combinedPlugins } from '../vite-plugins/combined-plugins.js';
 import { loadConfig, loadDotEnv } from './loader.js';
-import type { PreviewServer } from './preview.js';
+import { runPreviewServer } from './run-preview-server.js';
 
 loadDotEnv();
 
@@ -15,22 +14,6 @@ export async function runBuild() {
     plugins: [combinedPlugins(config)],
   });
   globalThis.__WAKU_START_PREVIEW_SERVER__ = () =>
-    startPreviewServerImpl(config);
+    runPreviewServer(combinedPlugins(config));
   await builder.buildApp();
 }
-
-const startPreviewServerImpl = async (
-  config: Required<Config>,
-): Promise<PreviewServer> => {
-  const server = await vite.preview({
-    configFile: false,
-    plugins: [combinedPlugins(config)],
-  });
-  return {
-    baseUrl: server.resolvedUrls!.local[0]!,
-    middlewares: {
-      use: (fn) => server.middlewares.use(fn),
-    },
-    close: () => server.close(),
-  };
-};

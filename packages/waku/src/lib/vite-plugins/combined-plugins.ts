@@ -1,6 +1,7 @@
 import rsc from '@vitejs/plugin-rsc';
 import type { PluginOption } from 'vite';
 import type { Config } from '../../config.js';
+import { runPreviewServer } from '../vite-rsc/run-preview-server.js';
 import { adapterAliasPlugin } from './adapter-alias.js';
 import { allowServerPlugin } from './allow-server.js';
 import { appEntriesPlugin } from './app-entries.js';
@@ -59,7 +60,10 @@ export function combinedPlugins(config: Required<Config>): PluginOption {
     patchReactDomPlugin(),
     patchRsdwPlugin(),
     buildMetadataPlugin(config),
-    staticBuildPlugin(config),
+    staticBuildPlugin({
+      ...config,
+      startPreviewServer: () => runPreviewServer(combinedPlugins(config)),
+    }),
     privateDirPlugin(config),
     htmlShellPlugin(),
     htmlTransformPlugin(),

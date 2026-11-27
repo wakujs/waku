@@ -12,6 +12,8 @@ import { setAllEnv } from '../env.js';
 import { createProgressLogger } from '../utils-build/progress-logger.js';
 import { pruneBuildOutput } from '../utils-build/prune-build.js';
 import { joinPath } from '../utils-isomorphic/path.js';
+import { startPreviewServer as startPreviewServerFromCli } from '../vite-rsc/preview.js';
+import type { PreviewServer } from '../vite-rsc/preview.js';
 
 const resolveModuleId = (moduleId: string, rootDir: string) => {
   if (moduleId.startsWith('file://')) {
@@ -27,9 +29,11 @@ const resolveModuleId = (moduleId: string, rootDir: string) => {
 export function staticBuildPlugin({
   srcDir,
   distDir,
+  startPreviewServer = startPreviewServerFromCli,
 }: {
   srcDir: string;
   distDir: string;
+  startPreviewServer?: () => Promise<PreviewServer>;
 }): Plugin {
   let rscBundle: Rollup.OutputBundle | undefined;
   return {
@@ -82,6 +86,7 @@ export function staticBuildPlugin({
             unstable_registerPrunableFile: (srcPath) => {
               prunableFiles.add(srcPath);
             },
+            unstable_startPreviewServer: startPreviewServer,
           },
           serverEntry.buildOptions || {},
         );

@@ -25,7 +25,6 @@ vi.mock('cloudflare:workers', () => ({
 
 const buildPath = 'http://localhost/__waku_internal_build_static_files';
 const tokenHeader = 'x-waku-internal-build-token';
-const globals = globalThis as Record<string, unknown>;
 
 const createEntry = async () => {
   const { default: adapter } = await import('../src/adapters/cloudflare.js');
@@ -36,7 +35,6 @@ const createEntry = async () => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  delete globals.__WAKU_START_PREVIEW_SERVER__;
 });
 
 test('serves the static build only for the token in the worker env', async () => {
@@ -67,18 +65,21 @@ test('serves the static build only for the token in the worker env', async () =>
 test('closes the preview server when the build request fails', async () => {
   const { entry } = await createEntry();
   const close = vi.fn(async () => {});
-  globals.__WAKU_START_PREVIEW_SERVER__ = async () => ({
-    baseUrl: 'http://localhost:4173/',
-    middlewares: { use: () => {} },
-    close,
-  });
   vi.stubGlobal(
     'fetch',
     vi.fn(async () => new Response(null, { status: 404 })),
   );
   await expect(
     entry.build(
-      { emitFile: vi.fn(), unstable_registerPrunableFile: vi.fn() },
+      {
+        emitFile: vi.fn(),
+        unstable_registerPrunableFile: vi.fn(),
+        unstable_startPreviewServer: async () => ({
+          baseUrl: 'http://localhost:4173/',
+          middlewares: { use: () => {} },
+          close,
+        }),
+      },
       { buildToken: 'token' },
     ),
   ).rejects.toThrow('Static file build request failed with 404');
