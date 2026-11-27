@@ -235,6 +235,7 @@ describe('getInput server action request validation', () => {
       const [file, name] = id.split('#') as [string, string];
       return references[file.split('$$cache=')[0]!]!()[name];
     });
+    const decodeReply = vi.fn().mockResolvedValue([]);
     const call = (id: string) =>
       getInput(
         new Request(
@@ -247,7 +248,7 @@ describe('getInput server action request validation', () => {
         ),
         makeConfig(),
         undefined,
-        vi.fn().mockResolvedValue([]),
+        decodeReply,
         vi.fn(),
         vi.fn(),
         loadServerAction,
@@ -265,6 +266,7 @@ describe('getInput server action request validation', () => {
     for (const id of ['foo#constructor', 'foo#toString', 'foo#__proto__']) {
       expect(await getStatus(call(id)), id).toBe(404);
     }
+    expect(decodeReply).not.toHaveBeenCalled();
     for (const [id, exported] of [
       ['foo$$cache=x#bar', bar],
       ['baz#toString', ownToString],
