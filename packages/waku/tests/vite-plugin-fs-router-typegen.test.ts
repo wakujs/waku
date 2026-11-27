@@ -1,5 +1,8 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parse } from 'vite';
 import { describe, expect, test, vi } from 'vitest';
 import { resolveConfig } from '../src/lib/utils-build/config.js';
 import { combinedPlugins } from '../src/lib/vite-plugins/combined-plugins.js';
@@ -8,6 +11,7 @@ import {
   generateFsRouterTypes,
   getImportModuleNamesForTest,
   toIdentifierForTest,
+  toStringLiteralForTest,
 } from '../src/lib/vite-plugins/fs-router-typegen.js';
 
 // Run every typegen test under a reversed readdir order to simulate a different
@@ -245,5 +249,39 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     expect(generated).toContain("| { path: '/docs' }");
     expect(generated).toContain('layouts: Layout;');
     expect(generated).toContain("declare module 'waku/router'");
+  });
+
+  test('escapes quotes and backslashes in string literals', () => {
+    expect(toStringLiteralForTest('/about')).toBe("'/about'");
+    expect(toStringLiteralForTest("/it's")).toBe("'/it\\'s'");
+    expect(toStringLiteralForTest('/a\\b')).toBe("'/a\\\\b'");
+  });
+
+  test('generates valid types for file names with a quote', async () => {
+    const srcDir = mkdtempSync(path.join(tmpdir(), 'waku-typegen-'));
+    const write = (file: string, code: string) => {
+      const filePath = path.join(srcDir, 'pages', file);
+      mkdirSync(path.dirname(filePath), { recursive: true });
+      writeFileSync(filePath, code);
+    };
+    write(
+      "it's/index.tsx",
+      "export const getConfig = async () => ({ render: 'static' }) as const;\nexport default () => null;\n",
+    );
+    write("it's/_layout.tsx", 'export default () => null;\n');
+    write("o'brien.tsx", 'export default () => null;\n');
+    try {
+      const generated = await generateFsRouterTypes(srcDir);
+      expect(generated).toContain("from './pages/it\\'s/index';");
+      expect(generated).toContain("{ path: '/it\\'s' } & GetConfigResponse");
+      expect(generated).toContain("| { path: '/it\\'s' }");
+      expect(generated).toContain("| { path: '/o\\'brien'; render: 'static' }");
+      const { errors } = await parse('pages.gen.ts', generated!, {
+        lang: 'ts',
+      } as never);
+      expect(errors).toEqual([]);
+    } finally {
+      rmSync(srcDir, { recursive: true, force: true });
+    }
   });
 });
