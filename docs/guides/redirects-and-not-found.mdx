@@ -68,6 +68,12 @@ export default async function AccountPage() {
 export const getConfig = async () => ({ render: 'dynamic' }) as const;
 ```
 
+A redirect is navigation, not an access check. Waku renders a route's layouts
+and its page as independent slots of one response, so a `requestRedirect()` in a
+layout does not stop the page beneath it from rendering its data. Check access
+where the data is read, as the [Authentication](/guides/authentication) guide
+shows.
+
 `requestRedirect(location, status?)` accepts an app-relative href, an absolute
 HTTP(S) URL string, or a `URL` object. An absolute URL navigates the whole document,
 even when it points to the same origin. Validate destinations derived from user
