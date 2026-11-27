@@ -20,7 +20,6 @@ const invokeServerFunction = async (
   }
 };
 
-// @vitejs/plugin-rsc looks both parts up on plain objects, where an inherited name resolves too
 const usesInheritedName = (serverFunctionId: string) =>
   serverFunctionId.split('#').some((part) => part in Object.prototype);
 
