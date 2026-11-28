@@ -7,8 +7,8 @@ import {
   HAS404_ID,
   IS_STATIC_ID,
   ROUTE_ID,
-  decodeRoutePath,
   getRouteSlotId,
+  parseRoutePath,
 } from '../isomorphic-utils/router-protocol.js';
 import type { RouteData } from '../isomorphic-utils/router-protocol.js';
 import { cacheElementSource, getElementCacheId } from './element-cache.js';
@@ -80,7 +80,10 @@ export function createRouteEntries(
   ) => {
     setRscPath(rscPath);
     setRscParams(rscParams);
-    const pathname = decodeRoutePath(rscPath);
+    const pathname = parseRoutePath(rscPath);
+    if (pathname === null) {
+      return null;
+    }
     const query = getQuery(rscParams);
     const resolved = routerDefinition ?? (await resolve(pathname, query));
     if (!resolved || typeof resolved === 'function') {

@@ -2,6 +2,7 @@ import type { ReactElement, ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
 import { createPages } from '../src/router/create-pages.js';
+import { ROUTE_ID } from '../src/router/isomorphic-utils/router-protocol.js';
 import { serializeRsc } from '../src/server.js';
 
 vi.mock('../src/server.js', () => ({
@@ -58,6 +59,171 @@ describe('createPages router integration', () => {
       expect.objectContaining({ content: '/two' }),
       expect.anything(),
     );
+  });
+
+  it('matches a route or an api only by its normalized path', async () => {
+    const routeRenderer = vi.fn(() => null);
+    const apiHandler = vi.fn(async () => new Response('secret'));
+    const router = createConfiguredRouter({
+      getConfigs: async () => [
+        {
+          type: 'route',
+          pathSpec: [
+            { type: 'literal', name: 'users' },
+            { type: 'group', name: 'id' },
+          ],
+          isStatic: false,
+          rootElement: { isStatic: false, renderer: () => null },
+          routeElement: { isStatic: false, renderer: routeRenderer },
+          elements: {},
+        },
+        {
+          type: 'api',
+          pathSpec: [
+            { type: 'literal', name: 'api' },
+            { type: 'literal', name: 'secret' },
+          ],
+          isStatic: false,
+          handler: apiHandler,
+        },
+      ],
+    });
+    const utils = {
+      renderRsc: vi.fn(
+        async () =>
+          new ReadableStream({ start: (controller) => controller.close() }),
+      ),
+      renderHtml: vi.fn(),
+      renderHtmlFallback: vi.fn(),
+      loadBuildMetadata: vi.fn(),
+    };
+    const requestRoute = (rscPath: string) =>
+      router.handleRequest(
+        {
+          type: 'rsc',
+          rscPath,
+          rscParams: undefined,
+          pathname: '/RSC/payload.txt',
+          req: new Request('http://localhost/RSC/payload.txt'),
+        },
+        utils,
+      );
+    const requestApi = (pathname: string) =>
+      router.handleRequest(
+        {
+          type: 'http',
+          pathname,
+          req: new Request('http://localhost' + pathname),
+        },
+        utils,
+      );
+
+    for (const rscPath of [
+      'R/users/123/',
+      'R/users/123//',
+      'R/users/123/index.html',
+      'Rusers/123',
+      'Rx/users/123',
+    ]) {
+      expect(await requestRoute(rscPath), rscPath).toBeNull();
+    }
+    expect(routeRenderer).not.toHaveBeenCalled();
+    expect(await requestRoute('R/users/123')).not.toBeNull();
+    expect(routeRenderer).toHaveBeenCalledOnce();
+
+    for (const pathname of [
+      '/api/secret///',
+      '/api/secret/index.html/index.html',
+    ]) {
+      expect(await requestApi(pathname), pathname).toBeNull();
+    }
+    expect(apiHandler).not.toHaveBeenCalled();
+    for (const pathname of ['/api/secret', '/api/secret/']) {
+      expect(await requestApi(pathname), pathname).toBeInstanceOf(Response);
+    }
+    expect(apiHandler).toHaveBeenCalledTimes(2);
+  });
+
+  it('answers not found for a document path that one normalization leaves unnormalized', async () => {
+    const userRenderer = vi.fn(() => null);
+    const createRoute = (
+      pathSpec: { type: 'literal' | 'group'; name: string }[],
+      renderer: () => null,
+    ) => ({
+      type: 'route' as const,
+      pathSpec,
+      isStatic: false,
+      rootElement: { isStatic: false, renderer: () => null },
+      routeElement: { isStatic: false, renderer },
+      elements: {},
+    });
+    const router = createConfiguredRouter({
+      getConfigs: async () => [
+        createRoute(
+          [
+            { type: 'literal', name: 'users' },
+            { type: 'group', name: 'id' },
+          ],
+          userRenderer,
+        ),
+        createRoute([{ type: 'literal', name: '404' }], () => null),
+      ],
+    });
+    const utils = {
+      renderRsc: vi.fn(
+        async () =>
+          new ReadableStream({ start: (controller) => controller.close() }),
+      ),
+      renderHtml: vi.fn(
+        async (
+          _elements: unknown,
+          _html: unknown,
+          options: { status?: number },
+        ) => new Response('html', { status: options.status ?? 200 }),
+      ),
+      renderHtmlFallback: vi.fn(),
+      loadBuildMetadata: vi.fn(),
+    };
+    const requestDocument = async (pathname: string) => {
+      const response = await router.handleRequest(
+        {
+          type: 'http',
+          pathname,
+          req: new Request('http://localhost' + pathname),
+        },
+        utils,
+      );
+      return response instanceof Response ? response.status : response;
+    };
+
+    for (const pathname of [
+      '/users/123',
+      '/users/123/',
+      '/users/123/index.html',
+    ]) {
+      expect(await requestDocument(pathname), pathname).toBe(200);
+    }
+    expect(userRenderer).toHaveBeenCalledTimes(3);
+    for (const pathname of ['/users/123///', '/users/index.html/index.html']) {
+      expect(await requestDocument(pathname), pathname).toBe(404);
+    }
+    expect(userRenderer).toHaveBeenCalledTimes(3);
+
+    await router.handleRequest(
+      {
+        type: 'rsc',
+        rscPath: 'R/users/123/',
+        rscParams: undefined,
+        pathname: '/RSC/payload.txt',
+        req: new Request('http://localhost/RSC/payload.txt'),
+      },
+      utils,
+    );
+    expect(utils.renderRsc).toHaveBeenLastCalledWith(
+      expect.objectContaining({ [ROUTE_ID]: ['/404', ''] }),
+      expect.anything(),
+    );
+    expect(userRenderer).toHaveBeenCalledTimes(3);
   });
 
   it('keeps the request query out of a static element of a dynamic route', async () => {

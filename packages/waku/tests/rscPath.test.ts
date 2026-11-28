@@ -126,6 +126,20 @@ describe('decodeRoutePath', () => {
   test('throws on invalid routePath', () => {
     expect(() => decodeRoutePath('foo')).toThrow();
   });
+
+  test('throws unless encodeRoutePath returns the input', () => {
+    for (const rscPath of [
+      'R',
+      'R/',
+      'Rfoo',
+      'R/foo/',
+      'R/foo//',
+      'R/foo/index.html',
+      'R/_foo',
+    ]) {
+      expect(() => decodeRoutePath(rscPath), rscPath).toThrow();
+    }
+  });
 });
 
 describe('encodeRoutePath & decodeRoutePath', () => {

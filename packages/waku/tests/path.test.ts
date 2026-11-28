@@ -135,6 +135,13 @@ describe('getPathMapping', () => {
     });
   });
 
+  test('rejects a pathname without a leading slash', () => {
+    expect(getPathMapping(parsePathWithSlug('/foo'), 'xfoo')).toBe(null);
+    expect(getPathMapping(parsePathWithSlug('/foo'), 'foo')).toBe(null);
+    expect(getPathMapping(parsePathWithSlug('/'), '')).toBe(null);
+    expect(getPathMapping(parsePathWithSlug('/[...all]'), 'x')).toBe(null);
+  });
+
   test('handles paths with groups', () => {
     const pathSpec = parsePathWithSlug('/foo/[id]');
     expect(getPathMapping(pathSpec, '/foo/123')).toEqual({ id: '123' });

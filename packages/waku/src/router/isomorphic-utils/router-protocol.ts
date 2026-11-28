@@ -1,3 +1,4 @@
+import { isRoutePath } from './route-path.js';
 import type { RouteProps } from './route-path.js';
 
 /** Element-map key for `[pathname, query]` of the represented route. */
@@ -107,18 +108,32 @@ export function encodeRoutePath(routePath: string): string {
   return ROUTE_PREFIX + routePath;
 }
 
-/** Decodes a route RSC input; throws if it does not have the route prefix. */
-export function decodeRoutePath(rscPath: string): string {
+export function parseRoutePath(rscPath: string): string | null {
   if (!rscPath.startsWith(ROUTE_PREFIX)) {
-    throw new Error('rscPath should start with: ' + ROUTE_PREFIX);
+    return null;
   }
-  if (rscPath === ROUTE_PREFIX + '/_root') {
-    return '/';
+  const encoded = rscPath.slice(ROUTE_PREFIX.length);
+  const routePath =
+    encoded === '/_root'
+      ? '/'
+      : encoded.startsWith('/__')
+        ? '/_' + encoded.slice(3)
+        : encoded;
+  return isRoutePath(routePath) && encodeRoutePath(routePath) === rscPath
+    ? routePath
+    : null;
+}
+
+/**
+ * Decodes a route RSC input; throws unless it is what `encodeRoutePath`
+ * returns for the decoded path.
+ */
+export function decodeRoutePath(rscPath: string): string {
+  const routePath = parseRoutePath(rscPath);
+  if (routePath === null) {
+    throw new Error('rscPath is not an encoded route path: ' + rscPath);
   }
-  if (rscPath.startsWith(ROUTE_PREFIX + '/__')) {
-    return '/_' + rscPath.slice(ROUTE_PREFIX.length + 3);
-  }
-  return rscPath.slice(ROUTE_PREFIX.length);
+  return routePath;
 }
 
 /** Encodes one independently requested slice; throws if the ID starts with `/`. */

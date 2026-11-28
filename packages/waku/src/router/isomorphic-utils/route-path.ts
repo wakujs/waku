@@ -52,6 +52,10 @@ export function pathnameToRoutePath(pathname: string): string {
   return pathname || '/';
 }
 
+export function isRoutePath(pathname: string): boolean {
+  return pathname.startsWith('/') && pathnameToRoutePath(pathname) === pathname;
+}
+
 export function getComponentIds(routePath: string): readonly string[] {
   const pathItems = routePath.split('/').filter(Boolean);
   const idSet = new Set<string>();
