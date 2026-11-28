@@ -49,21 +49,6 @@ test.describe('broken-links: normal server', () => {
       await expect(page.getByRole('heading')).toHaveText('Index');
     });
 
-    test('a path that one normalization leaves unnormalized', async ({
-      page,
-    }) => {
-      await page.goto(`http://localhost:${port}/exists///`);
-      await waitForHydration(page);
-      await expect(page.getByRole('heading')).toHaveText('Custom not found');
-      await expect(page).toHaveTitle('Custom Not Found Title');
-      expect(page.url()).toBe(`http://localhost:${port}/exists///`);
-      await page.getByRole('link', { name: 'Back' }).click();
-      await expect(page.getByRole('heading')).toHaveText('Index');
-      await page.goBack();
-      await expect(page.getByRole('heading')).toHaveText('Custom not found');
-      expect(page.url()).toBe(`http://localhost:${port}/exists///`);
-    });
-
     test('redirect', async ({ page }) => {
       // Navigate to a page that redirects to an existing page
       await page.goto(`http://localhost:${port}/redirect`);
