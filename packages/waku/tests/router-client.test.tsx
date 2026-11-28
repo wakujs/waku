@@ -834,6 +834,17 @@ describe('router/client utilities', () => {
     });
   });
 
+  test('parses a pathname that one normalization leaves unnormalized as the not-found route', () => {
+    for (const pathname of ['/users/123///', '/users/index.html/index.html']) {
+      expect(
+        unstable_parseRoute(
+          new URL('http://localhost' + pathname + '?q=1#top'),
+        ),
+        pathname,
+      ).toEqual({ path: '/404', query: 'q=1', hash: '#top' });
+    }
+  });
+
   test('ErrorBoundary renders fallback for Error and non-Error values', async () => {
     const consoleErrorSpy = vi
       .spyOn(console, 'error')

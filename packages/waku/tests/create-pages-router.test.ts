@@ -2,6 +2,7 @@ import type { ReactElement, ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
 import { createPages } from '../src/router/create-pages.js';
+import { ROUTE_ID } from '../src/router/isomorphic-utils/router-protocol.js';
 import { serializeRsc } from '../src/server.js';
 
 vi.mock('../src/server.js', () => ({
@@ -206,6 +207,22 @@ describe('createPages router integration', () => {
     for (const pathname of ['/users/123///', '/users/index.html/index.html']) {
       expect(await requestDocument(pathname), pathname).toBe(404);
     }
+    expect(userRenderer).toHaveBeenCalledTimes(3);
+
+    await router.handleRequest(
+      {
+        type: 'rsc',
+        rscPath: 'R/users/123/',
+        rscParams: undefined,
+        pathname: '/RSC/payload.txt',
+        req: new Request('http://localhost/RSC/payload.txt'),
+      },
+      utils,
+    );
+    expect(utils.renderRsc).toHaveBeenLastCalledWith(
+      expect.objectContaining({ [ROUTE_ID]: ['/404', ''] }),
+      expect.anything(),
+    );
     expect(userRenderer).toHaveBeenCalledTimes(3);
   });
 

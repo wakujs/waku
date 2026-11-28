@@ -1,15 +1,17 @@
 import type { NavigationHref } from '../isomorphic-utils/build-route-href.js';
 import {
   addBase,
+  isRoutePath,
   pathnameToRoutePath,
   removeBase,
 } from '../isomorphic-utils/route-path.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 
 export function pathnameToCurrentRoutePath(pathname: string) {
-  return pathnameToRoutePath(
+  const routePath = pathnameToRoutePath(
     removeBase(pathname, import.meta.env.WAKU_CONFIG_BASE_PATH),
   );
+  return isRoutePath(routePath) ? routePath : '/404';
 }
 
 export function resolveRouteHref(to: NavigationHref): string {
