@@ -1,4 +1,4 @@
-import { pathnameToRoutePath } from './route-path.js';
+import { isRoutePath } from './route-path.js';
 import type { RouteProps } from './route-path.js';
 
 /** Element-map key for `[pathname, query]` of the represented route. */
@@ -119,9 +119,7 @@ export function parseRoutePath(rscPath: string): string | null {
       : encoded.startsWith('/__')
         ? '/_' + encoded.slice(3)
         : encoded;
-  return routePath.startsWith('/') &&
-    pathnameToRoutePath(routePath) === routePath &&
-    encodeRoutePath(routePath) === rscPath
+  return isRoutePath(routePath) && encodeRoutePath(routePath) === rscPath
     ? routePath
     : null;
 }

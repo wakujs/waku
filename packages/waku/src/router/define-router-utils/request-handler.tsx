@@ -8,7 +8,10 @@ import type {
   Unstable_RenderRsc as RenderRsc,
 } from 'waku/minimal/server';
 import { INTERNAL_ServerRouter } from '../client.js';
-import { pathnameToRoutePath } from '../isomorphic-utils/route-path.js';
+import {
+  isRoutePath,
+  pathnameToRoutePath,
+} from '../isomorphic-utils/route-path.js';
 import {
   ACTION_LOCATION_HEADER,
   INTENT_ID,
@@ -380,7 +383,10 @@ export function createRequestHandler({
           if (requestedResponse) {
             return requestedResponse;
           }
-          const resolved = await resolve(pathnameToRoutePath(pathname), query);
+          const routePath = pathnameToRoutePath(pathname);
+          const resolved = isRoutePath(routePath)
+            ? await resolve(routePath, query)
+            : null;
           const resolvedResponse = renderIntentResponse();
           if (resolvedResponse) {
             return resolvedResponse;

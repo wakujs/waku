@@ -143,6 +143,72 @@ describe('createPages router integration', () => {
     expect(apiHandler).toHaveBeenCalledTimes(2);
   });
 
+  it('answers not found for a document path that one normalization leaves unnormalized', async () => {
+    const userRenderer = vi.fn(() => null);
+    const createRoute = (
+      pathSpec: { type: 'literal' | 'group'; name: string }[],
+      renderer: () => null,
+    ) => ({
+      type: 'route' as const,
+      pathSpec,
+      isStatic: false,
+      rootElement: { isStatic: false, renderer: () => null },
+      routeElement: { isStatic: false, renderer },
+      elements: {},
+    });
+    const router = createConfiguredRouter({
+      getConfigs: async () => [
+        createRoute(
+          [
+            { type: 'literal', name: 'users' },
+            { type: 'group', name: 'id' },
+          ],
+          userRenderer,
+        ),
+        createRoute([{ type: 'literal', name: '404' }], () => null),
+      ],
+    });
+    const utils = {
+      renderRsc: vi.fn(
+        async () =>
+          new ReadableStream({ start: (controller) => controller.close() }),
+      ),
+      renderHtml: vi.fn(
+        async (
+          _elements: unknown,
+          _html: unknown,
+          options: { status?: number },
+        ) => new Response('html', { status: options.status ?? 200 }),
+      ),
+      renderHtmlFallback: vi.fn(),
+      loadBuildMetadata: vi.fn(),
+    };
+    const requestDocument = async (pathname: string) => {
+      const response = await router.handleRequest(
+        {
+          type: 'http',
+          pathname,
+          req: new Request('http://localhost' + pathname),
+        },
+        utils,
+      );
+      return response instanceof Response ? response.status : response;
+    };
+
+    for (const pathname of [
+      '/users/123',
+      '/users/123/',
+      '/users/123/index.html',
+    ]) {
+      expect(await requestDocument(pathname), pathname).toBe(200);
+    }
+    expect(userRenderer).toHaveBeenCalledTimes(3);
+    for (const pathname of ['/users/123///', '/users/index.html/index.html']) {
+      expect(await requestDocument(pathname), pathname).toBe(404);
+    }
+    expect(userRenderer).toHaveBeenCalledTimes(3);
+  });
+
   it('keeps the request query out of a static element of a dynamic route', async () => {
     const staticRenderer = vi.fn(() => null);
     const dynamicRenderer = vi.fn(() => null);
